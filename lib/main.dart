@@ -1,10 +1,9 @@
 /*
  TODO:
- * Count songs in folders (stackoverflow)
- * Fix album cover (GitHub)
+ * Back button
  * Random queue
  * Drag seek & rate (video)
- * Fix SD card (after update, GitHub)
+ * Song BPM instead of album cover when dragged
  ** YouTube
  ** A & B
  ** Paso Doble intro
@@ -18,7 +17,6 @@ import 'package:flutter/material.dart';
 import 'package:audio/audio.dart';
 import 'package:audioplayers/audioplayers.dart' as rate;
 import 'package:flutter_audio_query/flutter_audio_query.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:flutter_file_manager/flutter_file_manager.dart';
 import 'package:easy_dialogs/easy_dialogs.dart';
 import 'package:typicons_flutter/typicons_flutter.dart';
@@ -29,7 +27,7 @@ void printLong(dynamic text) {
   pattern.allMatches(text).forEach((match) => print(match.group(0)));
 }
 
-Color interactiveColor = Colors.orange[300];  // #FFB74D #FFA726 #E4273A
+Color interactiveColor = Colors.orange[300]; // #FFB74D #FFA726 #E4273A
 Color backgroundColor = Colors.white;
 Color youTubeColor = Colors.red;
 Color unfocusedColor = Colors.grey[400];
@@ -66,6 +64,23 @@ List<double> wave(String s) {
   }
 
   return codes;
+}
+
+Future<List<String>> getSdCardRoot() async {
+  List<String> result = [];
+  Directory storage = Directory('/storage');
+  List<FileSystemEntity> subDirs = await storage.listSync();
+  for (Directory dir in subDirs) {
+    try {
+      List<FileSystemEntity> subSubDirs = await dir.listSync();
+      if (subSubDirs.isNotEmpty){
+        result.add(dir.path);
+      }
+    } on FileSystemException catch (error) {
+      continue;
+    }
+  }
+  return result;
 }
 
 class _CubistButton extends ShapeBorder {
@@ -143,10 +158,16 @@ class Entry implements Comparable<Entry> {
 
   @override
   int compareTo(Entry other) =>
-      this.path.toLowerCase().compareTo(other.path.toLowerCase());
+      path.toLowerCase().compareTo(other.path.toLowerCase());
 
   @override
-  String toString() => 'Entry( ${this.path} )';
+  String toString() => 'Entry( $path )';
+
+  @override
+  bool operator ==(other) => other is Entry && other.path == path;
+
+  @override
+  int get hashCode => path.hashCode;
 
   String get name => path.split('/').lastWhere((e) => e != '');
 }
@@ -464,12 +485,12 @@ class _PlayerState extends State<Player> {
       while (j < length) {
         relativeString = _path.substring(0, relatives.elementAt(j));
         Entry entry = Entry(relativeString, type);
-        if (type == 'song') ++entry.songs;
-        if (!browse.containsKey(entry)) {
+        if (browse.containsKey(entry)) {
+          entry = browse.keys.firstWhere((key) => key == entry);
+          if (type == 'song') entry.songs++;
+        } else {
           browse[entry] = SplayTreeMap();
           setState(() => valueChanged(value++));
-        } else {
-          // ### update key
         }
         browse = browse[entry];
         j++;
@@ -573,11 +594,9 @@ class _PlayerState extends State<Player> {
       print(error);
     });
 
-    Stream<Directory> _sdCardStream =
-        Stream.fromFuture(getExternalStorageDirectory());
-    _sdCardStream.listen((Directory _sdCardRoot) {
-      String _sdCardRootPath = _sdCardRoot.path;
-      if (_sdCardRootPath != deviceRoot) {
+    Stream<List<String>> _sdCardStream = Stream.fromFuture(getSdCardRoot());
+    _sdCardStream.listen((List<String> _sdCardRoots) {
+      for (String _sdCardRootPath in _sdCardRoots) {
         print(_sdCardRootPath);
         setState(() {
           _sdCard = true;
@@ -998,7 +1017,9 @@ Widget _folderTile(parent, MapEntry entry) {
                   parent.folder == _entry.path ? interactiveColor : blackColor),
           children: <TextSpan>[
             TextSpan(
-              text: '\n${_entry.songs} songs',
+              text: _entry.songs == 1
+                  ? '\n${_entry.songs} song'
+                  : '\n${_entry.songs} songs',
               style: TextStyle(
                 fontSize: 10.0,
                 color: parent.folder == _entry.path
@@ -1023,7 +1044,7 @@ Widget _folderTile(parent, MapEntry entry) {
       ),
     ),
     subtitle: Text(
-      '${_entry.songs} songs',
+      _entry.songs == 1 ? '${_entry.songs} song' : '${_entry.songs} songs',
       style: TextStyle(
         fontSize: 10.0,
       ),
