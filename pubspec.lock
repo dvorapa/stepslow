@@ -7,7 +7,7 @@ packages:
       name: archive
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.0.10"
+    version: "2.0.11"
   args:
     dependency: transitive
     description:
@@ -34,7 +34,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: cf4ebe2d57554c4b045ab0f63d12220ef6c74cf3
+      resolved-ref: "64424ad052a9384f9acc7cee6948a31cebf26a4a"
       url: "git://github.com/luanpotter/audioplayers.git"
     source: git
     version: "0.13.2"
@@ -117,7 +117,7 @@ packages:
       name: image
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.1.7"
+    version: "2.1.8"
   matcher:
     dependency: transitive
     description:

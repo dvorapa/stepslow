@@ -13,7 +13,7 @@ description: Finally a good ballroom dance music player for Android!
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 version: 0.1.0+1
 author: Pavel Dvořák <dvorapa~seznam~cz>
-homepage: http://www.dvorapa.cz/
+homepage: http://www.dvorapa.cz
 
 environment:
   sdk: ">=2.5.0 <3.0.0"
@@ -41,7 +41,6 @@ flutter_icons:
   image_path: "assets/logo.png"
   android: true
   ios: true
-
 
 flutter:
 
