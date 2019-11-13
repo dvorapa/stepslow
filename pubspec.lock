@@ -34,7 +34,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "64424ad052a9384f9acc7cee6948a31cebf26a4a"
+      resolved-ref: "788a40bbed7f186f3f7c12a494e775f338f89f59"
       url: "git://github.com/luanpotter/audioplayers.git"
     source: git
     version: "0.13.2"
@@ -145,7 +145,7 @@ packages:
       name: path_provider
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.4.0"
+    version: "1.4.2"
   pedantic:
     dependency: transitive
     description:
