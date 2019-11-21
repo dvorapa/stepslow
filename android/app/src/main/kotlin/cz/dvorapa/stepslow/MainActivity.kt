@@ -1,4 +1,4 @@
-package com.example.stepslow
+package cz.dvorapa.stepslow
 
 import android.os.Bundle
 

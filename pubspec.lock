@@ -34,10 +34,10 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "788a40bbed7f186f3f7c12a494e775f338f89f59"
+      resolved-ref: "5b824c2852e9538555d3d7993a00495049ef65c5"
       url: "git://github.com/luanpotter/audioplayers.git"
     source: git
-    version: "0.13.2"
+    version: "0.13.3"
   boolean_selector:
     dependency: transitive
     description:
@@ -92,6 +92,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.2.1"
+  flutter_ffmpeg:
+    dependency: "direct main"
+    description:
+      name: flutter_ffmpeg
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.2.8"
   flutter_file_manager:
     dependency: "direct main"
     description:
@@ -117,7 +124,7 @@ packages:
       name: image
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.1.8"
+    version: "2.1.9"
   matcher:
     dependency: transitive
     description:
@@ -140,12 +147,12 @@ packages:
     source: hosted
     version: "1.6.4"
   path_provider:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: path_provider
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.4.2"
+    version: "1.4.4"
   pedantic:
     dependency: transitive
     description:
@@ -241,7 +248,7 @@ packages:
       name: uuid
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.0.2"
+    version: "2.0.4"
   vector_math:
     dependency: transitive
     description:
@@ -257,7 +264,7 @@ packages:
     source: hosted
     version: "3.5.0"
   yaml:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: yaml
       url: "https://pub.dartlang.org"
