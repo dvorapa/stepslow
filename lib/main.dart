@@ -1,6 +1,5 @@
 /*
  TODO:
- * Rights check
  ** Authors
  ** Caching, preserve state
  *** YouTube
@@ -14,8 +13,9 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:audio/audio.dart';
-import 'package:audioplayers/audioplayers.dart' as rate;
+import 'package:flutter/services.dart';
+import 'package:permissions_plugin/permissions_plugin.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_audio_query/flutter_audio_query.dart';
 import 'package:flutter_file_manager/flutter_file_manager.dart';
 import 'package:easy_dialogs/easy_dialogs.dart';
@@ -210,7 +210,7 @@ class Player extends StatefulWidget {
 }
 
 class _PlayerState extends State<Player> {
-  final rate.AudioPlayer audioPlayer = rate.AudioPlayer();
+  final AudioPlayer audioPlayer = AudioPlayer();
   AudioPlayerState _state = AudioPlayerState.STOPPED;
   double _rate = 100.0;
   Duration _position = Duration();
@@ -251,11 +251,6 @@ class _PlayerState extends State<Player> {
   List<SongInfo> _songs = [];
   SplayTreeMap<Entry, SplayTreeMap> deviceBrowse = SplayTreeMap();
   SplayTreeMap<Entry, SplayTreeMap> sdCardBrowse = SplayTreeMap();
-
-  StreamSubscription<AudioPlayerState> _playerStateSubscription;
-  StreamSubscription<double> _playerPositionController;
-  StreamSubscription<int> _playerBufferingSubscription;
-  StreamSubscription<AudioPlayerError> _playerErrorSubscription;
 
   void onPlay() {
     if (_state == AudioPlayerState.PAUSED) {
@@ -684,193 +679,204 @@ class _PlayerState extends State<Player> {
       }
     }
 
-    Stream<List<Directory>>.fromFuture(getExternalCacheDirectories())
-        .listen((List<Directory> _tempFolders) {
-      for (final Directory tempFolder in _tempFolders) {
-        final String _tempFolderPath = tempFolder.path;
-        if (_tempFolderPath.startsWith(deviceRoot)) {
-          _tempFolder = _tempFolderPath;
-          setState(() => _tempFolderComplete = true);
-          if ((_songsComplete == true) && (_privateFolderComplete == true))
-            _checkCovers();
-        }
-      }
-    });
-    Stream<List<Directory>>.fromFuture(getExternalStorageDirectories())
-        .listen((List<Directory> _privateFolders) {
-      for (final Directory privateFolder in _privateFolders) {
-        final String _privateFolderPath = privateFolder.path;
-        if (_privateFolderPath.startsWith(deviceRoot)) {
-          setState(() {
-            _coversFile = File('$_privateFolderPath/covers.yaml');
-            _privateFolderComplete = true;
-          });
-          if (_coversFile.existsSync()) {
-            setState(() => _coversYaml = _coversFile.readAsStringSync());
-            setState(() => _coversMap = Map<String, int>.from(loadYaml(_coversYaml) ?? <String, int>{}));
-          } else {
-            _coversFile.createSync(recursive: true);
-          }
-          if ((_songsComplete == true) && (_tempFolderComplete == true))
-            _checkCovers();
-        }
-      }
-    });
-
-    Stream<List<SongInfo>>.fromFuture(audioQuery.getSongs()).listen(
-        (List<SongInfo> _songList) {
-      for (final SongInfo _song in _songList) {
-        final String _songPath = _song.filePath;
-        final String _songFolder = File(_songPath).parent.path;
-        // queue
-        if (_songFolder == folder) {
-          if (_set != 'random' || [0, 1].contains(_queueComplete)) {
-            queue.add(_song);
-          } else {
-            queue.insert(1 + random.nextInt(_queueComplete), _song);
-          }
-          setState(() => ++_queueComplete);
-
-          if (_queueComplete == 1) {
-            audioPlayer.setUrl(_songPath);
-            setState(() => song = queue[0]);
-          }
-        }
-
-        // _songs
-        if (_songPath.startsWith(deviceRoot) ||
-            (_sdCard && _songPath.startsWith(sdCardRoot))) {
-          _songs.add(_song);
-          setState(() => ++_songsComplete);
-        }
-
-        // browse
-        if (_songPath.startsWith(deviceRoot)) {
-          fillBrowse(
-              _songPath,
-              deviceRoot,
-              deviceBrowse,
-              _deviceBrowseSongsComplete,
-              (value) => _deviceBrowseSongsComplete = value,
-              'song');
-        } else if (_sdCard && _songPath.startsWith(sdCardRoot)) {
-          fillBrowse(
-              _songPath,
-              sdCardRoot,
-              sdCardBrowse,
-              _sdCardBrowseSongsComplete,
-              (value) => _sdCardBrowseSongsComplete = value,
-              'song');
-        }
-      }
-    }, onDone: () {
-      if (_songsComplete > 0) {
-        setState(() => _songsComplete = true);
-        if ((_tempFolderComplete == true) && (_privateFolderComplete == true))
-          _checkCovers();
-      }
-      setState(() {
-        _queueComplete = _queueComplete > 0 ? true : 0;
-        if (_deviceBrowseFoldersComplete == true) {
-          _deviceBrowseComplete = true;
-        } else {
-          _deviceBrowseSongsComplete =
-              _deviceBrowseSongsComplete > 0 ? true : 0;
-        }
-        if (_sdCardBrowseFoldersComplete == true) {
-          _sdCardBrowseComplete = true;
-        } else {
-          _sdCardBrowseSongsComplete =
-              _sdCardBrowseSongsComplete > 0 ? true : 0;
-        }
-      });
-    }, onError: (error) {
-      setState(() {
-        _queueComplete = false;
-        _songsComplete = false;
-        _deviceBrowseComplete = false;
-        _sdCardBrowseComplete = false;
-      });
-      print(error);
-    });
-
-    Stream<List<Directory>>.fromFuture(FileManager(root: Directory(deviceRoot))
-            .dirsTree(excludeHidden: true))
-        .listen((List<Directory> _deviceFolderList) {
-      for (final Directory _folder in _deviceFolderList) {
-        fillBrowse(
-            _folder.path,
-            deviceRoot,
-            deviceBrowse,
-            _deviceBrowseFoldersComplete,
-            (value) => _deviceBrowseFoldersComplete = value,
-            'folder');
-      }
-    }, onDone: () {
-      fillBrowse(
-          deviceRoot,
-          deviceRoot,
-          deviceBrowse,
-          _deviceBrowseFoldersComplete,
-          (value) => _deviceBrowseFoldersComplete = value,
-          'folder');
-      if (_deviceBrowseSongsComplete == true) {
-        setState(() => _deviceBrowseComplete = true);
+    Stream<Map<Permission, PermissionState>>.fromFuture(
+            PermissionsPlugin.requestPermissions(
+                [Permission.READ_EXTERNAL_STORAGE]))
+        .listen((Map<Permission, PermissionState> status) {
+      if (status[Permission.READ_EXTERNAL_STORAGE] != PermissionState.GRANTED) {
+        SystemChannels.platform.invokeMethod('SystemNavigator.pop');
       } else {
-        setState(() => _deviceBrowseFoldersComplete =
-            _deviceBrowseFoldersComplete > 0 ? true : 0);
-      }
-    }, onError: (error) {
-      setState(() => _deviceBrowseFoldersComplete = false);
-      print(error);
-    });
-
-    Stream<List<String>>.fromFuture(getSdCardRoot()).listen(
-        (List<String> _sdCardRoots) {
-      for (final String _sdCardRootPath in _sdCardRoots) {
-        setState(() {
-          _sdCard = true;
-          sdCardRoot = _sdCardRootPath;
+        Stream<List<Directory>>.fromFuture(getExternalCacheDirectories())
+            .listen((List<Directory> _tempFolders) {
+          for (final Directory tempFolder in _tempFolders) {
+            final String _tempFolderPath = tempFolder.path;
+            if (_tempFolderPath.startsWith(deviceRoot)) {
+              _tempFolder = _tempFolderPath;
+              setState(() => _tempFolderComplete = true);
+              if ((_songsComplete == true) && (_privateFolderComplete == true))
+                _checkCovers();
+            }
+          }
         });
-        _sources.add('SD card');
-      }
-    }, onDone: () {
-      if (_sdCard) {
+        Stream<List<Directory>>.fromFuture(getExternalStorageDirectories())
+            .listen((List<Directory> _privateFolders) {
+          for (final Directory privateFolder in _privateFolders) {
+            final String _privateFolderPath = privateFolder.path;
+            if (_privateFolderPath.startsWith(deviceRoot)) {
+              setState(() {
+                _coversFile = File('$_privateFolderPath/covers.yaml');
+                _privateFolderComplete = true;
+              });
+              if (_coversFile.existsSync()) {
+                setState(() => _coversYaml = _coversFile.readAsStringSync());
+                setState(() => _coversMap = Map<String, int>.from(
+                    loadYaml(_coversYaml) ?? <String, int>{}));
+              } else {
+                _coversFile.createSync(recursive: true);
+              }
+              if ((_songsComplete == true) && (_tempFolderComplete == true))
+                _checkCovers();
+            }
+          }
+        });
+
+        Stream<List<SongInfo>>.fromFuture(audioQuery.getSongs()).listen(
+            (List<SongInfo> _songList) {
+          for (final SongInfo _song in _songList) {
+            final String _songPath = _song.filePath;
+            final String _songFolder = File(_songPath).parent.path;
+            // queue
+            if (_songFolder == folder) {
+              if (_set != 'random' || [0, 1].contains(_queueComplete)) {
+                queue.add(_song);
+              } else {
+                queue.insert(1 + random.nextInt(_queueComplete), _song);
+              }
+              setState(() => ++_queueComplete);
+
+              if (_queueComplete == 1) {
+                audioPlayer.setUrl(_songPath);
+                setState(() => song = queue[0]);
+              }
+            }
+
+            // _songs
+            if (_songPath.startsWith(deviceRoot) ||
+                (_sdCard && _songPath.startsWith(sdCardRoot))) {
+              _songs.add(_song);
+              setState(() => ++_songsComplete);
+            }
+
+            // browse
+            if (_songPath.startsWith(deviceRoot)) {
+              fillBrowse(
+                  _songPath,
+                  deviceRoot,
+                  deviceBrowse,
+                  _deviceBrowseSongsComplete,
+                  (value) => _deviceBrowseSongsComplete = value,
+                  'song');
+            } else if (_sdCard && _songPath.startsWith(sdCardRoot)) {
+              fillBrowse(
+                  _songPath,
+                  sdCardRoot,
+                  sdCardBrowse,
+                  _sdCardBrowseSongsComplete,
+                  (value) => _sdCardBrowseSongsComplete = value,
+                  'song');
+            }
+          }
+        }, onDone: () {
+          if (_songsComplete > 0) {
+            setState(() => _songsComplete = true);
+            if ((_tempFolderComplete == true) &&
+                (_privateFolderComplete == true)) _checkCovers();
+          }
+          setState(() {
+            _queueComplete = _queueComplete > 0 ? true : 0;
+            if (_deviceBrowseFoldersComplete == true) {
+              _deviceBrowseComplete = true;
+            } else {
+              _deviceBrowseSongsComplete =
+                  _deviceBrowseSongsComplete > 0 ? true : 0;
+            }
+            if (_sdCardBrowseFoldersComplete == true) {
+              _sdCardBrowseComplete = true;
+            } else {
+              _sdCardBrowseSongsComplete =
+                  _sdCardBrowseSongsComplete > 0 ? true : 0;
+            }
+          });
+        }, onError: (error) {
+          setState(() {
+            _queueComplete = false;
+            _songsComplete = false;
+            _deviceBrowseComplete = false;
+            _sdCardBrowseComplete = false;
+          });
+          print(error);
+        });
+
         Stream<List<Directory>>.fromFuture(
-                FileManager(root: Directory(sdCardRoot))
+                FileManager(root: Directory(deviceRoot))
                     .dirsTree(excludeHidden: true))
-            .listen((List<Directory> _sdCardFolderList) {
-          for (final Directory _folder in _sdCardFolderList) {
+            .listen((List<Directory> _deviceFolderList) {
+          for (final Directory _folder in _deviceFolderList) {
             fillBrowse(
                 _folder.path,
-                sdCardRoot,
-                sdCardBrowse,
-                _sdCardBrowseFoldersComplete,
-                (value) => _sdCardBrowseFoldersComplete = value,
+                deviceRoot,
+                deviceBrowse,
+                _deviceBrowseFoldersComplete,
+                (value) => _deviceBrowseFoldersComplete = value,
                 'folder');
           }
         }, onDone: () {
           fillBrowse(
-              sdCardRoot,
-              sdCardRoot,
-              sdCardBrowse,
-              _sdCardBrowseFoldersComplete,
-              (value) => _sdCardBrowseFoldersComplete = value,
+              deviceRoot,
+              deviceRoot,
+              deviceBrowse,
+              _deviceBrowseFoldersComplete,
+              (value) => _deviceBrowseFoldersComplete = value,
               'folder');
-          if (_sdCardBrowseSongsComplete == true) {
-            setState(() => _sdCardBrowseComplete = true);
+          if (_deviceBrowseSongsComplete == true) {
+            setState(() => _deviceBrowseComplete = true);
           } else {
-            setState(() => _sdCardBrowseFoldersComplete =
-                _sdCardBrowseFoldersComplete > 0 ? true : 0);
+            setState(() => _deviceBrowseFoldersComplete =
+                _deviceBrowseFoldersComplete > 0 ? true : 0);
           }
         }, onError: (error) {
-          setState(() => _sdCardBrowseFoldersComplete = false);
+          setState(() => _deviceBrowseFoldersComplete = false);
+          print(error);
+        });
+
+        Stream<List<String>>.fromFuture(getSdCardRoot()).listen(
+            (List<String> _sdCardRoots) {
+          for (final String _sdCardRootPath in _sdCardRoots) {
+            setState(() {
+              _sdCard = true;
+              sdCardRoot = _sdCardRootPath;
+            });
+            _sources.add('SD card');
+          }
+        }, onDone: () {
+          if (_sdCard) {
+            Stream<List<Directory>>.fromFuture(
+                    FileManager(root: Directory(sdCardRoot))
+                        .dirsTree(excludeHidden: true))
+                .listen((List<Directory> _sdCardFolderList) {
+              for (final Directory _folder in _sdCardFolderList) {
+                fillBrowse(
+                    _folder.path,
+                    sdCardRoot,
+                    sdCardBrowse,
+                    _sdCardBrowseFoldersComplete,
+                    (value) => _sdCardBrowseFoldersComplete = value,
+                    'folder');
+              }
+            }, onDone: () {
+              fillBrowse(
+                  sdCardRoot,
+                  sdCardRoot,
+                  sdCardBrowse,
+                  _sdCardBrowseFoldersComplete,
+                  (value) => _sdCardBrowseFoldersComplete = value,
+                  'folder');
+              if (_sdCardBrowseSongsComplete == true) {
+                setState(() => _sdCardBrowseComplete = true);
+              } else {
+                setState(() => _sdCardBrowseFoldersComplete =
+                    _sdCardBrowseFoldersComplete > 0 ? true : 0);
+              }
+            }, onError: (error) {
+              setState(() => _sdCardBrowseFoldersComplete = false);
+              print(error);
+            });
+          }
+        }, onError: (error) {
+          setState(() => _sdCard = false);
           print(error);
         });
       }
-    }, onError: (error) {
-      setState(() => _sdCard = false);
-      print(error);
     });
 
     /*Stream<List<InternetAddress>>.fromFuture(
@@ -885,10 +891,6 @@ class _PlayerState extends State<Player> {
 
   @override
   void dispose() {
-    _playerStateSubscription.cancel();
-    _playerPositionController.cancel();
-    _playerBufferingSubscription.cancel();
-    _playerErrorSubscription.cancel();
     audioPlayer.release();
     super.dispose();
   }

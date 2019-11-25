@@ -22,7 +22,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  audio: ^0.0.5
+  permissions_plugin: ^1.1.4
   #audioplayers: ^0.13.4
   audioplayers:
     git: git://github.com/luanpotter/audioplayers.git
