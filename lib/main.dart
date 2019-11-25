@@ -1,12 +1,3 @@
-/*
- TODO:
- ** Authors
- ** Caching, preserve state
- *** YouTube
- *** A & B
- *** Paso Doble intro
- *** Color selection
-*/
 import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
