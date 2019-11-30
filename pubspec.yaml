@@ -1,5 +1,5 @@
 name: stepslow
-description: Finally a good ballroom dance music player for Android!
+description: Simple music player for dancers
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -16,26 +16,26 @@ author: Pavel Dvořák <dvorapa~seznam~cz>
 homepage: http://www.dvorapa.cz
 
 environment:
-  sdk: ">=2.5.0 <3.0.0"
+  sdk: ^2.5.0
 
 dependencies:
   flutter:
     sdk: flutter
 
   permissions_plugin: ^1.1.4
-  #audioplayers: ^0.13.4
+  #audioplayers: ">=0.13.4 <1.0.0"
   audioplayers:
     git: git://github.com/luanpotter/audioplayers.git
-  flutter_audio_query: ^0.2.1
-  flutter_file_manager: ^0.2.0
+  flutter_audio_query: ">=0.3.3 <1.0.0"
+  flutter_file_manager: ">=0.2.0 <1.0.0"
   easy_dialogs: ^1.0.0
-  typicons_flutter: ^0.2.1
-  flutter_ffmpeg: ^0.2.8
-  path_provider: ^1.4.4
+  typicons_flutter: ">=0.3.1 <1.0.0"
+  flutter_ffmpeg: ">=0.2.8 <1.0.0"
+  path_provider: ^1.4.5
   yaml: ^2.2.0
 
 dev_dependencies:
-  flutter_launcher_icons: ^0.7.4
+  flutter_launcher_icons: ">=0.7.4 <1.0.0"
   flutter_test:
     sdk: flutter
 

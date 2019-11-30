@@ -15,14 +15,6 @@ import 'package:flutter_ffmpeg/flutter_ffmpeg.dart';
 import 'package:yaml/yaml.dart';
 import 'package:path_provider/path_provider.dart';
 
-void printLong(dynamic text) {
-  text = text.toString();
-  final Pattern pattern = RegExp('.{1,1023}');
-  for (final Match match in pattern.allMatches(text)) {
-    print(match.group(0));
-  }
-}
-
 final Color interactiveColor = Colors.orange[300]; // #FFB74D #FFA726 #E4273A
 final Color backgroundColor = Colors.white;
 final Color youTubeColor = Colors.red;
@@ -31,37 +23,22 @@ final Color blackColor = Colors.black;
 
 final String deviceRoot = '/storage/emulated/0';
 String sdCardRoot;
-//String _prefFolder;
 String _tempFolder;
+//String _prefFolder;
 
 final List<dynamic> _empty = [0, false];
+
+void printLong(dynamic text) {
+  text = text.toString();
+  final Pattern pattern = RegExp('.{1,1023}');
+  for (final Match match in pattern.allMatches(text)) {
+    print(match.group(0));
+  }
+}
 
 String zero(int n) {
   if (n >= 10) return '$n';
   return '0$n';
-}
-
-List<double> wave(String s) {
-  List<double> codes = [];
-  for (final int code in s.toLowerCase().codeUnits) {
-    if (code >= 48) codes.add(code.toDouble());
-  }
-
-  final double minCode = codes.reduce(min);
-  final double maxCode = codes.reduce(max);
-
-  codes.asMap().forEach((int index, double value) {
-    value = value - minCode;
-    final double fraction = (100.0 / (maxCode - minCode)) * value;
-    codes[index] = fraction.roundToDouble();
-  });
-
-  final int codesCount = codes.length;
-  if (codesCount > 10) {
-    codes = codes.sublist(0, 5) + codes.sublist(codesCount - 5);
-  }
-
-  return codes;
 }
 
 Future<List<String>> getSdCardRoot() async {
@@ -79,62 +56,6 @@ Future<List<String>> getSdCardRoot() async {
     }
   }
   return result;
-}
-
-class _CubistButton extends ShapeBorder {
-  const _CubistButton();
-
-  @override
-  EdgeInsetsGeometry get dimensions => const EdgeInsets.only();
-
-  @override
-  Path getInnerPath(Rect rect, {TextDirection textDirection}) =>
-      getOuterPath(rect, textDirection: textDirection);
-
-  @override
-  Path getOuterPath(Rect rect, {TextDirection textDirection}) {
-    return Path()
-      ..moveTo(rect.left + rect.width / 5.0, rect.top + rect.height / 5.0)
-      ..lineTo(rect.right - rect.width / 10.0, rect.top + rect.height / 10.0)
-      ..lineTo(rect.right - rect.width / 5.0, rect.bottom - rect.height / 5.0)
-      ..lineTo(rect.left + rect.width / 10.0, rect.bottom - rect.height / 10.0)
-      ..close();
-  }
-
-  @override
-  void paint(Canvas canvas, Rect rect, {TextDirection textDirection}) {}
-
-  @override
-  ShapeBorder scale(double t) => null;
-}
-
-class _CubistFrame extends ShapeBorder {
-  const _CubistFrame();
-
-  @override
-  EdgeInsetsGeometry get dimensions => const EdgeInsets.only();
-
-  @override
-  Path getInnerPath(Rect rect, {TextDirection textDirection}) =>
-      getOuterPath(rect, textDirection: textDirection);
-
-  @override
-  Path getOuterPath(Rect rect, {TextDirection textDirection}) {
-    return Path()
-      ..moveTo(rect.left, rect.top)
-      ..lineTo(rect.right, rect.top)
-      ..lineTo(rect.right - rect.width / 20.0, rect.top + rect.height / 2.0)
-      ..lineTo(rect.right, rect.bottom)
-      ..lineTo(rect.left, rect.bottom)
-      ..lineTo(rect.left + rect.width / 20.0, rect.top + rect.height / 2.0)
-      ..close();
-  }
-
-  @override
-  void paint(Canvas canvas, Rect rect, {TextDirection textDirection}) {}
-
-  @override
-  ShapeBorder scale(double t) => null;
 }
 
 class Entry implements Comparable<Entry> {
@@ -289,6 +210,11 @@ class _PlayerState extends State<Player> {
     }
   }
 
+  void onPause() {
+    audioPlayer.pause();
+    setState(() => _state = AudioPlayerState.PAUSED);
+  }
+
   void onStop() {
     audioPlayer.stop();
     setState(() {
@@ -296,11 +222,6 @@ class _PlayerState extends State<Player> {
       _position = Duration();
       _state = AudioPlayerState.STOPPED;
     });
-  }
-
-  void onPause() {
-    audioPlayer.pause();
-    setState(() => _state = AudioPlayerState.PAUSED);
   }
 
   void onFolder(String _folder) {
@@ -392,24 +313,6 @@ class _PlayerState extends State<Player> {
         )));
   }
 
-  void onSeek(Offset position, Duration duration, double width) {
-    double newPosition = .0;
-
-    if (position.dx <= 0) {
-      newPosition = .0;
-    } else if (position.dx >= width) {
-      newPosition = width;
-    } else {
-      newPosition = position.dx;
-    }
-
-    setState(() {
-      _position = duration * (newPosition / width);
-    });
-
-    audioPlayer.seek(_position);
-  }
-
   void onPositionDragStart(
       BuildContext context, DragStartDetails details, Duration duration) {
     final RenderBox slider = context.findRenderObject();
@@ -443,29 +346,22 @@ class _PlayerState extends State<Player> {
     onSeek(position, duration, MediaQuery.of(context).size.width);
   }
 
-  void onRate(double rate) {
-    if (_state == AudioPlayerState.PLAYING)
-      audioPlayer.setPlaybackRate(playbackRate: rate / 100.0);
+  void onSeek(Offset position, Duration duration, double width) {
+    double newPosition = .0;
 
-    setState(() => _rate = rate);
-  }
-
-  void updateRate(Offset rate) {
-    double newRate = 100.0;
-    final double height = 120.0;
-
-    if (rate.dy <= .0) {
-      newRate = .0;
-    } else if (rate.dy >= height) {
-      newRate = height;
+    if (position.dx <= 0) {
+      newPosition = .0;
+    } else if (position.dx >= width) {
+      newPosition = width;
     } else {
-      newRate = rate.dy;
+      newPosition = position.dx;
     }
 
-    _rate = 200.0 * (1 - (newRate / height));
-    _rate = _rate - _rate % 5;
-    if (_rate < 5) _rate = 5;
-    onRate(_rate);
+    setState(() {
+      _position = duration * (newPosition / width);
+    });
+
+    audioPlayer.seek(_position);
   }
 
   void onRateDragStart(BuildContext context, DragStartDetails details) {
@@ -489,6 +385,31 @@ class _PlayerState extends State<Player> {
       setState(() => _state = AudioPlayerState.PAUSED);
       onPlay();
     }
+  }
+
+  void updateRate(Offset rate) {
+    double newRate = 100.0;
+    final double height = 120.0;
+
+    if (rate.dy <= .0) {
+      newRate = .0;
+    } else if (rate.dy >= height) {
+      newRate = height;
+    } else {
+      newRate = rate.dy;
+    }
+
+    _rate = 200.0 * (1 - (newRate / height));
+    _rate = _rate - _rate % 5;
+    if (_rate < 5) _rate = 5;
+    onRate(_rate);
+  }
+
+  void onRate(double rate) {
+    if (_state == AudioPlayerState.PLAYING)
+      audioPlayer.setPlaybackRate(playbackRate: rate / 100.0);
+
+    setState(() => _rate = rate);
   }
 
   void _changeState() =>
@@ -591,10 +512,51 @@ class _PlayerState extends State<Player> {
     setState(() => _coversComplete = true);
   }
 
+  void fillBrowse(
+      String _path,
+      String _root,
+      SplayTreeMap<Entry, SplayTreeMap> browse,
+      dynamic value,
+      ValueChanged<dynamic> valueChanged,
+      String type) {
+    final int _rootLength = _root.length;
+    String relative = _path.substring(_rootLength);
+    if (relative.startsWith('/')) relative = '${relative.substring(1)}/';
+    final Iterable<int> relatives =
+        '/'.allMatches(relative).map((Match m) => _rootLength + m.end);
+    int j = 0;
+    String relativeString;
+    num length = type == 'song' ? relatives.length - 1 : relatives.length;
+    if (length == 0) length = .5;
+    while (j < length) {
+      if (length == .5) {
+        relativeString = _root;
+      } else {
+        relativeString = _path.substring(0, relatives.elementAt(j));
+      }
+      Entry entry = Entry(relativeString, type);
+      if (browse.containsKey(entry)) {
+        entry = browse.keys.firstWhere((Entry key) => key == entry);
+        if (type == 'song') entry.songs++;
+      } else {
+        browse[entry] = SplayTreeMap<Entry, SplayTreeMap>();
+        setState(() => valueChanged(++value));
+      }
+      browse = browse[entry];
+      j++;
+    }
+  }
+
   @override
   void initState() {
     _flutterFFmpeg.disableRedirection();
 
+    audioPlayer.onDurationChanged.listen((Duration d) {
+      setState(() => duration = d * (100.0 / _rate));
+    });
+    audioPlayer.onAudioPositionChanged.listen((Duration p) {
+      setState(() => _position = p * (100.0 / _rate));
+    });
     audioPlayer.onPlayerCompletion.listen((_) {
       setState(() => _position = duration);
       if (_mode == 'once' && (_set == '1' || index == queue.length - 1)) {
@@ -604,12 +566,6 @@ class _PlayerState extends State<Player> {
       } else {
         onChange(index + 1);
       }
-    });
-    audioPlayer.onDurationChanged.listen((Duration d) {
-      setState(() => duration = d * (100.0 / _rate));
-    });
-    audioPlayer.onAudioPositionChanged.listen((Duration p) {
-      setState(() => _position = p * (100.0 / _rate));
     });
     audioPlayer.onPlayerError.listen((String error) {
       setState(() {
@@ -634,41 +590,6 @@ class _PlayerState extends State<Player> {
     });
 
     super.initState();
-
-    void fillBrowse(
-        String _path,
-        String _root,
-        SplayTreeMap<Entry, SplayTreeMap> browse,
-        dynamic value,
-        ValueChanged<dynamic> valueChanged,
-        String type) {
-      final int _rootLength = _root.length;
-      String relative = _path.substring(_rootLength);
-      if (relative.startsWith('/')) relative = '${relative.substring(1)}/';
-      final Iterable<int> relatives =
-          '/'.allMatches(relative).map((Match m) => _rootLength + m.end);
-      int j = 0;
-      String relativeString;
-      num length = type == 'song' ? relatives.length - 1 : relatives.length;
-      if (length == 0) length = .5;
-      while (j < length) {
-        if (length == .5) {
-          relativeString = _root;
-        } else {
-          relativeString = _path.substring(0, relatives.elementAt(j));
-        }
-        Entry entry = Entry(relativeString, type);
-        if (browse.containsKey(entry)) {
-          entry = browse.keys.firstWhere((Entry key) => key == entry);
-          if (type == 'song') entry.songs++;
-        } else {
-          browse[entry] = SplayTreeMap<Entry, SplayTreeMap>();
-          setState(() => valueChanged(++value));
-        }
-        browse = browse[entry];
-        j++;
-      }
-    }
 
     Stream<Map<Permission, PermissionState>>.fromFuture(
             PermissionsPlugin.requestPermissions(
@@ -1186,70 +1107,32 @@ Drag curve vertically to change speed''',
   }
 }
 
-class Wave extends CustomPainter {
-  Wave(this.title, this.duration, this.position, this.rate);
-
-  String title;
-  Duration duration;
-  Duration position;
-  double rate;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final List<double> _waveList = wave(title);
-    final int _len = _waveList.length - 1;
-    if (duration == Duration()) {
-      duration = Duration(seconds: 5);
-    } else if (duration.inSeconds == 0) {
-      duration = Duration(seconds: 1);
-    }
-    final double percentage = position.inSeconds / duration.inSeconds;
-
-    final Path _songPath = Path()..moveTo(.0, size.height);
-    _waveList.asMap().forEach((int index, double value) {
-      _songPath.lineTo(
-          (size.width * index) / _len,
-          size.height -
-              (((3.0 * size.height) / 4.0) * (rate / 200.0)) -
-              ((size.height / 4.0) * (value / 100.0)));
-    });
-    _songPath
-      ..lineTo(size.width, size.height)
-      ..close();
-    canvas.drawPath(
-        _songPath, Paint()..color = interactiveColor.withOpacity(.7));
-
-    final Path _indicatorPath = Path();
-    final double pos = _len * percentage;
-    final int ceil = pos.ceil();
-    _indicatorPath.moveTo(.0, size.height);
-    _waveList.asMap().forEach((int index, double value) {
-      if (index < ceil) {
-        _indicatorPath.lineTo(
-            (size.width * index) / _len,
-            size.height -
-                (((3.0 * size.height) / 4.0) * (rate / 200.0)) -
-                ((size.height / 4.0) * (value / 100.0)));
-      } else if (index == ceil) {
-        final double previous = index == 0 ? size.height : _waveList[index - 1];
-        final double diff = value - previous;
-        final double advance = 1 - (ceil - pos);
-        _indicatorPath.lineTo(
-            size.width * percentage,
-            size.height -
-                (((3.0 * size.height) / 4.0) * (rate / 200.0)) -
-                ((size.height / 4.0) *
-                    ((previous + (diff * advance)) / 100.0)));
-      }
-    });
-    _indicatorPath
-      ..lineTo(size.width * percentage, size.height)
-      ..close();
-    canvas.drawPath(_indicatorPath, Paint()..color = interactiveColor);
+Widget _sourceButton(String source) {
+  switch (source) {
+    case 'YouTube':
+      return Icon(Typicons.social_youtube, color: youTubeColor);
+      break;
+    case 'SD card':
+      return Icon(Icons.sd_card);
+      break;
+    default:
+      return Icon(Icons.folder);
+      break;
   }
+}
 
-  @override
-  bool shouldRepaint(Wave oldDelegate) => true;
+Color _sourceColor(_PlayerState parent) {
+  switch (parent.source) {
+    case 'YouTube':
+      return youTubeColor;
+      break;
+    case 'SD card':
+      return parent.folder == sdCardRoot ? interactiveColor : blackColor;
+      break;
+    default:
+      return parent.folder == deviceRoot ? interactiveColor : blackColor;
+      break;
+  }
 }
 
 Widget _folderPicker(_PlayerState parent) {
@@ -1346,6 +1229,166 @@ Widget _folderTile(_PlayerState parent, MapEntry<Entry, SplayTreeMap> entry) {
   );
 }
 
+Widget _play(_PlayerState parent, double elevation, double iconSize,
+    Color foregroundColor, VoidCallback onPressed) {
+  if (parent._queueComplete == 0) {
+    return FloatingActionButton(
+      onPressed: () {},
+      tooltip: 'Loading...',
+      shape: const _CubistButton(),
+      elevation: elevation,
+      child: SizedBox(
+        width: iconSize - 10.0,
+        height: iconSize - 10.0,
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(foregroundColor),
+        ),
+      ),
+    );
+  } else if (parent._queueComplete == false) {
+    return FloatingActionButton(
+      onPressed: () {},
+      tooltip: 'Unable to retrieve songs!',
+      shape: const _CubistButton(),
+      elevation: elevation,
+      foregroundColor: foregroundColor,
+      child: Icon(Icons.close, size: iconSize),
+    );
+  } else {
+    return FloatingActionButton(
+      onPressed: onPressed,
+      tooltip: parent._state == AudioPlayerState.PLAYING ? 'Pause' : 'Play',
+      shape: const _CubistButton(),
+      elevation: elevation,
+      foregroundColor: foregroundColor,
+      child: Icon(
+          parent._state == AudioPlayerState.PLAYING
+              ? Icons.pause
+              : Icons.play_arrow,
+          size: iconSize),
+    );
+  }
+}
+
+Widget _album(_PlayerState parent) {
+  if (parent._rate != 100.0) {
+    return Center(
+        child: InkWell(
+            onTap: () => parent.onRate(100.0),
+            child: Text('${parent._rate.toInt()} %',
+                style: TextStyle(fontSize: 30, color: unfocusedColor))));
+  } else if (!_empty.contains(parent._tempFolderComplete) &&
+      parent.song != null) {
+    final File _coverFile = File('$_tempFolder/${parent.song.id}.jpg');
+    if (!_empty.contains(parent._coversComplete) &&
+        parent._coversMap[parent.song.filePath] == 0 &&
+        _coverFile.existsSync()) {
+      return Image.file(_coverFile, fit: BoxFit.cover);
+    }
+  }
+  return Icon(Icons.music_note, size: 48.0, color: unfocusedColor);
+}
+
+Widget _title(_PlayerState parent) {
+  if (parent._queueComplete == 0) {
+    return Text('Empty queue',
+        style: TextStyle(
+          color: backgroundColor,
+          fontSize: 15.0,
+        ));
+  } else if (parent._queueComplete == false) {
+    return Text('Unable to retrieve songs!',
+        style: TextStyle(
+          color: backgroundColor,
+          fontSize: 15.0,
+        ));
+  } else {
+    return Text('${parent.song.title.replaceAll('_', ' ').toUpperCase()}',
+        overflow: TextOverflow.ellipsis,
+        maxLines: 2,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: backgroundColor,
+          fontSize: parent.song.artist == '<unknown>' ? 12.0 : 13.0,
+          letterSpacing: 6.0,
+          fontWeight: FontWeight.bold,
+        ));
+  }
+}
+
+Widget _artist(_PlayerState parent) {
+  if (_empty.contains(parent._queueComplete) ||
+      parent.song.artist == '<unknown>') {
+    return const SizedBox.shrink();
+  } else {
+    return Text(
+      '${parent.song.artist.toUpperCase()}',
+      overflow: TextOverflow.ellipsis,
+      maxLines: 1,
+      style: TextStyle(
+        color: backgroundColor,
+        fontSize: 9.0,
+        height: 2.0,
+        letterSpacing: 6.0,
+      ),
+    );
+  }
+}
+
+IconData _status(String _set) {
+  switch (_set) {
+    case 'all':
+      return Icons.album;
+      break;
+    case '1':
+      return Icons.music_note;
+      break;
+    default:
+      return Icons.shuffle;
+      break;
+  }
+}
+
+Widget _navigation(_PlayerState parent) {
+  final List<Widget> _row = [];
+
+  final String _root = parent.source == 'SD card' ? sdCardRoot : deviceRoot;
+  final int _rootLength = _root.length;
+  String _path = '${parent.folder}';
+  if (_path == _root) _path += '/${parent.source} home';
+  String relative = _path.substring(_rootLength);
+  if (relative.startsWith('/')) relative = '${relative.substring(1)}/';
+  final Iterable<int> relatives =
+      '/'.allMatches(relative).map((Match m) => _rootLength + m.end);
+  int j = 0;
+  final int length = relatives.length;
+  String _title;
+  int start = 0;
+  while (j < length) {
+    start = j - 1 < 0 ? _rootLength : relatives.elementAt(j - 1);
+    _title = _path.substring(start + 1, relatives.elementAt(j));
+    if (j + 1 == length) {
+      _row.add(InkWell(
+        onTap: parent._pickFolder,
+        child: Text(_title, style: TextStyle(color: interactiveColor)),
+      ));
+    } else {
+      final int _end = relatives.elementAt(j);
+      _row
+        ..add(InkWell(
+          onTap: () => parent.onFolder(_path.substring(0, _end)),
+          child: Text(_title),
+        ))
+        ..add(Text(' > ', style: TextStyle(color: unfocusedColor)));
+    }
+    j++;
+  }
+  return Tooltip(
+    message: 'Change folder',
+    child: Row(children: _row),
+  );
+}
+
 Widget _songPicker(parent) {
   if (parent.source == 'YouTube') {
     return Center(child: const Text('Not yet supported'));
@@ -1427,190 +1470,147 @@ Widget _albumList(_PlayerState parent, SongInfo _song) {
   );
 }
 
-Widget _album(_PlayerState parent) {
-  if (parent._rate != 100.0) {
-    return Center(
-        child: InkWell(
-            onTap: () => parent.onRate(100.0),
-            child: Text('${parent._rate.toInt()} %',
-                style: TextStyle(fontSize: 30, color: unfocusedColor))));
-  } else if (!_empty.contains(parent._tempFolderComplete) &&
-      parent.song != null) {
-    final File _coverFile = File('$_tempFolder/${parent.song.id}.jpg');
-    if (!_empty.contains(parent._coversComplete) &&
-        parent._coversMap[parent.song.filePath] == 0 &&
-        _coverFile.existsSync()) {
-      return Image.file(_coverFile, fit: BoxFit.cover);
+class Wave extends CustomPainter {
+  Wave(this.title, this.duration, this.position, this.rate);
+
+  String title;
+  Duration duration;
+  Duration position;
+  double rate;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final List<double> _waveList = wave(title);
+    final int _len = _waveList.length - 1;
+    if (duration == Duration()) {
+      duration = Duration(seconds: 5);
+    } else if (duration.inSeconds == 0) {
+      duration = Duration(seconds: 1);
     }
+    final double percentage = position.inSeconds / duration.inSeconds;
+
+    final Path _songPath = Path()..moveTo(.0, size.height);
+    _waveList.asMap().forEach((int index, double value) {
+      _songPath.lineTo(
+          (size.width * index) / _len,
+          size.height -
+              (((3.0 * size.height) / 4.0) * (rate / 200.0)) -
+              ((size.height / 4.0) * (value / 100.0)));
+    });
+    _songPath
+      ..lineTo(size.width, size.height)
+      ..close();
+    canvas.drawPath(
+        _songPath, Paint()..color = interactiveColor.withOpacity(.7));
+
+    final Path _indicatorPath = Path();
+    final double pos = _len * percentage;
+    final int ceil = pos.ceil();
+    _indicatorPath.moveTo(.0, size.height);
+    _waveList.asMap().forEach((int index, double value) {
+      if (index < ceil) {
+        _indicatorPath.lineTo(
+            (size.width * index) / _len,
+            size.height -
+                (((3.0 * size.height) / 4.0) * (rate / 200.0)) -
+                ((size.height / 4.0) * (value / 100.0)));
+      } else if (index == ceil) {
+        final double previous = index == 0 ? size.height : _waveList[index - 1];
+        final double diff = value - previous;
+        final double advance = 1 - (ceil - pos);
+        _indicatorPath.lineTo(
+            size.width * percentage,
+            size.height -
+                (((3.0 * size.height) / 4.0) * (rate / 200.0)) -
+                ((size.height / 4.0) *
+                    ((previous + (diff * advance)) / 100.0)));
+      }
+    });
+    _indicatorPath
+      ..lineTo(size.width * percentage, size.height)
+      ..close();
+    canvas.drawPath(_indicatorPath, Paint()..color = interactiveColor);
   }
-  return Icon(Icons.music_note, size: 48.0, color: unfocusedColor);
+
+  @override
+  bool shouldRepaint(Wave oldDelegate) => true;
 }
 
-Color _sourceColor(_PlayerState parent) {
-  switch (parent.source) {
-    case 'YouTube':
-      return youTubeColor;
-      break;
-    case 'SD card':
-      return parent.folder == sdCardRoot ? interactiveColor : blackColor;
-      break;
-    default:
-      return parent.folder == deviceRoot ? interactiveColor : blackColor;
-      break;
+List<double> wave(String s) {
+  List<double> codes = [];
+  for (final int code in s.toLowerCase().codeUnits) {
+    if (code >= 48) codes.add(code.toDouble());
   }
+
+  final double minCode = codes.reduce(min);
+  final double maxCode = codes.reduce(max);
+
+  codes.asMap().forEach((int index, double value) {
+    value = value - minCode;
+    final double fraction = (100.0 / (maxCode - minCode)) * value;
+    codes[index] = fraction.roundToDouble();
+  });
+
+  final int codesCount = codes.length;
+  if (codesCount > 10) {
+    codes = codes.sublist(0, 5) + codes.sublist(codesCount - 5);
+  }
+
+  return codes;
 }
 
-Widget _sourceButton(String source) {
-  switch (source) {
-    case 'YouTube':
-      return Icon(Typicons.social_youtube, color: youTubeColor);
-      break;
-    case 'SD card':
-      return Icon(Icons.sd_card);
-      break;
-    default:
-      return Icon(Icons.folder);
-      break;
+class _CubistFrame extends ShapeBorder {
+  const _CubistFrame();
+
+  @override
+  EdgeInsetsGeometry get dimensions => const EdgeInsets.only();
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection textDirection}) =>
+      getOuterPath(rect, textDirection: textDirection);
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection textDirection}) {
+    return Path()
+      ..moveTo(rect.left, rect.top)
+      ..lineTo(rect.right, rect.top)
+      ..lineTo(rect.right - rect.width / 20.0, rect.top + rect.height / 2.0)
+      ..lineTo(rect.right, rect.bottom)
+      ..lineTo(rect.left, rect.bottom)
+      ..lineTo(rect.left + rect.width / 20.0, rect.top + rect.height / 2.0)
+      ..close();
   }
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection textDirection}) {}
+
+  @override
+  ShapeBorder scale(double t) => null;
 }
 
-Widget _navigation(_PlayerState parent) {
-  final List<Widget> _row = [];
+class _CubistButton extends ShapeBorder {
+  const _CubistButton();
 
-  final String _root = parent.source == 'SD card' ? sdCardRoot : deviceRoot;
-  final int _rootLength = _root.length;
-  String _path = '${parent.folder}';
-  if (_path == _root) _path += '/${parent.source} home';
-  String relative = _path.substring(_rootLength);
-  if (relative.startsWith('/')) relative = '${relative.substring(1)}/';
-  final Iterable<int> relatives =
-      '/'.allMatches(relative).map((Match m) => _rootLength + m.end);
-  int j = 0;
-  final int length = relatives.length;
-  String _title;
-  int start = 0;
-  while (j < length) {
-    start = j - 1 < 0 ? _rootLength : relatives.elementAt(j - 1);
-    _title = _path.substring(start + 1, relatives.elementAt(j));
-    if (j + 1 == length) {
-      _row.add(InkWell(
-        onTap: parent._pickFolder,
-        child: Text(_title, style: TextStyle(color: interactiveColor)),
-      ));
-    } else {
-      final int _end = relatives.elementAt(j);
-      _row
-        ..add(InkWell(
-          onTap: () => parent.onFolder(_path.substring(0, _end)),
-          child: Text(_title),
-        ))
-        ..add(Text(' > ', style: TextStyle(color: unfocusedColor)));
-    }
-    j++;
-  }
-  return Tooltip(
-    message: 'Change folder',
-    child: Row(children: _row),
-  );
-}
+  @override
+  EdgeInsetsGeometry get dimensions => const EdgeInsets.only();
 
-Widget _title(_PlayerState parent) {
-  if (parent._queueComplete == 0) {
-    return Text('Empty queue',
-        style: TextStyle(
-          color: backgroundColor,
-          fontSize: 15.0,
-        ));
-  } else if (parent._queueComplete == false) {
-    return Text('Unable to retrieve songs!',
-        style: TextStyle(
-          color: backgroundColor,
-          fontSize: 15.0,
-        ));
-  } else {
-    return Text('${parent.song.title.replaceAll('_', ' ').toUpperCase()}',
-        overflow: TextOverflow.ellipsis,
-        maxLines: 2,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: backgroundColor,
-          fontSize: parent.song.artist == '<unknown>' ? 12.0 : 13.0,
-          letterSpacing: 6.0,
-          fontWeight: FontWeight.bold,
-        ));
-  }
-}
+  @override
+  Path getInnerPath(Rect rect, {TextDirection textDirection}) =>
+      getOuterPath(rect, textDirection: textDirection);
 
-Widget _artist(_PlayerState parent) {
-  if (_empty.contains(parent._queueComplete) ||
-      parent.song.artist == '<unknown>') {
-    return const SizedBox.shrink();
-  } else {
-    return Text(
-      '${parent.song.artist.toUpperCase()}',
-      overflow: TextOverflow.ellipsis,
-      maxLines: 1,
-      style: TextStyle(
-        color: backgroundColor,
-        fontSize: 9.0,
-        height: 2.0,
-        letterSpacing: 6.0,
-      ),
-    );
+  @override
+  Path getOuterPath(Rect rect, {TextDirection textDirection}) {
+    return Path()
+      ..moveTo(rect.left + rect.width / 5.0, rect.top + rect.height / 5.0)
+      ..lineTo(rect.right - rect.width / 10.0, rect.top + rect.height / 10.0)
+      ..lineTo(rect.right - rect.width / 5.0, rect.bottom - rect.height / 5.0)
+      ..lineTo(rect.left + rect.width / 10.0, rect.bottom - rect.height / 10.0)
+      ..close();
   }
-}
 
-Widget _play(_PlayerState parent, double elevation, double iconSize,
-    Color foregroundColor, VoidCallback onPressed) {
-  if (parent._queueComplete == 0) {
-    return FloatingActionButton(
-      onPressed: () {},
-      tooltip: 'Loading...',
-      shape: const _CubistButton(),
-      elevation: elevation,
-      child: SizedBox(
-        width: iconSize - 10.0,
-        height: iconSize - 10.0,
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(foregroundColor),
-        ),
-      ),
-    );
-  } else if (parent._queueComplete == false) {
-    return FloatingActionButton(
-      onPressed: () {},
-      tooltip: 'Unable to retrieve songs!',
-      shape: const _CubistButton(),
-      elevation: elevation,
-      foregroundColor: foregroundColor,
-      child: Icon(Icons.close, size: iconSize),
-    );
-  } else {
-    return FloatingActionButton(
-      onPressed: onPressed,
-      tooltip: parent._state == AudioPlayerState.PLAYING ? 'Pause' : 'Play',
-      shape: const _CubistButton(),
-      elevation: elevation,
-      foregroundColor: foregroundColor,
-      child: Icon(
-          parent._state == AudioPlayerState.PLAYING
-              ? Icons.pause
-              : Icons.play_arrow,
-          size: iconSize),
-    );
-  }
-}
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection textDirection}) {}
 
-IconData _status(String _set) {
-  switch (_set) {
-    case 'all':
-      return Icons.album;
-      break;
-    case '1':
-      return Icons.music_note;
-      break;
-    default:
-      return Icons.shuffle;
-      break;
-  }
+  @override
+  ShapeBorder scale(double t) => null;
 }
