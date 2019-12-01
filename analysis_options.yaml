@@ -4,7 +4,7 @@ linter:
    # - always_put_control_body_on_new_line
     - always_put_required_named_parameters_first
     - always_require_non_null_named_parameters
- #36 - always_specify_types
+ #37 - always_specify_types
     - annotate_overrides
  #3  - avoid_annotating_with_dynamic
     - avoid_as
@@ -50,7 +50,7 @@ linter:
     - comment_references
     - constant_identifier_names
     - control_flow_in_finally
- #5  - curly_braces_in_flow_control_structures
+ #12 - curly_braces_in_flow_control_structures
     - diagnostic_describe_all_properties
     - directives_ordering
     - empty_catches

@@ -31,9 +31,7 @@ final List<dynamic> _empty = [0, false];
 void printLong(dynamic text) {
   text = text.toString();
   final Pattern pattern = RegExp('.{1,1023}');
-  for (final Match match in pattern.allMatches(text)) {
-    print(match.group(0));
-  }
+  for (final Match match in pattern.allMatches(text)) print(match.group(0));
 }
 
 String zero(int n) {
@@ -48,9 +46,7 @@ Future<List<String>> getSdCardRoot() async {
   for (final Directory dir in subDirs) {
     try {
       final List<FileSystemEntity> subSubDirs = dir.listSync();
-      if (subSubDirs.isNotEmpty) {
-        result.add(dir.path);
-      }
+      if (subSubDirs.isNotEmpty) result.add(dir.path);
     } on FileSystemException {
       continue;
     }
@@ -79,11 +75,9 @@ class Entry implements Comparable<Entry> {
   int get hashCode => path.hashCode;
 
   String get name {
-    if ([deviceRoot, sdCardRoot].contains(path)) {
-      return '';
-    } else {
-      return path.split('/').lastWhere((String e) => e != '');
-    }
+    if ([deviceRoot, sdCardRoot].contains(path)) return '';
+
+    return path.split('/').lastWhere((String e) => e != '');
   }
 }
 
@@ -182,17 +176,13 @@ class _PlayerState extends State<Player> {
         index = _index + available;
         if (_set == 'random' && queue.length > 2) {
           queue.shuffle();
-          while (song == queue[index]) {
-            queue.shuffle();
-          }
+          while (song == queue[index]) queue.shuffle();
         }
       } else if (_index >= available) {
         index = _index - available;
         if (_set == 'random' && queue.length > 2) {
           queue.shuffle();
-          while (song == queue[index]) {
-            queue.shuffle();
-          }
+          while (song == queue[index]) queue.shuffle();
         }
       } else {
         index = _index;
@@ -257,9 +247,7 @@ class _PlayerState extends State<Player> {
   }
 
   void onMode(StatelessElement context) {
-    setState(() {
-      _mode = _mode == 'loop' ? 'once' : 'loop';
-    });
+    setState(() => _mode = _mode == 'loop' ? 'once' : 'loop');
     Scaffold.of(context).showSnackBar(SnackBar(
         backgroundColor: backgroundColor,
         elevation: .0,
@@ -276,28 +264,28 @@ class _PlayerState extends State<Player> {
   }
 
   void onSet(StatelessElement context) {
-    switch (_set) {
-      case '1':
-        setState(() => _set = 'all');
-        break;
-      case 'all':
-        queue.shuffle();
+    setState(() {
+      switch (_set) {
+        case '1':
+          _set = 'all';
+          break;
+        case 'all':
+          queue.shuffle();
 
-        setState(() {
           index = queue.indexOf(song);
           _set = 'random';
-        });
-        break;
-      default:
-        queue
-            .sort((SongInfo a, SongInfo b) => a.filePath.compareTo(b.filePath));
 
-        setState(() {
+          break;
+        default:
+          queue.sort(
+              (SongInfo a, SongInfo b) => a.filePath.compareTo(b.filePath));
+
           index = queue.indexOf(song);
           _set = '1';
-        });
-        break;
-    }
+
+          break;
+      }
+    });
 
     Scaffold.of(context).showSnackBar(SnackBar(
         backgroundColor: backgroundColor,
@@ -357,9 +345,7 @@ class _PlayerState extends State<Player> {
       newPosition = position.dx;
     }
 
-    setState(() {
-      _position = duration * (newPosition / width);
-    });
+    setState(() => _position = duration * (newPosition / width));
 
     audioPlayer.seek(_position);
   }
@@ -480,15 +466,14 @@ class _PlayerState extends State<Player> {
     if (.9 < _controller.page && _controller.page < 1.1) {
       setState(() => pageHistory = [1]);
       return true;
-    } else {
-      _controller.animateToPage(
-        pageHistory[0],
-        duration: Duration(milliseconds: 300),
-        curve: Curves.ease,
-      );
-      setState(() => pageHistory = [1]);
-      return false;
     }
+    _controller.animateToPage(
+      pageHistory[0],
+      duration: Duration(milliseconds: 300),
+      curve: Curves.ease,
+    );
+    setState(() => pageHistory = [1]);
+    return false;
   }
 
   Future<void> _checkCovers() async {
@@ -582,9 +567,7 @@ class _PlayerState extends State<Player> {
         final int _page = _controller.page.round();
         if (!pageHistory.contains(_page)) {
           pageHistory.add(_page);
-          while (pageHistory.length > 2) {
-            pageHistory.removeAt(0);
-          }
+          while (pageHistory.length > 2) pageHistory.removeAt(0);
         }
       }
     });
@@ -620,9 +603,11 @@ class _PlayerState extends State<Player> {
                 _privateFolderComplete = true;
               });
               if (_coversFile.existsSync()) {
-                setState(() => _coversYaml = _coversFile.readAsStringSync());
-                setState(() => _coversMap = Map<String, int>.from(
-                    loadYaml(_coversYaml) ?? <String, int>{}));
+                setState(() {
+                  _coversYaml = _coversFile.readAsStringSync();
+                  _coversMap = Map<String, int>.from(
+                      loadYaml(_coversYaml) ?? <String, int>{});
+                });
               } else {
                 _coversFile.createSync(recursive: true);
               }
@@ -730,12 +715,14 @@ class _PlayerState extends State<Player> {
               _deviceBrowseFoldersComplete,
               (value) => _deviceBrowseFoldersComplete = value,
               'folder');
-          if (_deviceBrowseSongsComplete == true) {
-            setState(() => _deviceBrowseComplete = true);
-          } else {
-            setState(() => _deviceBrowseFoldersComplete =
-                _deviceBrowseFoldersComplete > 0 ? true : 0);
-          }
+          setState(() {
+            if (_deviceBrowseSongsComplete == true) {
+              _deviceBrowseComplete = true;
+            } else {
+              _deviceBrowseFoldersComplete =
+                  _deviceBrowseFoldersComplete > 0 ? true : 0;
+            }
+          });
         }, onError: (error) {
           setState(() => _deviceBrowseFoldersComplete = false);
           print(error);
@@ -773,12 +760,14 @@ class _PlayerState extends State<Player> {
                   _sdCardBrowseFoldersComplete,
                   (value) => _sdCardBrowseFoldersComplete = value,
                   'folder');
-              if (_sdCardBrowseSongsComplete == true) {
-                setState(() => _sdCardBrowseComplete = true);
-              } else {
-                setState(() => _sdCardBrowseFoldersComplete =
-                    _sdCardBrowseFoldersComplete > 0 ? true : 0);
-              }
+              setState(() {
+                if (_sdCardBrowseSongsComplete == true) {
+                  _sdCardBrowseComplete = true;
+                } else {
+                  _sdCardBrowseFoldersComplete =
+                      _sdCardBrowseFoldersComplete > 0 ? true : 0;
+                }
+              });
             }, onError: (error) {
               setState(() => _sdCardBrowseFoldersComplete = false);
               print(error);
@@ -861,7 +850,7 @@ class _PlayerState extends State<Player> {
               actions: <Widget>[
                 IconButton(
                   onPressed: _pickSong,
-                  tooltip: 'once',
+                  tooltip: 'Pick song',
                   icon: Icon(Icons.album),
                 ),
               ],
@@ -887,6 +876,7 @@ class _PlayerState extends State<Player> {
                           message: '''Drag position horizontally to change it
 Drag curve vertically to change speed''',
 //Double tap to add prelude''',
+                          showDuration: Duration(seconds: 5),
                           child: GestureDetector(
                             onHorizontalDragStart: (DragStartDetails details) {
                               onPositionDragStart(
@@ -1136,32 +1126,30 @@ Color _sourceColor(_PlayerState parent) {
 }
 
 Widget _folderPicker(_PlayerState parent) {
-  if (parent.source == 'YouTube') {
+  if (parent.source == 'YouTube')
     return Center(child: const Text('Not yet supported'));
+
+  dynamic _browseComplete;
+  SplayTreeMap<Entry, SplayTreeMap> browse;
+  if (parent.source == 'SD card') {
+    _browseComplete = parent._sdCardBrowseComplete;
+    browse = parent.sdCardBrowse;
   } else {
-    dynamic _browseComplete;
-    SplayTreeMap<Entry, SplayTreeMap> browse;
-    if (parent.source == 'SD card') {
-      _browseComplete = parent._sdCardBrowseComplete;
-      browse = parent.sdCardBrowse;
-    } else {
-      _browseComplete = parent._deviceBrowseComplete;
-      browse = parent.deviceBrowse;
-    }
-    if (_browseComplete == 0) {
-      return Center(
-          child: Text('No folders found',
-              style: TextStyle(color: unfocusedColor)));
-    } else if (_browseComplete == false) {
-      return Center(child: const Text('Unable to retrieve folders!'));
-    } else {
-      return ListView.builder(
-          padding: const EdgeInsets.all(16.0),
-          itemCount: browse.length,
-          itemBuilder: (BuildContext context, int i) =>
-              _folderTile(parent, browse.entries.elementAt(i)));
-    }
+    _browseComplete = parent._deviceBrowseComplete;
+    browse = parent.deviceBrowse;
   }
+  if (_browseComplete == 0) {
+    return Center(
+        child:
+            Text('No folders found', style: TextStyle(color: unfocusedColor)));
+  } else if (_browseComplete == false) {
+    return Center(child: const Text('Unable to retrieve folders!'));
+  }
+  return ListView.builder(
+      padding: const EdgeInsets.all(16.0),
+      itemCount: browse.length,
+      itemBuilder: (BuildContext context, int i) =>
+          _folderTile(parent, browse.entries.elementAt(i)));
 }
 
 Widget _folderTile(_PlayerState parent, MapEntry<Entry, SplayTreeMap> entry) {
@@ -1254,37 +1242,37 @@ Widget _play(_PlayerState parent, double elevation, double iconSize,
       foregroundColor: foregroundColor,
       child: Icon(Icons.close, size: iconSize),
     );
-  } else {
-    return FloatingActionButton(
-      onPressed: onPressed,
-      tooltip: parent._state == AudioPlayerState.PLAYING ? 'Pause' : 'Play',
-      shape: const _CubistButton(),
-      elevation: elevation,
-      foregroundColor: foregroundColor,
-      child: Icon(
-          parent._state == AudioPlayerState.PLAYING
-              ? Icons.pause
-              : Icons.play_arrow,
-          size: iconSize),
-    );
   }
+  return FloatingActionButton(
+    onPressed: onPressed,
+    tooltip: parent._state == AudioPlayerState.PLAYING ? 'Pause' : 'Play',
+    shape: const _CubistButton(),
+    elevation: elevation,
+    foregroundColor: foregroundColor,
+    child: Icon(
+        parent._state == AudioPlayerState.PLAYING
+            ? Icons.pause
+            : Icons.play_arrow,
+        size: iconSize),
+  );
 }
 
 Widget _album(_PlayerState parent) {
   if (parent._rate != 100.0) {
     return Center(
-        child: InkWell(
-            onTap: () => parent.onRate(100.0),
-            child: Text('${parent._rate.toInt()} %',
-                style: TextStyle(fontSize: 30, color: unfocusedColor))));
+        child: Tooltip(
+            message: 'Reset player speed',
+            child: InkWell(
+                onTap: () => parent.onRate(100.0),
+                child: Text('${parent._rate.toInt()} %',
+                    style: TextStyle(fontSize: 30, color: unfocusedColor)))));
   } else if (!_empty.contains(parent._tempFolderComplete) &&
       parent.song != null) {
     final File _coverFile = File('$_tempFolder/${parent.song.id}.jpg');
     if (!_empty.contains(parent._coversComplete) &&
         parent._coversMap[parent.song.filePath] == 0 &&
-        _coverFile.existsSync()) {
+        _coverFile.existsSync())
       return Image.file(_coverFile, fit: BoxFit.cover);
-    }
   }
   return Icon(Icons.music_note, size: 48.0, color: unfocusedColor);
 }
@@ -1302,37 +1290,34 @@ Widget _title(_PlayerState parent) {
           color: backgroundColor,
           fontSize: 15.0,
         ));
-  } else {
-    return Text('${parent.song.title.replaceAll('_', ' ').toUpperCase()}',
-        overflow: TextOverflow.ellipsis,
-        maxLines: 2,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: backgroundColor,
-          fontSize: parent.song.artist == '<unknown>' ? 12.0 : 13.0,
-          letterSpacing: 6.0,
-          fontWeight: FontWeight.bold,
-        ));
   }
+  return Text('${parent.song.title.replaceAll('_', ' ').toUpperCase()}',
+      overflow: TextOverflow.ellipsis,
+      maxLines: 2,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        color: backgroundColor,
+        fontSize: parent.song.artist == '<unknown>' ? 12.0 : 13.0,
+        letterSpacing: 6.0,
+        fontWeight: FontWeight.bold,
+      ));
 }
 
 Widget _artist(_PlayerState parent) {
   if (_empty.contains(parent._queueComplete) ||
-      parent.song.artist == '<unknown>') {
-    return const SizedBox.shrink();
-  } else {
-    return Text(
-      '${parent.song.artist.toUpperCase()}',
-      overflow: TextOverflow.ellipsis,
-      maxLines: 1,
-      style: TextStyle(
-        color: backgroundColor,
-        fontSize: 9.0,
-        height: 2.0,
-        letterSpacing: 6.0,
-      ),
-    );
-  }
+      parent.song.artist == '<unknown>') return const SizedBox.shrink();
+
+  return Text(
+    '${parent.song.artist.toUpperCase()}',
+    overflow: TextOverflow.ellipsis,
+    maxLines: 1,
+    style: TextStyle(
+      color: backgroundColor,
+      fontSize: 9.0,
+      height: 2.0,
+      letterSpacing: 6.0,
+    ),
+  );
 }
 
 IconData _status(String _set) {
@@ -1390,60 +1375,57 @@ Widget _navigation(_PlayerState parent) {
 }
 
 Widget _songPicker(parent) {
-  if (parent.source == 'YouTube') {
+  if (parent.source == 'YouTube')
     return Center(child: const Text('Not yet supported'));
-  } else {
-    if (parent._queueComplete == 0) {
-      return Center(
-          child: Text('No songs in folder',
-              style: TextStyle(color: unfocusedColor)));
-    } else if (parent._queueComplete == false) {
-      return Center(child: const Text('Unable to retrieve songs!'));
-    } else {
-      return ListView.builder(
-        itemCount: parent.queue.length,
-        itemBuilder: (BuildContext context, int i) {
-          final SongInfo _song = parent.queue[i];
-          return ListTile(
-            selected: parent.index == i,
-            onTap: () {
-              if (parent.index == i) {
-                parent._changeState();
-              } else {
-                parent
-                  ..onStop()
-                  ..setState(() => parent.index = i)
-                  ..onPlay();
-              }
-            },
-            leading: _albumList(parent, _song),
-            title: Text(_song.title.replaceAll('_', ' '),
-                overflow: TextOverflow.ellipsis, maxLines: 2),
-            subtitle: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: <Widget>[
-                Expanded(
-                  child: Text(
-                      _song.artist == '<unknown>' ? '' : '${_song.artist}',
-                      style: TextStyle(fontSize: 11.0),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1),
-                ),
-                Text(
-                    '${Duration(milliseconds: int.parse(_song.duration)).inMinutes}:'
-                    '${zero(Duration(milliseconds: int.parse(_song.duration)).inSeconds % 60)}'),
-              ],
-            ),
-            trailing: Icon(
-                (parent.index == i && parent._state == AudioPlayerState.PLAYING)
-                    ? Icons.pause
-                    : Icons.play_arrow,
-                size: 30.0),
-          );
-        },
-      );
-    }
+
+  if (parent._queueComplete == 0) {
+    return Center(
+        child: Text('No songs in folder',
+            style: TextStyle(color: unfocusedColor)));
+  } else if (parent._queueComplete == false) {
+    return Center(child: const Text('Unable to retrieve songs!'));
   }
+  return ListView.builder(
+    itemCount: parent.queue.length,
+    itemBuilder: (BuildContext context, int i) {
+      final SongInfo _song = parent.queue[i];
+      return ListTile(
+        selected: parent.index == i,
+        onTap: () {
+          if (parent.index == i) {
+            parent._changeState();
+          } else {
+            parent
+              ..onStop()
+              ..setState(() => parent.index = i)
+              ..onPlay();
+          }
+        },
+        leading: _albumList(parent, _song),
+        title: Text(_song.title.replaceAll('_', ' '),
+            overflow: TextOverflow.ellipsis, maxLines: 2),
+        subtitle: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: <Widget>[
+            Expanded(
+              child: Text(_song.artist == '<unknown>' ? '' : '${_song.artist}',
+                  style: TextStyle(fontSize: 11.0),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1),
+            ),
+            Text(
+                '${Duration(milliseconds: int.parse(_song.duration)).inMinutes}:'
+                '${zero(Duration(milliseconds: int.parse(_song.duration)).inSeconds % 60)}'),
+          ],
+        ),
+        trailing: Icon(
+            (parent.index == i && parent._state == AudioPlayerState.PLAYING)
+                ? Icons.pause
+                : Icons.play_arrow,
+            size: 30.0),
+      );
+    },
+  );
 }
 
 Widget _albumList(_PlayerState parent, SongInfo _song) {
@@ -1552,9 +1534,8 @@ List<double> wave(String s) {
   });
 
   final int codesCount = codes.length;
-  if (codesCount > 10) {
+  if (codesCount > 10)
     codes = codes.sublist(0, 5) + codes.sublist(codesCount - 5);
-  }
 
   return codes;
 }
