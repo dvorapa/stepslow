@@ -15,17 +15,30 @@ import 'package:flutter_ffmpeg/flutter_ffmpeg.dart';
 import 'package:yaml/yaml.dart';
 import 'package:path_provider/path_provider.dart';
 
+/// Theme main color
 final Color interactiveColor = Colors.orange[300]; // #FFB74D #FFA726 #E4273A
+/// Light theme color
 final Color backgroundColor = Colors.white;
+
+/// YouTube components color
 final Color youTubeColor = Colors.red;
+
+/// Text main color
 final Color unfocusedColor = Colors.grey[400];
+
+/// Dark theme color
 final Color blackColor = Colors.black;
 
+/// Root folder of device
 final String deviceRoot = '/storage/emulated/0';
-String sdCardRoot;
-String _tempFolder;
-//String _prefFolder;
 
+/// Root folder of an SD card if any, provided by [getSdCardRoot()]
+String sdCardRoot;
+
+/// App folder for temporary files, provided by [getExternalCacheDirectories()]
+String _tempFolder;
+
+/// List of completer bad states
 final List<dynamic> _empty = [0, false];
 
 void printLong(dynamic text) {
@@ -54,6 +67,7 @@ Future<List<String>> getSdCardRoot() async {
   return result;
 }
 
+/// Filesystem entity representing a song or a folder.
 class Entry implements Comparable<Entry> {
   Entry(this.path, this.type);
 
@@ -116,33 +130,70 @@ class Player extends StatefulWidget {
 }
 
 class _PlayerState extends State<Player> {
+  /// Audio player entity
   final AudioPlayer audioPlayer = AudioPlayer();
+
+  /// Current playback state
   AudioPlayerState _state = AudioPlayerState.STOPPED;
+
+  /// Current playback rate
   double _rate = 100.0;
+
+  /// Current playback position
   Duration _position = Duration();
+
+  /// Current playback mode
   String _mode = 'loop';
+
+  /// Current playback set
   String _set = 'random';
+
+  /// Random generator to shuffle queue after startup
   final Random random = Random();
 
+  /// History of page transitions
   List<int> pageHistory = [1];
+
+  /// [PageView] controller
   final PageController _controller = PageController(initialPage: 1);
 
+  /// Available sources
   List<String> _sources = ['Device'];
+
+  /// False if SD card is not available
   bool _sdCard = false;
-  //bool _youTube = false;
+
+  /// False if YouTube is not available
+  /*bool _youTube = false;*/
+  /// Current playback source
   String source = 'Device';
+
+  /// Current playback folder
   String folder = '/storage/emulated/0/Music';
-  int index = 0;
+
+  /// Current playback song
   SongInfo song;
+
+  /// Current song index in queue
+  int index = 0;
+
+  /// Current song duration
   Duration duration = Duration();
 
   File _coversFile;
   String _coversYaml = '---\n';
   Map<String, int> _coversMap = {};
 
+  /// Audio query entity
   final FlutterAudioQuery audioQuery = FlutterAudioQuery();
+
+  /// FFmpeg entity to query album artworks
   final FlutterFFmpeg _flutterFFmpeg = FlutterFFmpeg();
+
+  /// Queue completer
   dynamic _queueComplete = 0;
+
+  /// Song stack completer
   dynamic _songsComplete = 0;
   dynamic _deviceBrowseSongsComplete = 0;
   dynamic _deviceBrowseFoldersComplete = 0;
@@ -153,11 +204,20 @@ class _PlayerState extends State<Player> {
   dynamic _coversComplete = 0;
   dynamic _tempFolderComplete = 0;
   dynamic _privateFolderComplete = 0;
+
+  /// Current playback queue
   List<SongInfo> queue = [];
+
+  /// Stack of available songs
   List<SongInfo> _songs = [];
+
+  /// Stack of filesystem entities inside device
   SplayTreeMap<Entry, SplayTreeMap> deviceBrowse = SplayTreeMap();
+
+  /// Stack of filesystem entities inside SD card
   SplayTreeMap<Entry, SplayTreeMap> sdCardBrowse = SplayTreeMap();
 
+  /// Initializes [song] playback
   void onPlay() {
     if (_state == AudioPlayerState.PAUSED) {
       audioPlayer.resume();
@@ -169,6 +229,7 @@ class _PlayerState extends State<Player> {
     setState(() => _state = AudioPlayerState.PLAYING);
   }
 
+  /// Changes [song] according to given [_index]
   void onChange(int _index) {
     final int available = queue.length;
     setState(() {
@@ -200,11 +261,13 @@ class _PlayerState extends State<Player> {
     }
   }
 
+  /// Pauses [song] playback
   void onPause() {
     audioPlayer.pause();
     setState(() => _state = AudioPlayerState.PAUSED);
   }
 
+  /// Shuts player down and resets its state
   void onStop() {
     audioPlayer.stop();
     setState(() {
@@ -214,6 +277,7 @@ class _PlayerState extends State<Player> {
     });
   }
 
+  /// Changes [folder] according to given
   void onFolder(String _folder) {
     if (folder != _folder) {
       queue.clear();
@@ -246,6 +310,7 @@ class _PlayerState extends State<Player> {
     }
   }
 
+  /// Changes playback [_mode] and informs user using given [context]
   void onMode(StatelessElement context) {
     setState(() => _mode = _mode == 'loop' ? 'once' : 'loop');
     Scaffold.of(context).showSnackBar(SnackBar(
@@ -263,7 +328,8 @@ class _PlayerState extends State<Player> {
         )));
   }
 
-  void onSet(StatelessElement context) {
+  /// Changes playback [_set] and informs user using given [context]
+  void onSet(StatelessElement context, Color textColor) {
     setState(() {
       switch (_set) {
         case '1':
@@ -294,9 +360,9 @@ class _PlayerState extends State<Player> {
         content: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Icon(_status(_set), color: interactiveColor, size: 20.0),
+            Icon(_status(_set), color: textColor, size: 20.0),
             Text(_set == '1' ? ' playing 1 song' : ' playing $_set songs',
-                style: TextStyle(color: interactiveColor)),
+                style: TextStyle(color: textColor)),
           ],
         )));
   }
@@ -373,6 +439,7 @@ class _PlayerState extends State<Player> {
     }
   }
 
+  /// Changes playback [_rate] according to given offset
   void updateRate(Offset rate) {
     double newRate = 100.0;
     final double height = 120.0;
@@ -391,6 +458,7 @@ class _PlayerState extends State<Player> {
     onRate(_rate);
   }
 
+  /// Changes playback [_rate] by given
   void onRate(double rate) {
     if (_state == AudioPlayerState.PLAYING)
       audioPlayer.setPlaybackRate(playbackRate: rate / 100.0);
@@ -398,9 +466,11 @@ class _PlayerState extends State<Player> {
     setState(() => _rate = rate);
   }
 
+  /// Switches playback [_state]
   void _changeState() =>
       _state == AudioPlayerState.PLAYING ? onPause() : onPlay();
 
+  /// Shows dialog to pick [source]
   void _pickSource() {
     showDialog(
         context: context,
@@ -453,15 +523,19 @@ class _PlayerState extends State<Player> {
             }));
   }
 
+  /// Navigates to folder picker page
   void _pickFolder() => _controller.animateToPage(0,
       duration: Duration(milliseconds: 300), curve: Curves.ease);
 
+  /// Navigates to song picker page
   void _pickSong() => _controller.animateToPage(2,
       duration: Duration(milliseconds: 300), curve: Curves.ease);
 
+  /// Navigates to player main page
   void _returnToPlayer() => _controller.animateToPage(1,
       duration: Duration(milliseconds: 300), curve: Curves.ease);
 
+  /// Goes back to the previous page
   bool onBack() {
     if (.9 < _controller.page && _controller.page < 1.1) {
       setState(() => pageHistory = [1]);
@@ -476,6 +550,7 @@ class _PlayerState extends State<Player> {
     return false;
   }
 
+  /// Queries album artworks to cache if missing
   Future<void> _checkCovers() async {
     for (final SongInfo _song in _songs) {
       final String _songPath = _song.filePath;
@@ -497,6 +572,7 @@ class _PlayerState extends State<Player> {
     setState(() => _coversComplete = true);
   }
 
+  /// Fills [browse] stack with given [_path]
   void fillBrowse(
       String _path,
       String _root,
@@ -826,10 +902,10 @@ class _PlayerState extends State<Player> {
               ],
             ),
             body: _folderPicker(this),
-            floatingActionButton: Padding(
-              padding: const EdgeInsets.all(8.0),
+            floatingActionButton: Align(
+              alignment: const Alignment(.8, .8),
               child: Transform.scale(
-                scale: 1.2,
+                scale: 1.1,
                 child: _play(this, 6.0, 32.0, backgroundColor, () {
                   _changeState();
                   if (_state == AudioPlayerState.PLAYING) _pickSong();
@@ -875,7 +951,7 @@ class _PlayerState extends State<Player> {
                       return Tooltip(
                           message: '''Drag position horizontally to change it
 Drag curve vertically to change speed''',
-//Double tap to add prelude''',
+/*Double tap to add prelude''',*/
                           showDuration: Duration(seconds: 5),
                           child: GestureDetector(
                             onHorizontalDragStart: (DragStartDetails details) {
@@ -920,7 +996,7 @@ Drag curve vertically to change speed''',
                             onVerticalDragEnd: (DragEndDetails details) {
                               onRateDragEnd(context, details);
                             },
-                            //onDoubleTap: () {},
+                            /*onDoubleTap: () {},*/
                             child: CustomPaint(
                               size: Size.fromHeight(120.0),
                               painter: Wave(
@@ -1041,7 +1117,7 @@ Drag curve vertically to change speed''',
                                         ),*/
                                         IconButton(
                                           onPressed: () {
-                                            onSet(context);
+                                            onSet(context, interactiveColor);
                                           },
                                           tooltip:
                                               'Set (one, all, or random songs)',
@@ -1090,6 +1166,32 @@ Drag curve vertically to change speed''',
               title: _navigation(this),
             ),
             body: _songPicker(this),
+            floatingActionButton: Align(
+              alignment: const Alignment(.8, .8),
+              child: Transform.scale(
+                  scale: 1.1,
+                  child: Builder(builder: (BuildContext context) {
+                    return FloatingActionButton(
+                      onPressed: () {
+                        if (_set == 'random') {
+                          setState(() {
+                            queue.shuffle();
+                            index = queue.indexOf(song);
+                          });
+                        } else {
+                          setState(() => _set = 'all');
+                          onSet(context, unfocusedColor);
+                        }
+                      },
+                      tooltip: 'Sort or shuffle',
+                      shape: const _CubistButton(),
+                      elevation: 6.0,
+                      backgroundColor: unfocusedColor,
+                      foregroundColor: backgroundColor,
+                      child: Icon(Icons.shuffle, size: 26.0),
+                    );
+                  })),
+            ),
           ),
         ),
       ],
@@ -1257,6 +1359,7 @@ Widget _play(_PlayerState parent, double elevation, double iconSize,
   );
 }
 
+/// Renders artist name
 Widget _album(_PlayerState parent) {
   if (parent._rate != 100.0) {
     return Center(
@@ -1277,6 +1380,7 @@ Widget _album(_PlayerState parent) {
   return Icon(Icons.music_note, size: 48.0, color: unfocusedColor);
 }
 
+/// Renders current song title
 Widget _title(_PlayerState parent) {
   if (parent._queueComplete == 0) {
     return Text('Empty queue',
@@ -1303,6 +1407,7 @@ Widget _title(_PlayerState parent) {
       ));
 }
 
+/// Renders current song artist
 Widget _artist(_PlayerState parent) {
   if (_empty.contains(parent._queueComplete) ||
       parent.song.artist == '<unknown>') return const SizedBox.shrink();
@@ -1334,6 +1439,7 @@ IconData _status(String _set) {
   }
 }
 
+/// Renders current folder's ancestors
 Widget _navigation(_PlayerState parent) {
   final List<Widget> _row = [];
 
@@ -1452,6 +1558,7 @@ Widget _albumList(_PlayerState parent, SongInfo _song) {
   );
 }
 
+/// Cubist shape for player slider.
 class Wave extends CustomPainter {
   Wave(this.title, this.duration, this.position, this.rate);
 
@@ -1518,6 +1625,7 @@ class Wave extends CustomPainter {
   bool shouldRepaint(Wave oldDelegate) => true;
 }
 
+/// Generates wave data for slider
 List<double> wave(String s) {
   List<double> codes = [];
   for (final int code in s.toLowerCase().codeUnits) {
@@ -1540,6 +1648,7 @@ List<double> wave(String s) {
   return codes;
 }
 
+/// Cubist shape for album artworks.
 class _CubistFrame extends ShapeBorder {
   const _CubistFrame();
 
@@ -1569,6 +1678,7 @@ class _CubistFrame extends ShapeBorder {
   ShapeBorder scale(double t) => null;
 }
 
+/// Cubist shape for floating buttons.
 class _CubistButton extends ShapeBorder {
   const _CubistButton();
 

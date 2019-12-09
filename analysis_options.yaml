@@ -93,7 +93,7 @@ linter:
     - prefer_contains
    # - prefer_double_quotes
     - prefer_equal_for_default_values
- #6  - prefer_expression_function_bodies
+ #7  - prefer_expression_function_bodies
    # - prefer_final_fields
     - prefer_final_in_for_each
     - prefer_final_locals
