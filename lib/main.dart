@@ -29,8 +29,17 @@ final Color unfocusedColor = Colors.grey[400];
 /// Dark theme color
 final Color blackColor = Colors.black;
 
+/// Duration initializer
+Duration _emptyDuration = const Duration();
+
+/// Default duration for empty queue
+Duration _defaultDuration = const Duration(seconds: 5);
+
+/// Default duration for animations
+Duration _animationDuration = const Duration(milliseconds: 300);
+
 /// Root folder of device
-final String deviceRoot = '/storage/emulated/0';
+const String deviceRoot = '/storage/emulated/0';
 
 /// Root folder of an SD card if any, provided by [getSdCardRoot()]
 String sdCardRoot;
@@ -39,7 +48,7 @@ String sdCardRoot;
 String _tempFolder;
 
 /// List of completer bad states
-final List<dynamic> _empty = [0, false];
+final List<dynamic> _bad = [0, false];
 
 void printLong(dynamic text) {
   text = text.toString();
@@ -140,7 +149,7 @@ class _PlayerState extends State<Player> {
   double _rate = 100.0;
 
   /// Current playback position
-  Duration _position = Duration();
+  Duration _position = _emptyDuration;
 
   /// Current playback mode
   String _mode = 'loop';
@@ -158,7 +167,7 @@ class _PlayerState extends State<Player> {
   final PageController _controller = PageController(initialPage: 1);
 
   /// Available sources
-  List<String> _sources = ['Device'];
+  final List<String> _sources = ['Device'];
 
   /// False if SD card is not available
   bool _sdCard = false;
@@ -178,7 +187,7 @@ class _PlayerState extends State<Player> {
   int index = 0;
 
   /// Current song duration
-  Duration duration = Duration();
+  Duration duration = _emptyDuration;
 
   File _coversFile;
   String _coversYaml = '---\n';
@@ -209,7 +218,7 @@ class _PlayerState extends State<Player> {
   List<SongInfo> queue = [];
 
   /// Stack of available songs
-  List<SongInfo> _songs = [];
+  final List<SongInfo> _songs = [];
 
   /// Stack of filesystem entities inside device
   SplayTreeMap<Entry, SplayTreeMap> deviceBrowse = SplayTreeMap();
@@ -271,8 +280,8 @@ class _PlayerState extends State<Player> {
   void onStop() {
     audioPlayer.stop();
     setState(() {
-      duration = Duration();
-      _position = Duration();
+      duration = _emptyDuration;
+      _position = _emptyDuration;
       _state = AudioPlayerState.STOPPED;
     });
   }
@@ -285,7 +294,7 @@ class _PlayerState extends State<Player> {
         index = 0;
         _queueComplete = 0;
       });
-      if (!_empty.contains(_songsComplete)) {
+      if (!_bad.contains(_songsComplete)) {
         for (final SongInfo _song in _songs) {
           if (File(_song.filePath).parent.path == _folder) {
             if (_set != 'random' || [0, 1].contains(_queueComplete)) {
@@ -316,7 +325,7 @@ class _PlayerState extends State<Player> {
     Scaffold.of(context).showSnackBar(SnackBar(
         backgroundColor: backgroundColor,
         elevation: .0,
-        duration: Duration(seconds: 2),
+        duration: const Duration(seconds: 2),
         content: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
@@ -356,7 +365,7 @@ class _PlayerState extends State<Player> {
     Scaffold.of(context).showSnackBar(SnackBar(
         backgroundColor: backgroundColor,
         elevation: .0,
-        duration: Duration(seconds: 2),
+        duration: const Duration(seconds: 2),
         content: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
@@ -442,7 +451,7 @@ class _PlayerState extends State<Player> {
   /// Changes playback [_rate] according to given offset
   void updateRate(Offset rate) {
     double newRate = 100.0;
-    final double height = 120.0;
+    const double height = 120.0;
 
     if (rate.dy <= .0) {
       newRate = .0;
@@ -525,15 +534,15 @@ class _PlayerState extends State<Player> {
 
   /// Navigates to folder picker page
   void _pickFolder() => _controller.animateToPage(0,
-      duration: Duration(milliseconds: 300), curve: Curves.ease);
+      duration: _animationDuration, curve: Curves.ease);
 
   /// Navigates to song picker page
   void _pickSong() => _controller.animateToPage(2,
-      duration: Duration(milliseconds: 300), curve: Curves.ease);
+      duration: _animationDuration, curve: Curves.ease);
 
   /// Navigates to player main page
   void _returnToPlayer() => _controller.animateToPage(1,
-      duration: Duration(milliseconds: 300), curve: Curves.ease);
+      duration: _animationDuration, curve: Curves.ease);
 
   /// Goes back to the previous page
   bool onBack() {
@@ -543,7 +552,7 @@ class _PlayerState extends State<Player> {
     }
     _controller.animateToPage(
       pageHistory[0],
-      duration: Duration(milliseconds: 300),
+      duration: _animationDuration,
       curve: Curves.ease,
     );
     setState(() => pageHistory = [1]);
@@ -630,8 +639,8 @@ class _PlayerState extends State<Player> {
     });
     audioPlayer.onPlayerError.listen((String error) {
       setState(() {
-        duration = Duration();
-        _position = Duration();
+        duration = _emptyDuration;
+        _position = _emptyDuration;
         _state = AudioPlayerState.STOPPED;
       });
       print(error);
@@ -908,7 +917,7 @@ class _PlayerState extends State<Player> {
                 scale: 1.1,
                 child: _play(this, 6.0, 32.0, backgroundColor, () {
                   _changeState();
-                  if (_state == AudioPlayerState.PLAYING) _pickSong();
+                  if (_state == AudioPlayerState.PLAYING) _returnToPlayer();
                 }),
               ),
             ),
@@ -952,14 +961,14 @@ class _PlayerState extends State<Player> {
                           message: '''Drag position horizontally to change it
 Drag curve vertically to change speed''',
 /*Double tap to add prelude''',*/
-                          showDuration: Duration(seconds: 5),
+                          showDuration: _defaultDuration,
                           child: GestureDetector(
                             onHorizontalDragStart: (DragStartDetails details) {
                               onPositionDragStart(
                                   context,
                                   details,
-                                  _empty.contains(_queueComplete)
-                                      ? Duration(seconds: 5)
+                                  _bad.contains(_queueComplete)
+                                      ? _defaultDuration
                                       : duration);
                             },
                             onHorizontalDragUpdate:
@@ -967,24 +976,24 @@ Drag curve vertically to change speed''',
                               onPositionDragUpdate(
                                   context,
                                   details,
-                                  _empty.contains(_queueComplete)
-                                      ? Duration(seconds: 5)
+                                  _bad.contains(_queueComplete)
+                                      ? _defaultDuration
                                       : duration);
                             },
                             onHorizontalDragEnd: (DragEndDetails details) {
                               onPositionDragEnd(
                                   context,
                                   details,
-                                  _empty.contains(_queueComplete)
-                                      ? Duration(seconds: 5)
+                                  _bad.contains(_queueComplete)
+                                      ? _defaultDuration
                                       : duration);
                             },
                             onTapUp: (TapUpDetails details) {
                               onPositionTapUp(
                                   context,
                                   details,
-                                  _empty.contains(_queueComplete)
-                                      ? Duration(seconds: 5)
+                                  _bad.contains(_queueComplete)
+                                      ? _defaultDuration
                                       : duration);
                             },
                             onVerticalDragStart: (DragStartDetails details) {
@@ -998,13 +1007,13 @@ Drag curve vertically to change speed''',
                             },
                             /*onDoubleTap: () {},*/
                             child: CustomPaint(
-                              size: Size.fromHeight(120.0),
+                              size: const Size.fromHeight(120.0),
                               painter: Wave(
-                                _empty.contains(_queueComplete)
+                                _bad.contains(_queueComplete)
                                     ? 'zapaz'
                                     : song.title,
-                                _empty.contains(_queueComplete)
-                                    ? Duration(seconds: 5)
+                                _bad.contains(_queueComplete)
+                                    ? _defaultDuration
                                     : duration,
                                 _position,
                                 _rate,
@@ -1034,7 +1043,7 @@ Drag curve vertically to change speed''',
                                     MainAxisAlignment.spaceBetween,
                                 children: <Widget>[
                                   Text(
-                                    _empty.contains(_queueComplete)
+                                    _bad.contains(_queueComplete)
                                         ? '0:00'
                                         : '${_position.inMinutes}:'
                                             '${zero(_position.inSeconds % 60)}',
@@ -1043,7 +1052,7 @@ Drag curve vertically to change speed''',
                                         fontWeight: FontWeight.bold),
                                   ),
                                   Text(
-                                      _empty.contains(_queueComplete)
+                                      _bad.contains(_queueComplete)
                                           ? '0:00'
                                           : '${duration.inMinutes}:'
                                               '${zero(duration.inSeconds % 60)}',
@@ -1229,7 +1238,7 @@ Color _sourceColor(_PlayerState parent) {
 
 Widget _folderPicker(_PlayerState parent) {
   if (parent.source == 'YouTube')
-    return Center(child: const Text('Not yet supported'));
+    return const Center(child: Text('Not yet supported'));
 
   dynamic _browseComplete;
   SplayTreeMap<Entry, SplayTreeMap> browse;
@@ -1245,7 +1254,7 @@ Widget _folderPicker(_PlayerState parent) {
         child:
             Text('No folders found', style: TextStyle(color: unfocusedColor)));
   } else if (_browseComplete == false) {
-    return Center(child: const Text('Unable to retrieve folders!'));
+    return const Center(child: Text('Unable to retrieve folders!'));
   }
   return ListView.builder(
       padding: const EdgeInsets.all(16.0),
@@ -1306,13 +1315,13 @@ Widget _folderTile(_PlayerState parent, MapEntry<Entry, SplayTreeMap> entry) {
           )
         : Text(
             _entry.name,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 14.0,
             ),
           ),
     subtitle: Text(
       _entry.songs == 1 ? '1 song' : '${_entry.songs} songs',
-      style: TextStyle(
+      style: const TextStyle(
         fontSize: 10.0,
       ),
     ),
@@ -1369,10 +1378,10 @@ Widget _album(_PlayerState parent) {
                 onTap: () => parent.onRate(100.0),
                 child: Text('${parent._rate.toInt()} %',
                     style: TextStyle(fontSize: 30, color: unfocusedColor)))));
-  } else if (!_empty.contains(parent._tempFolderComplete) &&
+  } else if (!_bad.contains(parent._tempFolderComplete) &&
       parent.song != null) {
     final File _coverFile = File('$_tempFolder/${parent.song.id}.jpg');
-    if (!_empty.contains(parent._coversComplete) &&
+    if (!_bad.contains(parent._coversComplete) &&
         parent._coversMap[parent.song.filePath] == 0 &&
         _coverFile.existsSync())
       return Image.file(_coverFile, fit: BoxFit.cover);
@@ -1409,8 +1418,8 @@ Widget _title(_PlayerState parent) {
 
 /// Renders current song artist
 Widget _artist(_PlayerState parent) {
-  if (_empty.contains(parent._queueComplete) ||
-      parent.song.artist == '<unknown>') return const SizedBox.shrink();
+  if (_bad.contains(parent._queueComplete) || parent.song.artist == '<unknown>')
+    return const SizedBox.shrink();
 
   return Text(
     '${parent.song.artist.toUpperCase()}',
@@ -1482,14 +1491,14 @@ Widget _navigation(_PlayerState parent) {
 
 Widget _songPicker(parent) {
   if (parent.source == 'YouTube')
-    return Center(child: const Text('Not yet supported'));
+    return const Center(child: Text('Not yet supported'));
 
   if (parent._queueComplete == 0) {
     return Center(
         child: Text('No songs in folder',
             style: TextStyle(color: unfocusedColor)));
   } else if (parent._queueComplete == false) {
-    return Center(child: const Text('Unable to retrieve songs!'));
+    return const Center(child: Text('Unable to retrieve songs!'));
   }
   return ListView.builder(
     itemCount: parent.queue.length,
@@ -1515,7 +1524,7 @@ Widget _songPicker(parent) {
           children: <Widget>[
             Expanded(
               child: Text(_song.artist == '<unknown>' ? '' : '${_song.artist}',
-                  style: TextStyle(fontSize: 11.0),
+                  style: const TextStyle(fontSize: 11.0),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1),
             ),
@@ -1535,9 +1544,9 @@ Widget _songPicker(parent) {
 }
 
 Widget _albumList(_PlayerState parent, SongInfo _song) {
-  if (!_empty.contains(parent._tempFolderComplete)) {
+  if (!_bad.contains(parent._tempFolderComplete)) {
     final File _coverFile = File('$_tempFolder/${_song.id}.jpg');
-    if (!_empty.contains(parent._coversComplete) &&
+    if (!_bad.contains(parent._coversComplete) &&
         parent._coversMap[_song.filePath] == 0 &&
         _coverFile.existsSync()) {
       return Material(
@@ -1571,10 +1580,10 @@ class Wave extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final List<double> _waveList = wave(title);
     final int _len = _waveList.length - 1;
-    if (duration == Duration()) {
-      duration = Duration(seconds: 5);
+    if (duration == _emptyDuration) {
+      duration = _defaultDuration;
     } else if (duration.inSeconds == 0) {
-      duration = Duration(seconds: 1);
+      duration = const Duration(seconds: 1);
     }
     final double percentage = position.inSeconds / duration.inSeconds;
 
