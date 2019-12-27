@@ -330,9 +330,9 @@ class _PlayerState extends State<Player> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(_mode == 'loop' ? 'playing in a loop ' : 'playing once ',
-                style: TextStyle(color: interactiveColor)),
+                style: TextStyle(color: Theme.of(context).primaryColor)),
             Icon(_mode == 'loop' ? Icons.repeat : Icons.trending_flat,
-                color: interactiveColor, size: 20.0),
+                color: Theme.of(context).primaryColor, size: 20.0),
           ],
         )));
   }
@@ -1017,6 +1017,7 @@ Drag curve vertically to change speed''',
                                     : duration,
                                 _position,
                                 _rate,
+                                Theme.of(context).primaryColor,
                               ),
                             ),
                           ));
@@ -1031,7 +1032,7 @@ Drag curve vertically to change speed''',
                       isMaterialAppTheme: true,
                       child: Container(
                         height: 220.0,
-                        color: interactiveColor,
+                        color: Theme.of(context).primaryColor,
                         child: Padding(
                           padding:
                               const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, .0),
@@ -1074,7 +1075,11 @@ Drag curve vertically to change speed''',
                                     tooltip: 'Previous',
                                     icon: Icon(Icons.skip_previous, size: 30.0),
                                   ),
-                                  _play(this, 3.0, 30.0, interactiveColor,
+                                  _play(
+                                      this,
+                                      3.0,
+                                      30.0,
+                                      Theme.of(context).primaryColor,
                                       _changeState),
                                   IconButton(
                                     onPressed: () => onChange(index + 1),
@@ -1126,7 +1131,8 @@ Drag curve vertically to change speed''',
                                         ),*/
                                         IconButton(
                                           onPressed: () {
-                                            onSet(context, interactiveColor);
+                                            onSet(context,
+                                                Theme.of(context).primaryColor);
                                           },
                                           tooltip:
                                               'Set (one, all, or random songs)',
@@ -1196,7 +1202,8 @@ Drag curve vertically to change speed''',
                       shape: const _CubistButton(),
                       elevation: 6.0,
                       backgroundColor: unfocusedColor,
-                      foregroundColor: backgroundColor,
+                      foregroundColor:
+                          Theme.of(context).scaffoldBackgroundColor,
                       child: Icon(Icons.shuffle, size: 26.0),
                     );
                   })),
@@ -1228,10 +1235,14 @@ Color _sourceColor(_PlayerState parent) {
       return youTubeColor;
       break;
     case 'SD card':
-      return parent.folder == sdCardRoot ? interactiveColor : blackColor;
+      return parent.folder == sdCardRoot
+          ? Theme.of(parent.context).primaryColor
+          : Theme.of(parent.context).textTheme.body1.color;
       break;
     default:
-      return parent.folder == deviceRoot ? interactiveColor : blackColor;
+      return parent.folder == deviceRoot
+          ? Theme.of(parent.context).primaryColor
+          : Theme.of(parent.context).textTheme.body1.color;
       break;
   }
 }
@@ -1278,16 +1289,21 @@ Widget _folderTile(_PlayerState parent, MapEntry<Entry, SplayTreeMap> entry) {
           text: _entry.name,
           style: TextStyle(
               fontSize: 14.0,
-              color:
-                  parent.folder == _entry.path ? interactiveColor : blackColor),
+              color: parent.folder == _entry.path
+                  ? Theme.of(parent.context).primaryColor
+                  : Theme.of(parent.context).textTheme.body1.color),
           children: <TextSpan>[
             TextSpan(
               text: _entry.songs == 1 ? '\n1 song' : '\n${_entry.songs} songs',
               style: TextStyle(
                 fontSize: 10.0,
                 color: parent.folder == _entry.path
-                    ? interactiveColor
-                    : Colors.grey[600],
+                    ? Theme.of(parent.context).primaryColor
+                    : Theme.of(parent.context)
+                        .textTheme
+                        .body1
+                        .color
+                        .withOpacity(.55),
                 height: 2.0,
               ),
             ),
@@ -1310,7 +1326,7 @@ Widget _folderTile(_PlayerState parent, MapEntry<Entry, SplayTreeMap> entry) {
             alignment: Alignment.centerLeft,
             child: Icon(Icons.home,
                 color: parent.folder == _entry.path
-                    ? interactiveColor
+                    ? Theme.of(parent.context).primaryColor
                     : unfocusedColor),
           )
         : Text(
@@ -1470,14 +1486,17 @@ Widget _navigation(_PlayerState parent) {
     if (j + 1 == length) {
       _row.add(InkWell(
         onTap: parent._pickFolder,
-        child: Text(_title, style: TextStyle(color: interactiveColor)),
+        child: Text(_title,
+            style: TextStyle(color: Theme.of(parent.context).primaryColor)),
       ));
     } else {
       final int _end = relatives.elementAt(j);
       _row
         ..add(InkWell(
           onTap: () => parent.onFolder(_path.substring(0, _end)),
-          child: Text(_title),
+          child: Text(_title,
+              style: TextStyle(
+                  color: Theme.of(parent.context).textTheme.body1.color)),
         ))
         ..add(Text(' > ', style: TextStyle(color: unfocusedColor)));
     }
@@ -1569,12 +1588,13 @@ Widget _albumList(_PlayerState parent, SongInfo _song) {
 
 /// Cubist shape for player slider.
 class Wave extends CustomPainter {
-  Wave(this.title, this.duration, this.position, this.rate);
+  Wave(this.title, this.duration, this.position, this.rate, this.color);
 
   String title;
   Duration duration;
   Duration position;
   double rate;
+  Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1598,8 +1618,7 @@ class Wave extends CustomPainter {
     _songPath
       ..lineTo(size.width, size.height)
       ..close();
-    canvas.drawPath(
-        _songPath, Paint()..color = interactiveColor.withOpacity(.7));
+    canvas.drawPath(_songPath, Paint()..color = color.withOpacity(.7));
 
     final Path _indicatorPath = Path();
     final double pos = _len * percentage;
@@ -1627,7 +1646,7 @@ class Wave extends CustomPainter {
     _indicatorPath
       ..lineTo(size.width * percentage, size.height)
       ..close();
-    canvas.drawPath(_indicatorPath, Paint()..color = interactiveColor);
+    canvas.drawPath(_indicatorPath, Paint()..color = color);
   }
 
   @override

@@ -27,7 +27,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "4c864922a7cc0a3b2a24504c0d4c578f9356443e"
+      resolved-ref: "560d9871e345b94aef7b11398dfca7b524405b6d"
       url: "git://github.com/luanpotter/audioplayers.git"
     source: git
     version: "0.13.5"
