@@ -25,12 +25,10 @@ packages:
   audioplayers:
     dependency: "direct main"
     description:
-      path: "."
-      ref: HEAD
-      resolved-ref: "560d9871e345b94aef7b11398dfca7b524405b6d"
-      url: "git://github.com/luanpotter/audioplayers.git"
-    source: git
-    version: "0.13.5"
+      name: audioplayers
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.13.6"
   boolean_selector:
     dependency: transitive
     description:

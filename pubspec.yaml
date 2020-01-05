@@ -13,19 +13,17 @@ description: Simple music player for dancers
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 version: 0.1.0+1
 author: Pavel Dvořák <dvorapa~seznam~cz>
-homepage: http://www.dvorapa.cz
+homepage: https://www.dvorapa.cz
 
 environment:
-  sdk: ^2.0.0
+  sdk: ">=2.0.0 <3.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
 
   permissions_plugin: ^1.1.4
-  #audioplayers: ">=0.13.6 <1.0.0"
-  audioplayers:
-    git: git://github.com/luanpotter/audioplayers.git
+  audioplayers: ">=0.13.6 <1.0.0"
   flutter_audio_query: ">=0.3.3 <1.0.0"
   flutter_file_manager: ">=0.2.0 <1.0.0"
   easy_dialogs: ^1.0.0

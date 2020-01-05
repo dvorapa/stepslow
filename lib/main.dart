@@ -320,7 +320,7 @@ class _PlayerState extends State<Player> {
   }
 
   /// Changes playback [_mode] and informs user using given [context]
-  void onMode(StatelessElement context) {
+  void onMode(StatelessElement context, Color textColor) {
     setState(() => _mode = _mode == 'loop' ? 'once' : 'loop');
     Scaffold.of(context).showSnackBar(SnackBar(
         backgroundColor: backgroundColor,
@@ -330,9 +330,9 @@ class _PlayerState extends State<Player> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(_mode == 'loop' ? 'playing in a loop ' : 'playing once ',
-                style: TextStyle(color: Theme.of(context).primaryColor)),
+                style: TextStyle(color: textColor)),
             Icon(_mode == 'loop' ? Icons.repeat : Icons.trending_flat,
-                color: Theme.of(context).primaryColor, size: 20.0),
+                color: textColor, size: 20.0),
           ],
         )));
   }
@@ -883,219 +883,225 @@ class _PlayerState extends State<Player> {
 
   @override
   Widget build(BuildContext context) {
-    return PageView(
-      controller: _controller,
-      physics: const BouncingScrollPhysics(),
-      children: <Widget>[
-        WillPopScope(
-          onWillPop: () => Future<bool>.sync(onBack),
-          child: Scaffold(
-            appBar: AppBar(
-              leading: IconButton(
-                  tooltip: 'Change source',
-                  onPressed: _pickSource,
-                  icon: _sourceButton(source)),
-              title: Tooltip(
-                message: 'Change source',
-                child: InkWell(
-                    onTap: _pickSource,
-                    child: Text(source,
-                        style: TextStyle(color: _sourceColor(this)))),
-              ),
-              actions: <Widget>[
-                IconButton(
-                  onPressed: _returnToPlayer,
-                  tooltip: 'Back to player',
-                  icon: Icon(Icons.navigate_next),
+    return Material(
+      child: PageView(
+        controller: _controller,
+        physics: const BouncingScrollPhysics(),
+        children: <Widget>[
+          WillPopScope(
+            onWillPop: () => Future<bool>.sync(onBack),
+            child: Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                    tooltip: 'Change source',
+                    onPressed: _pickSource,
+                    icon: _sourceButton(source)),
+                title: Tooltip(
+                  message: 'Change source',
+                  child: InkWell(
+                      onTap: _pickSource,
+                      child: Text(source,
+                          style: TextStyle(color: _sourceColor(this)))),
                 ),
-              ],
-            ),
-            body: _folderPicker(this),
-            floatingActionButton: Align(
-              alignment: const Alignment(.8, .8),
-              child: Transform.scale(
-                scale: 1.1,
-                child: _play(this, 6.0, 32.0, backgroundColor, () {
-                  _changeState();
-                  if (_state == AudioPlayerState.PLAYING) _returnToPlayer();
-                }),
+                actions: <Widget>[
+                  IconButton(
+                    onPressed: _returnToPlayer,
+                    tooltip: 'Back to player',
+                    icon: Icon(Icons.navigate_next),
+                  ),
+                ],
+              ),
+              body: _folderPicker(this),
+              floatingActionButton: Align(
+                alignment: const Alignment(.8, .8),
+                child: Transform.scale(
+                  scale: 1.1,
+                  child: _play(this, 6.0, 32.0, backgroundColor, () {
+                    _changeState();
+                    if (_state == AudioPlayerState.PLAYING) _returnToPlayer();
+                  }),
+                ),
               ),
             ),
           ),
-        ),
-        WillPopScope(
-          onWillPop: () => Future<bool>.sync(onBack),
-          child: Scaffold(
-            appBar: AppBar(
-              leading: IconButton(
-                onPressed: _pickFolder,
-                tooltip: 'Pick folder',
-                icon: Icon(Icons.folder_open),
-              ),
-              actions: <Widget>[
-                IconButton(
-                  onPressed: _pickSong,
-                  tooltip: 'Pick song',
-                  icon: Icon(Icons.album),
+          WillPopScope(
+            onWillPop: () => Future<bool>.sync(onBack),
+            child: Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  onPressed: _pickFolder,
+                  tooltip: 'Pick folder',
+                  icon: Icon(Icons.folder_open),
                 ),
-              ],
-            ),
-            body: Column(
-              children: <Widget>[
-                const Expanded(child: SizedBox.shrink()),
-                Material(
-                  clipBehavior: Clip.antiAlias,
-                  elevation: 2.0,
-                  shape: const _CubistFrame(),
-                  child: SizedBox(
-                    width: 160.0,
-                    height: 140.0,
-                    child: _album(this),
+                actions: <Widget>[
+                  IconButton(
+                    onPressed: _pickSong,
+                    tooltip: 'Pick song',
+                    icon: Icon(Icons.album),
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Builder(builder: (BuildContext context) {
-                      return Tooltip(
-                          message: '''Drag position horizontally to change it
+                ],
+              ),
+              body: Column(
+                children: <Widget>[
+                  const Expanded(child: SizedBox.shrink()),
+                  Material(
+                    clipBehavior: Clip.antiAlias,
+                    elevation: 2.0,
+                    shape: const _CubistFrame(),
+                    child: SizedBox(
+                      width: 160.0,
+                      height: 140.0,
+                      child: _album(this),
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Builder(builder: (BuildContext context) {
+                        return Tooltip(
+                            message: '''Drag position horizontally to change it
 Drag curve vertically to change speed''',
 /*Double tap to add prelude''',*/
-                          showDuration: _defaultDuration,
-                          child: GestureDetector(
-                            onHorizontalDragStart: (DragStartDetails details) {
-                              onPositionDragStart(
-                                  context,
-                                  details,
-                                  _bad.contains(_queueComplete)
-                                      ? _defaultDuration
-                                      : duration);
-                            },
-                            onHorizontalDragUpdate:
-                                (DragUpdateDetails details) {
-                              onPositionDragUpdate(
-                                  context,
-                                  details,
-                                  _bad.contains(_queueComplete)
-                                      ? _defaultDuration
-                                      : duration);
-                            },
-                            onHorizontalDragEnd: (DragEndDetails details) {
-                              onPositionDragEnd(
-                                  context,
-                                  details,
-                                  _bad.contains(_queueComplete)
-                                      ? _defaultDuration
-                                      : duration);
-                            },
-                            onTapUp: (TapUpDetails details) {
-                              onPositionTapUp(
-                                  context,
-                                  details,
-                                  _bad.contains(_queueComplete)
-                                      ? _defaultDuration
-                                      : duration);
-                            },
-                            onVerticalDragStart: (DragStartDetails details) {
-                              onRateDragStart(context, details);
-                            },
-                            onVerticalDragUpdate: (DragUpdateDetails details) {
-                              onRateDragUpdate(context, details);
-                            },
-                            onVerticalDragEnd: (DragEndDetails details) {
-                              onRateDragEnd(context, details);
-                            },
-                            /*onDoubleTap: () {},*/
-                            child: CustomPaint(
-                              size: const Size.fromHeight(120.0),
-                              painter: Wave(
-                                _bad.contains(_queueComplete)
-                                    ? 'zapaz'
-                                    : song.title,
-                                _bad.contains(_queueComplete)
-                                    ? _defaultDuration
-                                    : duration,
-                                _position,
-                                _rate,
-                                Theme.of(context).primaryColor,
-                              ),
-                            ),
-                          ));
-                    }),
-                    Theme(
-                      data: ThemeData(
-                        accentColor: backgroundColor,
-                        iconTheme: IconThemeData(
-                          color: backgroundColor,
-                        ),
-                      ),
-                      isMaterialAppTheme: true,
-                      child: Container(
-                        height: 220.0,
-                        color: Theme.of(context).primaryColor,
-                        child: Padding(
-                          padding:
-                              const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, .0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: <Widget>[
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: <Widget>[
-                                  Text(
+                            showDuration: _defaultDuration,
+                            child: GestureDetector(
+                              onHorizontalDragStart:
+                                  (DragStartDetails details) {
+                                onPositionDragStart(
+                                    context,
+                                    details,
                                     _bad.contains(_queueComplete)
-                                        ? '0:00'
-                                        : '${_position.inMinutes}:'
-                                            '${zero(_position.inSeconds % 60)}',
-                                    style: TextStyle(
-                                        color: backgroundColor,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                  Text(
+                                        ? _defaultDuration
+                                        : duration);
+                              },
+                              onHorizontalDragUpdate:
+                                  (DragUpdateDetails details) {
+                                onPositionDragUpdate(
+                                    context,
+                                    details,
+                                    _bad.contains(_queueComplete)
+                                        ? _defaultDuration
+                                        : duration);
+                              },
+                              onHorizontalDragEnd: (DragEndDetails details) {
+                                onPositionDragEnd(
+                                    context,
+                                    details,
+                                    _bad.contains(_queueComplete)
+                                        ? _defaultDuration
+                                        : duration);
+                              },
+                              onTapUp: (TapUpDetails details) {
+                                onPositionTapUp(
+                                    context,
+                                    details,
+                                    _bad.contains(_queueComplete)
+                                        ? _defaultDuration
+                                        : duration);
+                              },
+                              onVerticalDragStart: (DragStartDetails details) {
+                                onRateDragStart(context, details);
+                              },
+                              onVerticalDragUpdate:
+                                  (DragUpdateDetails details) {
+                                onRateDragUpdate(context, details);
+                              },
+                              onVerticalDragEnd: (DragEndDetails details) {
+                                onRateDragEnd(context, details);
+                              },
+                              /*onDoubleTap: () {},*/
+                              child: CustomPaint(
+                                size: const Size.fromHeight(120.0),
+                                painter: Wave(
+                                  _bad.contains(_queueComplete)
+                                      ? 'zapaz'
+                                      : song.title,
+                                  _bad.contains(_queueComplete)
+                                      ? _defaultDuration
+                                      : duration,
+                                  _position,
+                                  _rate,
+                                  Theme.of(context).primaryColor,
+                                ),
+                              ),
+                            ));
+                      }),
+                      Theme(
+                        data: ThemeData(
+                          accentColor: backgroundColor,
+                          primaryColor: Theme.of(context).primaryColor,
+                          iconTheme: IconThemeData(
+                            color: backgroundColor,
+                          ),
+                        ),
+                        isMaterialAppTheme: true,
+                        child: Container(
+                          height: 220.0,
+                          color: Theme.of(context).primaryColor,
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, .0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: <Widget>[
+                                    Text(
                                       _bad.contains(_queueComplete)
                                           ? '0:00'
-                                          : '${duration.inMinutes}:'
-                                              '${zero(duration.inSeconds % 60)}',
-                                      style: TextStyle(color: backgroundColor)),
-                                ],
-                              ),
-                              Column(
-                                children: <Widget>[
-                                  _title(this),
-                                  _artist(this),
-                                ],
-                              ),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                children: <Widget>[
-                                  IconButton(
-                                    onPressed: () => onChange(index - 1),
-                                    tooltip: 'Previous',
-                                    icon: Icon(Icons.skip_previous, size: 30.0),
-                                  ),
-                                  _play(
-                                      this,
-                                      3.0,
-                                      30.0,
-                                      Theme.of(context).primaryColor,
-                                      _changeState),
-                                  IconButton(
-                                    onPressed: () => onChange(index + 1),
-                                    tooltip: 'Next',
-                                    icon: Icon(Icons.skip_next, size: 30.0),
-                                  ),
-                                ],
-                              ),
-                              Builder(builder: (BuildContext context) {
-                                return Row(
+                                          : '${_position.inMinutes}:'
+                                              '${zero(_position.inSeconds % 60)}',
+                                      style: TextStyle(
+                                          color: backgroundColor,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                        _bad.contains(_queueComplete)
+                                            ? '0:00'
+                                            : '${duration.inMinutes}:'
+                                                '${zero(duration.inSeconds % 60)}',
+                                        style:
+                                            TextStyle(color: backgroundColor)),
+                                  ],
+                                ),
+                                Column(
+                                  children: <Widget>[
+                                    _title(this),
+                                    _artist(this),
+                                  ],
+                                ),
+                                Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceEvenly,
                                   children: <Widget>[
-                                    Row(
-                                      children: <Widget>[
-                                        /*Tooltip(
+                                    IconButton(
+                                      onPressed: () => onChange(index - 1),
+                                      tooltip: 'Previous',
+                                      icon:
+                                          Icon(Icons.skip_previous, size: 30.0),
+                                    ),
+                                    _play(
+                                        this,
+                                        3.0,
+                                        30.0,
+                                        Theme.of(context).primaryColor,
+                                        _changeState),
+                                    IconButton(
+                                      onPressed: () => onChange(index + 1),
+                                      tooltip: 'Next',
+                                      icon: Icon(Icons.skip_next, size: 30.0),
+                                    ),
+                                  ],
+                                ),
+                                Builder(builder: (BuildContext context) {
+                                  return Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: <Widget>[
+                                      Row(
+                                        children: <Widget>[
+                                          /*Tooltip(
                                           message: 'Select start',
                                           child: InkWell(
                                               onTap: () {},
@@ -1129,88 +1135,95 @@ Drag curve vertically to change speed''',
                                                             backgroundColor)),
                                               )),
                                         ),*/
-                                        IconButton(
-                                          onPressed: () {
-                                            onSet(context,
-                                                Theme.of(context).primaryColor);
-                                          },
-                                          tooltip:
-                                              'Set (one, all, or random songs)',
-                                          icon: Icon(_status(_set), size: 20.0),
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      children: <Widget>[
-                                        IconButton(
-                                          onPressed: () {
-                                            onMode(context);
-                                          },
-                                          tooltip: 'Mode (once or in a loop)',
-                                          icon: Icon(
-                                              _mode == 'loop'
-                                                  ? Icons.repeat
-                                                  : Icons.trending_flat,
-                                              size: 20.0),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                );
-                              }),
-                            ],
+                                          IconButton(
+                                            onPressed: () {
+                                              onSet(
+                                                  context,
+                                                  Theme.of(context)
+                                                      .primaryColor);
+                                            },
+                                            tooltip:
+                                                'Set (one, all, or random songs)',
+                                            icon:
+                                                Icon(_status(_set), size: 20.0),
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: <Widget>[
+                                          IconButton(
+                                            onPressed: () {
+                                              onMode(
+                                                  context,
+                                                  Theme.of(context)
+                                                      .primaryColor);
+                                            },
+                                            tooltip: 'Mode (once or in a loop)',
+                                            icon: Icon(
+                                                _mode == 'loop'
+                                                    ? Icons.repeat
+                                                    : Icons.trending_flat,
+                                                size: 20.0),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  );
+                                }),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        WillPopScope(
-          onWillPop: () => Future<bool>.sync(onBack),
-          child: Scaffold(
-            appBar: AppBar(
-              leading: IconButton(
-                onPressed: _returnToPlayer,
-                tooltip: 'Back to player',
-                icon: Icon(Icons.navigate_before),
+                    ],
+                  ),
+                ],
               ),
-              title: _navigation(this),
-            ),
-            body: _songPicker(this),
-            floatingActionButton: Align(
-              alignment: const Alignment(.8, .8),
-              child: Transform.scale(
-                  scale: 1.1,
-                  child: Builder(builder: (BuildContext context) {
-                    return FloatingActionButton(
-                      onPressed: () {
-                        if (_set == 'random') {
-                          setState(() {
-                            queue.shuffle();
-                            index = queue.indexOf(song);
-                          });
-                        } else {
-                          setState(() => _set = 'all');
-                          onSet(context, unfocusedColor);
-                        }
-                      },
-                      tooltip: 'Sort or shuffle',
-                      shape: const _CubistButton(),
-                      elevation: 6.0,
-                      backgroundColor: unfocusedColor,
-                      foregroundColor:
-                          Theme.of(context).scaffoldBackgroundColor,
-                      child: Icon(Icons.shuffle, size: 26.0),
-                    );
-                  })),
             ),
           ),
-        ),
-      ],
+          WillPopScope(
+            onWillPop: () => Future<bool>.sync(onBack),
+            child: Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  onPressed: _returnToPlayer,
+                  tooltip: 'Back to player',
+                  icon: Icon(Icons.navigate_before),
+                ),
+                title: _navigation(this),
+              ),
+              body: _songPicker(this),
+              floatingActionButton: Align(
+                alignment: const Alignment(.8, .8),
+                child: Transform.scale(
+                    scale: 1.1,
+                    child: Builder(builder: (BuildContext context) {
+                      return FloatingActionButton(
+                        onPressed: () {
+                          if (_set == 'random') {
+                            setState(() {
+                              queue.shuffle();
+                              index = queue.indexOf(song);
+                            });
+                          } else {
+                            setState(() => _set = 'all');
+                            onSet(context, unfocusedColor);
+                          }
+                        },
+                        tooltip: 'Sort or shuffle',
+                        shape: const _CubistButton(),
+                        elevation: 6.0,
+                        backgroundColor: unfocusedColor,
+                        foregroundColor:
+                            Theme.of(context).scaffoldBackgroundColor,
+                        child: Icon(Icons.shuffle, size: 26.0),
+                      );
+                    })),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
