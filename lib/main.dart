@@ -17,6 +17,7 @@ import 'package:path_provider/path_provider.dart';
 
 /// Theme main color
 final Color interactiveColor = Colors.orange[300]; // #FFB74D #FFA726 #E4273A
+
 /// Light theme color
 final Color backgroundColor = Colors.white;
 
@@ -50,17 +51,20 @@ String _tempFolder;
 /// List of completer bad states
 final List<dynamic> _bad = [0, false];
 
+/// Prints long messages, e.g. maps
 void printLong(dynamic text) {
   text = text.toString();
   final Pattern pattern = RegExp('.{1,1023}');
   for (final Match match in pattern.allMatches(text)) print(match.group(0));
 }
 
+/// Pads seconds
 String zero(int n) {
   if (n >= 10) return '$n';
   return '0$n';
 }
 
+/// Finds sd card root folder(s) if any
 Future<List<String>> getSdCardRoot() async {
   final List<String> result = [];
   final Directory storage = Directory('/storage');
@@ -78,10 +82,16 @@ Future<List<String>> getSdCardRoot() async {
 
 /// Filesystem entity representing a song or a folder.
 class Entry implements Comparable<Entry> {
+  /// Entry constructor
   Entry(this.path, this.type);
 
+  /// Entry full path (contains filename)
   String path;
+
+  /// Song or folder switch
   String type = 'song';
+
+  /// Songs in folder count
   int songs = 0;
 
   @override
@@ -97,6 +107,7 @@ class Entry implements Comparable<Entry> {
   @override
   int get hashCode => path.hashCode;
 
+  /// Entry name
   String get name {
     if ([deviceRoot, sdCardRoot].contains(path)) return '';
 
@@ -104,8 +115,10 @@ class Entry implements Comparable<Entry> {
   }
 }
 
+/// Starts app
 void main() => runApp(Stepslow());
 
+/// Stateless app entrypoint and theme initializer.
 class Stepslow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -129,15 +142,19 @@ class Stepslow extends StatelessWidget {
   }
 }
 
+/// Stateful app entrypoint.
 class Player extends StatefulWidget {
+  /// Player constructor
   const Player({Key key, this.title}) : super(key: key);
 
+  /// Basic app title
   final String title;
 
   @override
   _PlayerState createState() => _PlayerState();
 }
 
+/// State handler.
 class _PlayerState extends State<Player> {
   /// Audio player entity
   final AudioPlayer audioPlayer = AudioPlayer();
@@ -174,6 +191,7 @@ class _PlayerState extends State<Player> {
 
   /// False if YouTube is not available
   /*bool _youTube = false;*/
+
   /// Current playback source
   String source = 'Device';
 
@@ -189,8 +207,13 @@ class _PlayerState extends State<Player> {
   /// Current song duration
   Duration duration = _emptyDuration;
 
+  /// File containing album artwork paths YAML map
   File _coversFile;
+
+  /// YAML map of album artwork paths
   String _coversYaml = '---\n';
+
+  /// Map representation of album artwork paths YAML map
   Map<String, int> _coversMap = {};
 
   /// Audio query entity
@@ -376,6 +399,7 @@ class _PlayerState extends State<Player> {
         )));
   }
 
+  /// Starts to listen seek drag actions
   void onPositionDragStart(
       BuildContext context, DragStartDetails details, Duration duration) {
     final RenderBox slider = context.findRenderObject();
@@ -387,6 +411,7 @@ class _PlayerState extends State<Player> {
     onSeek(position, duration, MediaQuery.of(context).size.width);
   }
 
+  /// Listens seek drag actions
   void onPositionDragUpdate(
       BuildContext context, DragUpdateDetails details, Duration duration) {
     final RenderBox slider = context.findRenderObject();
@@ -394,6 +419,7 @@ class _PlayerState extends State<Player> {
     onSeek(position, duration, MediaQuery.of(context).size.width);
   }
 
+  /// Ends to listen seek drag actions
   void onPositionDragEnd(
       BuildContext context, DragEndDetails details, Duration duration) {
     if (_state == AudioPlayerState.PLAYING) {
@@ -402,6 +428,7 @@ class _PlayerState extends State<Player> {
     }
   }
 
+  /// Listens seek tap actions
   void onPositionTapUp(
       BuildContext context, TapUpDetails details, Duration duration) {
     final RenderBox slider = context.findRenderObject();
@@ -409,6 +436,7 @@ class _PlayerState extends State<Player> {
     onSeek(position, duration, MediaQuery.of(context).size.width);
   }
 
+  /// Changes [_position] according to seek actions
   void onSeek(Offset position, Duration duration, double width) {
     double newPosition = .0;
 
@@ -425,6 +453,7 @@ class _PlayerState extends State<Player> {
     audioPlayer.seek(_position);
   }
 
+  /// Starts to listen [_rate] drag actions
   void onRateDragStart(BuildContext context, DragStartDetails details) {
     final RenderBox slider = context.findRenderObject();
     final Offset rate = slider.globalToLocal(details.globalPosition);
@@ -435,12 +464,14 @@ class _PlayerState extends State<Player> {
     updateRate(rate);
   }
 
+  /// Listens [_rate] drag actions
   void onRateDragUpdate(BuildContext context, DragUpdateDetails details) {
     final RenderBox slider = context.findRenderObject();
     final Offset rate = slider.globalToLocal(details.globalPosition);
     updateRate(rate);
   }
 
+  /// Ends to listen [_rate] drag actions
   void onRateDragEnd(BuildContext context, DragEndDetails details) {
     if (_state == AudioPlayerState.PLAYING) {
       setState(() => _state = AudioPlayerState.PAUSED);
@@ -1228,6 +1259,7 @@ Drag curve vertically to change speed''',
   }
 }
 
+/// Picks appropriate [source] list icon according to source given
 Widget _sourceButton(String source) {
   switch (source) {
     case 'YouTube':
@@ -1242,6 +1274,7 @@ Widget _sourceButton(String source) {
   }
 }
 
+/// Picks appropriate source list color according to source given
 Color _sourceColor(_PlayerState parent) {
   switch (parent.source) {
     case 'YouTube':
@@ -1260,6 +1293,7 @@ Color _sourceColor(_PlayerState parent) {
   }
 }
 
+/// Renders folder list
 Widget _folderPicker(_PlayerState parent) {
   if (parent.source == 'YouTube')
     return const Center(child: Text('Not yet supported'));
@@ -1287,6 +1321,7 @@ Widget _folderPicker(_PlayerState parent) {
           _folderTile(parent, browse.entries.elementAt(i)));
 }
 
+/// Renders folder list tile
 Widget _folderTile(_PlayerState parent, MapEntry<Entry, SplayTreeMap> entry) {
   final SplayTreeMap<Entry, SplayTreeMap> _children = entry.value;
   final Entry _entry = entry.key;
@@ -1357,6 +1392,7 @@ Widget _folderTile(_PlayerState parent, MapEntry<Entry, SplayTreeMap> entry) {
   );
 }
 
+/// Renders play/pause button
 Widget _play(_PlayerState parent, double elevation, double iconSize,
     Color foregroundColor, VoidCallback onPressed) {
   if (parent._queueComplete == 0) {
@@ -1463,6 +1499,7 @@ Widget _artist(_PlayerState parent) {
   );
 }
 
+/// Picks appropriate [_set] icon
 IconData _status(String _set) {
   switch (_set) {
     case 'all':
@@ -1521,6 +1558,7 @@ Widget _navigation(_PlayerState parent) {
   );
 }
 
+/// Renders queue list
 Widget _songPicker(parent) {
   if (parent.source == 'YouTube')
     return const Center(child: Text('Not yet supported'));
@@ -1575,6 +1613,7 @@ Widget _songPicker(parent) {
   );
 }
 
+/// Renders album covers for queue list
 Widget _albumList(_PlayerState parent, SongInfo _song) {
   if (!_bad.contains(parent._tempFolderComplete)) {
     final File _coverFile = File('$_tempFolder/${_song.id}.jpg');
@@ -1601,12 +1640,22 @@ Widget _albumList(_PlayerState parent, SongInfo _song) {
 
 /// Cubist shape for player slider.
 class Wave extends CustomPainter {
+  /// Player slider constructor
   Wave(this.title, this.duration, this.position, this.rate, this.color);
 
+  /// Song title to parse
   String title;
+
+  /// Song duration
   Duration duration;
+
+  /// Current playback position
   Duration position;
+
+  /// Playback rate to adjust duration
   double rate;
+
+  /// Rendering color
   Color color;
 
   @override

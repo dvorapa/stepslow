@@ -51,7 +51,7 @@ linter:
     - comment_references
     - constant_identifier_names
     - control_flow_in_finally
- #12 - curly_braces_in_flow_control_structures
+ #13 - curly_braces_in_flow_control_structures
  #13 - diagnostic_describe_all_properties
     - directives_ordering
     - empty_catches
@@ -66,7 +66,7 @@ linter:
     - join_return_with_assignment
     - library_names
     - library_prefixes
-  #3 - lines_longer_than_80_chars
+  #5 - lines_longer_than_80_chars
     - list_remove_unrelated_type
     - literal_only_boolean_expressions
     - no_adjacent_strings_in_list
