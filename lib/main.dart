@@ -656,11 +656,11 @@ class _PlayerState extends State<Player> {
       Entry entry = Entry(relativeString, type);
       if (browse.containsKey(entry)) {
         entry = browse.keys.firstWhere((Entry key) => key == entry);
-        if (type == 'song') entry.songs++;
       } else {
         browse[entry] = SplayTreeMap<Entry, SplayTreeMap>();
         setState(() => valueChanged(++value));
       }
+      if (type == 'song') entry.songs++;
       browse = browse[entry];
       j++;
     }
