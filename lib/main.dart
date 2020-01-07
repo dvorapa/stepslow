@@ -227,14 +227,32 @@ class _PlayerState extends State<Player> {
 
   /// Song stack completer
   dynamic _songsComplete = 0;
+
+  /// Device song stack completer
   dynamic _deviceBrowseSongsComplete = 0;
+
+  /// Device folder stack completer
   dynamic _deviceBrowseFoldersComplete = 0;
+
+  /// Device stack completer
   dynamic _deviceBrowseComplete = 0;
+
+  /// SD card song stack completer
   dynamic _sdCardBrowseSongsComplete = 0;
+
+  /// SD card folder stack completer
   dynamic _sdCardBrowseFoldersComplete = 0;
+
+  /// SD card stack completer
   dynamic _sdCardBrowseComplete = 0;
+
+  /// Album covers completer
   dynamic _coversComplete = 0;
+
+  /// Temporary storage completer
   dynamic _tempFolderComplete = 0;
+
+  /// Preferences storage completer
   dynamic _privateFolderComplete = 0;
 
   /// Current playback queue
@@ -1433,7 +1451,7 @@ Widget _play(_PlayerState parent, double elevation, double iconSize,
   );
 }
 
-/// Renders artist name
+/// Renders album cover or rate selector
 Widget _album(_PlayerState parent) {
   if (parent._rate != 100.0) {
     return Center(
