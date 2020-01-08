@@ -165,6 +165,9 @@ class _PlayerState extends State<Player> {
   /// Current playback rate
   double _rate = 100.0;
 
+  /// Previous playback rate
+  double _previousRate = 100.0;
+
   /// Current playback position
   Duration _position = _emptyDuration;
 
@@ -173,6 +176,15 @@ class _PlayerState extends State<Player> {
 
   /// Current playback set
   String _set = 'random';
+
+  /// False if [_rate] picker should be hidden
+  bool _ratePicker = false;
+
+  /// False if [_ratePicker] was false at last redraw
+  bool _previousRatePicker = false;
+
+  /// Timer to release [_ratePicker]
+  Timer _ratePickerTimer;
 
   /// Random generator to shuffle queue after startup
   final Random random = Random();
@@ -200,6 +212,9 @@ class _PlayerState extends State<Player> {
 
   /// Current playback song
   SongInfo song;
+
+  /// Previous playback song
+  SongInfo _previousSong;
 
   /// Current song index in queue
   int index = 0;
@@ -932,6 +947,26 @@ class _PlayerState extends State<Player> {
 
   @override
   Widget build(BuildContext context) {
+    if (_previousRate != _rate) {
+      _ratePicker = true;
+      _previousRate = _rate;
+      if (_ratePickerTimer != null) _ratePickerTimer.cancel();
+      _ratePickerTimer = Timer(_defaultDuration, () {
+        setState(() => _ratePicker = false);
+      });
+    }
+    if (_previousSong != song) {
+      _ratePicker = false;
+      _previousSong = song;
+      if (_ratePickerTimer != null) _ratePickerTimer.cancel();
+    }
+    if (_previousRatePicker != _ratePicker) {
+      if (_ratePickerTimer != null) _ratePickerTimer.cancel();
+      _ratePickerTimer = Timer(_defaultDuration, () {
+        setState(() => _ratePicker = false);
+      });
+    }
+    _previousRatePicker = _ratePicker;
     return Material(
       child: PageView(
         controller: _controller,
@@ -1452,24 +1487,51 @@ Widget _play(_PlayerState parent, double elevation, double iconSize,
 }
 
 /// Renders album cover or rate selector
-Widget _album(_PlayerState parent) {
-  if (parent._rate != 100.0) {
+Widget _album(parent) {
+  if (parent._ratePicker == true) {
+    String _message = 'Hide speed selector';
+    dynamic _onTap = () => parent.setState(() => parent._ratePicker = false);
+    final TextStyle _textStyle = TextStyle(fontSize: 30, color: unfocusedColor);
+    if (parent._rate != 100.0) {
+      _message = 'Reset player speed';
+      _onTap = () => parent.onRate(100.0);
+    }
     return Center(
-        child: Tooltip(
-            message: 'Reset player speed',
-            child: InkWell(
-                onTap: () => parent.onRate(100.0),
-                child: Text('${parent._rate.toInt()} %',
-                    style: TextStyle(fontSize: 30, color: unfocusedColor)))));
-  } else if (!_bad.contains(parent._tempFolderComplete) &&
-      parent.song != null) {
+        child:
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
+      Tooltip(
+          message: _message,
+          child: InkWell(
+              onTap: _onTap,
+              child: Text('${parent._rate.toInt()}', style: _textStyle))),
+      Column(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
+        IconButton(
+            onPressed: () => parent.onRate(parent._rate + 5.0),
+            tooltip: 'Speed up',
+            icon:
+                Icon(Icons.keyboard_arrow_up, size: 30, color: unfocusedColor)),
+        Text('%', style: _textStyle),
+        IconButton(
+            onPressed: () => parent.onRate(parent._rate - 5.0),
+            tooltip: 'Slow down',
+            icon: Icon(Icons.keyboard_arrow_down,
+                size: 30, color: unfocusedColor)),
+      ])
+    ]));
+  }
+  Widget _cover = Icon(Icons.music_note, size: 48.0, color: unfocusedColor);
+  if (!_bad.contains(parent._tempFolderComplete) && parent.song != null) {
     final File _coverFile = File('$_tempFolder/${parent.song.id}.jpg');
     if (!_bad.contains(parent._coversComplete) &&
         parent._coversMap[parent.song.filePath] == 0 &&
         _coverFile.existsSync())
-      return Image.file(_coverFile, fit: BoxFit.cover);
+      _cover = Image.file(_coverFile, fit: BoxFit.cover);
   }
-  return Icon(Icons.music_note, size: 48.0, color: unfocusedColor);
+  return Tooltip(
+      message: 'Show speed selector',
+      child: InkWell(
+          onTap: () => parent.setState(() => parent._ratePicker = true),
+          child: _cover));
 }
 
 /// Renders current song title
