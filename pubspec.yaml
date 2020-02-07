@@ -23,13 +23,13 @@ dependencies:
     sdk: flutter
 
   permissions_plugin: ^1.1.4
-  audioplayers: ">=0.13.7 <1.0.0"
+  audioplayers: ">=0.14.0 <1.0.0"
   flutter_audio_query: ">=0.3.3 <1.0.0"
   flutter_file_manager: ">=0.2.0 <1.0.0"
   easy_dialogs: ^1.0.0
   typicons_flutter: ">=0.3.1 <1.0.0"
-  flutter_ffmpeg: ">=0.2.8 <1.0.0"
-  path_provider: ^1.5.1
+  flutter_ffmpeg: ">=0.2.10 <1.0.0"
+  path_provider: ^1.6.0
   yaml: ^2.2.0
 
 dev_dependencies:

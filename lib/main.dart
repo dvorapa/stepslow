@@ -237,6 +237,9 @@ class _PlayerState extends State<Player> {
   /// FFmpeg entity to query album artworks
   final FlutterFFmpeg _flutterFFmpeg = FlutterFFmpeg();
 
+  /// FFmpeg config
+  final FlutterFFmpegConfig _flutterFFmpegConfig = FlutterFFmpegConfig();
+
   /// Queue completer
   dynamic _queueComplete = 0;
 
@@ -683,7 +686,7 @@ class _PlayerState extends State<Player> {
 
   @override
   void initState() {
-    _flutterFFmpeg.disableRedirection();
+    _flutterFFmpegConfig.disableRedirection();
 
     audioPlayer.onDurationChanged.listen((Duration d) {
       setState(() => duration = d * (100.0 / _rate));
@@ -950,7 +953,7 @@ class _PlayerState extends State<Player> {
     if (_previousRate != _rate) {
       _ratePicker = true;
       _previousRate = _rate;
-      if (_ratePickerTimer != null) _ratePickerTimer.cancel();
+      _ratePickerTimer?.cancel();
       _ratePickerTimer = Timer(_defaultDuration, () {
         setState(() => _ratePicker = false);
       });
@@ -958,10 +961,10 @@ class _PlayerState extends State<Player> {
     if (_previousSong != song) {
       _ratePicker = false;
       _previousSong = song;
-      if (_ratePickerTimer != null) _ratePickerTimer.cancel();
+      _ratePickerTimer?.cancel();
     }
     if (_previousRatePicker != _ratePicker) {
-      if (_ratePickerTimer != null) _ratePickerTimer.cancel();
+      _ratePickerTimer?.cancel();
       _ratePickerTimer = Timer(_defaultDuration, () {
         setState(() => _ratePicker = false);
       });
@@ -1510,13 +1513,13 @@ Widget _album(parent) {
             tooltip: 'Speed up',
             icon:
                 Icon(Icons.keyboard_arrow_up, size: 30, color: unfocusedColor)),
-        Text('%', style: _textStyle),
         IconButton(
             onPressed: () => parent.onRate(parent._rate - 5.0),
             tooltip: 'Slow down',
             icon: Icon(Icons.keyboard_arrow_down,
                 size: 30, color: unfocusedColor)),
-      ])
+      ]),
+      Text('%', style: _textStyle),
     ]));
   }
   Widget _cover = Icon(Icons.music_note, size: 48.0, color: unfocusedColor);
