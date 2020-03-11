@@ -23,14 +23,14 @@ in [Flutter compile guide](https://flutter.dev/docs/deployment/android).
 `in active development`
 
 ## Author
-[Pavel Dvořák](http://www.dvorapa.cz) ([@dvorapa](https://twitter.com/dvorapa))
+[Pavel Dvořák](https://www.dvorapa.cz)
+([@dvorapa](https://twitter.com/dvorapa))
+
+You might want to buy me a [hot chocolate ☕](https://paypal.me/dvorapa).
 
 ## Contributing
 Please fill in an issue or a pull request on project's
 [GitHub page](https://github.com/dvorapa/stepslow).
-
-You might want to buy me a [beer 🍺](https://paypal.me/dvorapa)
-or a [coffee ☕](https://paypal.me/dvorapa).
 
 ## License
 [GNU General Public License v3.0](
