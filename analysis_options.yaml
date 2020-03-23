@@ -4,7 +4,7 @@ linter:
    # - always_put_control_body_on_new_line
     - always_put_required_named_parameters_first
     - always_require_non_null_named_parameters
- #37 - always_specify_types
+ #38 - always_specify_types
     - annotate_overrides
   #3 - avoid_annotating_with_dynamic
     - avoid_as
@@ -15,6 +15,7 @@ linter:
     - avoid_double_and_int_checks
     - avoid_empty_else
    # - avoid_equals_and_hash_code_on_mutable_classes
+    - avoid_escaping_inner_quotes
     - avoid_field_initializers_in_const_classes
     - avoid_function_literals_in_foreach_calls
     - avoid_implementing_value_types
@@ -64,9 +65,10 @@ linter:
     - invariant_booleans
     - iterable_contains_unrelated_type
     - join_return_with_assignment
+    - leading_newlines_in_multiline_strings
     - library_names
     - library_prefixes
-  #5 - lines_longer_than_80_chars
+  #4 - lines_longer_than_80_chars
     - list_remove_unrelated_type
     - literal_only_boolean_expressions
     - missing_whitespace_between_adjacent_strings
@@ -146,7 +148,9 @@ linter:
     - unnecessary_null_in_if_null_operators
     - unnecessary_overrides
     - unnecessary_parenthesis
+    - unnecessary_raw_strings
     - unnecessary_statements
+    - unnecessary_string_escapes
     - unnecessary_string_interpolations
     - unnecessary_this
     - unrelated_type_equality_checks
@@ -154,6 +158,7 @@ linter:
     - use_full_hex_values_for_flutter_colors
     - use_function_type_syntax_for_parameters
     - use_key_in_widget_constructors
+    - use_raw_strings
     - use_rethrow_when_possible
     - use_setters_to_change_properties
     - use_string_buffers

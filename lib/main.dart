@@ -550,53 +550,56 @@ class _PlayerState extends State<Player> {
   void _pickSource() {
     showDialog(
         context: context,
-        builder: (BuildContext context) => SingleChoiceDialog<String>(
-            isDividerEnabled: true,
-            items: _sources,
-            onSelected: (String _source) {
-              setState(() => source = _source);
-              String _folder;
-              switch (_source) {
-                case 'YouTube':
-                  _folder = '';
-                  break;
-                case 'SD card':
-                  _folder = sdCardRoot;
-                  break;
-                default:
-                  _folder = deviceRoot;
-                  break;
-              }
-              onFolder(_folder);
-            },
-            itemBuilder: (String _source) {
-              switch (_source) {
-                case 'YouTube':
-                  return Row(
-                    children: <Widget>[
-                      Icon(Typicons.social_youtube, color: youTubeColor),
-                      Text(' $_source', style: TextStyle(color: youTubeColor)),
-                    ],
-                  );
-                  break;
-                case 'SD card':
-                  return Row(
-                    children: <Widget>[
-                      Icon(Icons.sd_card),
-                      Text(' $_source'),
-                    ],
-                  );
-                  break;
-                default:
-                  return Row(
-                    children: <Widget>[
-                      Icon(Icons.folder),
-                      Text(' $_source'),
-                    ],
-                  );
-                  break;
-              }
-            }));
+        builder: (BuildContext context) {
+          return SingleChoiceDialog<String>(
+              isDividerEnabled: true,
+              items: _sources,
+              onSelected: (String _source) {
+                setState(() => source = _source);
+                String _folder;
+                switch (_source) {
+                  case 'YouTube':
+                    _folder = '';
+                    break;
+                  case 'SD card':
+                    _folder = sdCardRoot;
+                    break;
+                  default:
+                    _folder = deviceRoot;
+                    break;
+                }
+                onFolder(_folder);
+              },
+              itemBuilder: (String _source) {
+                switch (_source) {
+                  case 'YouTube':
+                    return Row(
+                      children: <Widget>[
+                        Icon(Typicons.social_youtube, color: youTubeColor),
+                        Text(' $_source',
+                            style: TextStyle(color: youTubeColor)),
+                      ],
+                    );
+                    break;
+                  case 'SD card':
+                    return Row(
+                      children: <Widget>[
+                        Icon(Icons.sd_card),
+                        Text(' $_source'),
+                      ],
+                    );
+                    break;
+                  default:
+                    return Row(
+                      children: <Widget>[
+                        Icon(Icons.folder),
+                        Text(' $_source'),
+                      ],
+                    );
+                    break;
+                }
+              });
+        });
   }
 
   /// Navigates to folder picker page
@@ -635,7 +638,7 @@ class _PlayerState extends State<Player> {
         if (!_coversMap.containsKey(_songPath)) {
           await _flutterFFmpeg
               .execute(
-                  '-i "$_songPath" -an -vcodec copy "$_tempFolder/${_song.id}.jpg"')
+                  '-i "$_songPath" -vf scale="-2:\'min(140,ih)\'":flags=lanczos -an "$_tempFolder/${_song.id}.jpg"')
               .then((int _status) {
             _coversMap[_songPath] = _status;
             _coversYaml += '"$_songPath": $_status\n';
@@ -644,7 +647,7 @@ class _PlayerState extends State<Player> {
         }
       }
     }
-    _coversFile.writeAsString(_coversYaml);
+    _coversFile.writeAsString(_coversYaml);  // ignore: unawaited_futures
     setState(() => _coversComplete = true);
   }
 
@@ -1229,8 +1232,8 @@ Drag curve vertically to change speed''',
                                                   Theme.of(context)
                                                       .primaryColor);
                                             },
-                                            tooltip:
-                                                'Set (one, all, or random songs)',
+                                            tooltip: 'Set (one, all, '
+                                                'or random songs)',
                                             icon:
                                                 Icon(_status(_set), size: 20.0),
                                           ),
@@ -1422,9 +1425,7 @@ Widget _folderTile(_PlayerState parent, MapEntry<Entry, SplayTreeMap> entry) {
   }
   return ListTile(
     selected: parent.folder == _entry.path,
-    onTap: () {
-      parent.onFolder(_entry.path);
-    },
+    onTap: () => parent.onFolder(_entry.path),
     title: _entry.name.isEmpty
         ? Align(
             alignment: Alignment.centerLeft,
