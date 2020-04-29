@@ -287,7 +287,7 @@ class _PlayerState extends State<Player> {
 
   /// Initializes [song] playback
   void onPlay({bool quiet = false}) {
-    if (_state == AudioPlayerState.PAUSED) {
+    if (_state == AudioPlayerState.PAUSED || quiet) {
       audioPlayer.resume();
     } else {
       setState(() => song = queue[index]);

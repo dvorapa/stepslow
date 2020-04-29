@@ -52,7 +52,7 @@ linter:
     - comment_references
     - constant_identifier_names
     - control_flow_in_finally
- #13 - curly_braces_in_flow_control_structures
+ #12 - curly_braces_in_flow_control_structures
  #13 - diagnostic_describe_all_properties
     - directives_ordering
     - empty_catches
@@ -127,6 +127,7 @@ linter:
     - provide_deprecation_message
     - public_member_api_docs
     - recursive_getters
+    - sized_box_for_whitespace
     - slash_for_doc_comments
     - sort_child_properties_last
     - sort_constructors_first
