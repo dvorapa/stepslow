@@ -286,7 +286,7 @@ class _PlayerState extends State<Player> {
   SplayTreeMap<Entry, SplayTreeMap> sdCardBrowse = SplayTreeMap();
 
   /// Initializes [song] playback
-  void onPlay() {
+  void onPlay({bool quiet = false}) {
     if (_state == AudioPlayerState.PAUSED) {
       audioPlayer.resume();
     } else {
@@ -294,7 +294,7 @@ class _PlayerState extends State<Player> {
       audioPlayer.play(song.filePath);
     }
     onRate(_rate);
-    setState(() => _state = AudioPlayerState.PLAYING);
+    if (!quiet) setState(() => _state = AudioPlayerState.PLAYING);
   }
 
   /// Changes [song] according to given [_index]
@@ -330,9 +330,9 @@ class _PlayerState extends State<Player> {
   }
 
   /// Pauses [song] playback
-  void onPause() {
+  void onPause({bool quiet = false}) {
     audioPlayer.pause();
-    setState(() => _state = AudioPlayerState.PAUSED);
+    if (!quiet) setState(() => _state = AudioPlayerState.PAUSED);
   }
 
   /// Shuts player down and resets its state
@@ -440,10 +440,7 @@ class _PlayerState extends State<Player> {
       BuildContext context, DragStartDetails details, Duration duration) {
     final RenderBox slider = context.findRenderObject();
     final Offset position = slider.globalToLocal(details.globalPosition);
-    if (_state == AudioPlayerState.PLAYING) {
-      onPause();
-      setState(() => _state = AudioPlayerState.PLAYING);
-    }
+    if (_state == AudioPlayerState.PLAYING) onPause(quiet: true);
     onSeek(position, duration, MediaQuery.of(context).size.width);
   }
 
@@ -458,10 +455,7 @@ class _PlayerState extends State<Player> {
   /// Ends to listen seek drag actions
   void onPositionDragEnd(
       BuildContext context, DragEndDetails details, Duration duration) {
-    if (_state == AudioPlayerState.PLAYING) {
-      setState(() => _state = AudioPlayerState.PAUSED);
-      onPlay();
-    }
+    if (_state == AudioPlayerState.PLAYING) onPlay(quiet: true);
   }
 
   /// Listens seek tap actions
@@ -486,17 +480,15 @@ class _PlayerState extends State<Player> {
 
     setState(() => _position = duration * (newPosition / width));
 
-    audioPlayer.seek(_position);
+    audioPlayer.seek(_position * (_rate / 100.0));
   }
 
   /// Starts to listen [_rate] drag actions
   void onRateDragStart(BuildContext context, DragStartDetails details) {
     final RenderBox slider = context.findRenderObject();
     final Offset rate = slider.globalToLocal(details.globalPosition);
-    if (_state == AudioPlayerState.PLAYING) {
-      onPause();
-      setState(() => _state = AudioPlayerState.PLAYING);
-    }
+    if (_state == AudioPlayerState.PLAYING) onPause(quiet: true);
+
     updateRate(rate);
   }
 
@@ -509,10 +501,7 @@ class _PlayerState extends State<Player> {
 
   /// Ends to listen [_rate] drag actions
   void onRateDragEnd(BuildContext context, DragEndDetails details) {
-    if (_state == AudioPlayerState.PLAYING) {
-      setState(() => _state = AudioPlayerState.PAUSED);
-      onPlay();
-    }
+    if (_state == AudioPlayerState.PLAYING) onPlay(quiet: true);
   }
 
   /// Changes playback [_rate] according to given offset
@@ -536,9 +525,7 @@ class _PlayerState extends State<Player> {
 
   /// Changes playback [_rate] by given
   void onRate(double rate) {
-    if (_state == AudioPlayerState.PLAYING)
-      audioPlayer.setPlaybackRate(playbackRate: rate / 100.0);
-
+    audioPlayer.setPlaybackRate(playbackRate: rate / 100.0);
     setState(() => _rate = rate);
   }
 
@@ -647,8 +634,16 @@ class _PlayerState extends State<Player> {
         }
       }
     }
-    _coversFile.writeAsString(_coversYaml);  // ignore: unawaited_futures
+    _coversFile.writeAsString(_coversYaml); // ignore: unawaited_futures
     setState(() => _coversComplete = true);
+  }
+
+  /// Gets relative urls for [fillBrowse]
+  Iterable<int> getRelatives(String root, String path) {
+    final int _rootLength = root.length;
+    String relative = path.substring(_rootLength);
+    if (relative.startsWith('/')) relative = '${relative.substring(1)}/';
+    return '/'.allMatches(relative).map((Match m) => _rootLength + m.end);
   }
 
   /// Fills [browse] stack with given [_path]
@@ -659,11 +654,7 @@ class _PlayerState extends State<Player> {
       dynamic value,
       ValueChanged<dynamic> valueChanged,
       String type) {
-    final int _rootLength = _root.length;
-    String relative = _path.substring(_rootLength);
-    if (relative.startsWith('/')) relative = '${relative.substring(1)}/';
-    final Iterable<int> relatives =
-        '/'.allMatches(relative).map((Match m) => _rootLength + m.end);
+    final Iterable<int> relatives = getRelatives(_root, _path);
     int j = 0;
     String relativeString;
     num length = type == 'song' ? relatives.length - 1 : relatives.length;
@@ -1391,30 +1382,21 @@ Widget _folderTile(_PlayerState parent, MapEntry<Entry, SplayTreeMap> entry) {
       onExpansionChanged: (bool value) {
         if (value == true) parent.onFolder(_entry.path);
       },
-      title: RichText(
-        text: TextSpan(
-          text: _entry.name,
-          style: TextStyle(
-              fontSize: 14.0,
-              color: parent.folder == _entry.path
-                  ? Theme.of(parent.context).primaryColor
-                  : Theme.of(parent.context).textTheme.body1.color),
-          children: <TextSpan>[
-            TextSpan(
-              text: _entry.songs == 1 ? '\n1 song' : '\n${_entry.songs} songs',
-              style: TextStyle(
-                fontSize: 10.0,
-                color: parent.folder == _entry.path
-                    ? Theme.of(parent.context).primaryColor
-                    : Theme.of(parent.context)
-                        .textTheme
-                        .body1
-                        .color
-                        .withOpacity(.55),
-                height: 2.0,
-              ),
-            ),
-          ],
+      title: Text(
+        _entry.name,
+        style: TextStyle(
+            fontSize: 14.0,
+            color: parent.folder == _entry.path
+                ? Theme.of(parent.context).primaryColor
+                : Theme.of(parent.context).textTheme.body1.color),
+      ),
+      subtitle: Text(
+        _entry.songs == 1 ? '1 song' : '${_entry.songs} songs',
+        style: TextStyle(
+          fontSize: 10.0,
+          color: parent.folder == _entry.path
+              ? Theme.of(parent.context).primaryColor
+              : Theme.of(parent.context).textTheme.body1.color.withOpacity(.55),
         ),
       ),
       children: _children.entries
@@ -1603,19 +1585,15 @@ Widget _navigation(_PlayerState parent) {
   final List<Widget> _row = [];
 
   final String _root = parent.source == 'SD card' ? sdCardRoot : deviceRoot;
-  final int _rootLength = _root.length;
   String _path = '${parent.folder}';
   if (_path == _root) _path += '/${parent.source} home';
-  String relative = _path.substring(_rootLength);
-  if (relative.startsWith('/')) relative = '${relative.substring(1)}/';
-  final Iterable<int> relatives =
-      '/'.allMatches(relative).map((Match m) => _rootLength + m.end);
+  final Iterable<int> relatives = parent.getRelatives(_root, _path);
   int j = 0;
   final int length = relatives.length;
   String _title;
   int start = 0;
   while (j < length) {
-    start = j - 1 < 0 ? _rootLength : relatives.elementAt(j - 1);
+    start = j - 1 < 0 ? _root.length : relatives.elementAt(j - 1);
     _title = _path.substring(start + 1, relatives.elementAt(j));
     if (j + 1 == length) {
       _row.add(InkWell(
