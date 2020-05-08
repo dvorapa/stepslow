@@ -16,13 +16,13 @@ import 'package:yaml/yaml.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Theme main color
-final Color interactiveColor = Colors.orange[300]; // #FFB74D #FFA726 #E4273A
+final Color interactiveColor = Colors.orange[300]; // #FFB74D #FFA726
 
 /// Light theme color
 final Color backgroundColor = Colors.white;
 
 /// YouTube components color
-final Color youTubeColor = Colors.red;
+final Color youTubeColor = Colors.red; // #E4273A
 
 /// Text main color
 final Color unfocusedColor = Colors.grey[400];
@@ -116,10 +116,13 @@ class Entry implements Comparable<Entry> {
 }
 
 /// Starts app
-void main() => runApp(Stepslow());
+void main() => runApp(const Stepslow());
 
 /// Stateless app entrypoint and theme initializer.
 class Stepslow extends StatelessWidget {
+  /// Stepslow constructor
+  const Stepslow({Key key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -134,8 +137,9 @@ class Stepslow extends StatelessWidget {
               color: unfocusedColor,
             ),
             textTheme: TextTheme(
-              title: TextStyle(color: blackColor),
+              headline6: TextStyle(color: blackColor),
             )),
+        visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       home: const Player(title: 'Player'),
     );
@@ -176,6 +180,8 @@ class _PlayerState extends State<Player> {
 
   /// Current playback set
   String _set = 'random';
+
+  Orientation _orientation;
 
   /// False if [_rate] picker should be hidden
   bool _ratePicker = false;
@@ -264,7 +270,7 @@ class _PlayerState extends State<Player> {
   /// SD card stack completer
   dynamic _sdCardBrowseComplete = 0;
 
-  /// Album covers completer
+  /// Album artwork completer
   dynamic _coversComplete = 0;
 
   /// Temporary storage completer
@@ -660,11 +666,8 @@ class _PlayerState extends State<Player> {
     num length = type == 'song' ? relatives.length - 1 : relatives.length;
     if (length == 0) length = .5;
     while (j < length) {
-      if (length == .5) {
-        relativeString = _root;
-      } else {
-        relativeString = _path.substring(0, relatives.elementAt(j));
-      }
+      relativeString =
+          length == .5 ? _root : _path.substring(0, relatives.elementAt(j));
       Entry entry = Entry(relativeString, type);
       if (browse.containsKey(entry)) {
         entry = browse.keys.firstWhere((Entry key) => key == entry);
@@ -933,7 +936,7 @@ class _PlayerState extends State<Player> {
         setState(() => _youTube = true);
         _sources.add('YouTube');
       }
-    }, onError: (error) => print(error));*/
+    }, onError: print);*/
   }
 
   @override
@@ -964,6 +967,7 @@ class _PlayerState extends State<Player> {
       });
     }
     _previousRatePicker = _ratePicker;
+    _orientation = MediaQuery.of(context).orientation;
     return Material(
       child: PageView(
         controller: _controller,
@@ -1023,242 +1027,76 @@ class _PlayerState extends State<Player> {
                 ],
               ),
               body: Column(
-                children: <Widget>[
-                  const Expanded(child: SizedBox.shrink()),
-                  Material(
-                    clipBehavior: Clip.antiAlias,
-                    elevation: 2.0,
-                    shape: const _CubistFrame(),
-                    child: SizedBox(
-                      width: 160.0,
-                      height: 140.0,
-                      child: _album(this),
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      Builder(builder: (BuildContext context) {
-                        return Tooltip(
-                            message: '''Drag position horizontally to change it
-Drag curve vertically to change speed''',
-/*Double tap to add prelude''',*/
-                            showDuration: _defaultDuration,
-                            child: GestureDetector(
-                              onHorizontalDragStart:
-                                  (DragStartDetails details) {
-                                onPositionDragStart(
-                                    context,
-                                    details,
-                                    _bad.contains(_queueComplete)
-                                        ? _defaultDuration
-                                        : duration);
-                              },
-                              onHorizontalDragUpdate:
-                                  (DragUpdateDetails details) {
-                                onPositionDragUpdate(
-                                    context,
-                                    details,
-                                    _bad.contains(_queueComplete)
-                                        ? _defaultDuration
-                                        : duration);
-                              },
-                              onHorizontalDragEnd: (DragEndDetails details) {
-                                onPositionDragEnd(
-                                    context,
-                                    details,
-                                    _bad.contains(_queueComplete)
-                                        ? _defaultDuration
-                                        : duration);
-                              },
-                              onTapUp: (TapUpDetails details) {
-                                onPositionTapUp(
-                                    context,
-                                    details,
-                                    _bad.contains(_queueComplete)
-                                        ? _defaultDuration
-                                        : duration);
-                              },
-                              onVerticalDragStart: (DragStartDetails details) {
-                                onRateDragStart(context, details);
-                              },
-                              onVerticalDragUpdate:
-                                  (DragUpdateDetails details) {
-                                onRateDragUpdate(context, details);
-                              },
-                              onVerticalDragEnd: (DragEndDetails details) {
-                                onRateDragEnd(context, details);
-                              },
-                              /*onDoubleTap: () {},*/
-                              child: CustomPaint(
-                                size: const Size.fromHeight(120.0),
-                                painter: Wave(
-                                  _bad.contains(_queueComplete)
-                                      ? 'zapaz'
-                                      : song.title,
-                                  _bad.contains(_queueComplete)
-                                      ? _defaultDuration
-                                      : duration,
-                                  _position,
-                                  _rate,
-                                  Theme.of(context).primaryColor,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: _orientation == Orientation.portrait
+                    ? <Widget>[
+                        _playerSquared(this),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: <Widget>[
+                            _playerOblong(this),
+                            Theme(
+                              data: ThemeData(
+                                accentColor: backgroundColor,
+                                primaryColor: Theme.of(context).primaryColor,
+                                iconTheme: IconThemeData(
+                                  color: backgroundColor,
                                 ),
                               ),
-                            ));
-                      }),
-                      Theme(
-                        data: ThemeData(
-                          accentColor: backgroundColor,
-                          primaryColor: Theme.of(context).primaryColor,
-                          iconTheme: IconThemeData(
-                            color: backgroundColor,
-                          ),
+                              isMaterialAppTheme: true,
+                              child: Container(
+                                height: 220.0,
+                                color: Theme.of(context).primaryColor,
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                      16.0, 12.0, 16.0, .0),
+                                  child: _playerControl(this),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        isMaterialAppTheme: true,
-                        child: Container(
-                          height: 220.0,
-                          color: Theme.of(context).primaryColor,
-                          child: Padding(
-                            padding:
-                                const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, .0),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: <Widget>[
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: <Widget>[
-                                    Text(
-                                      _bad.contains(_queueComplete)
-                                          ? '0:00'
-                                          : '${_position.inMinutes}:'
-                                              '${zero(_position.inSeconds % 60)}',
-                                      style: TextStyle(
-                                          color: backgroundColor,
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                    Text(
-                                        _bad.contains(_queueComplete)
-                                            ? '0:00'
-                                            : '${duration.inMinutes}:'
-                                                '${zero(duration.inSeconds % 60)}',
-                                        style:
-                                            TextStyle(color: backgroundColor)),
-                                  ],
-                                ),
-                                Column(
-                                  children: <Widget>[
-                                    _title(this),
-                                    _artist(this),
-                                  ],
-                                ),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: <Widget>[
-                                    IconButton(
-                                      onPressed: () => onChange(index - 1),
-                                      tooltip: 'Previous',
-                                      icon:
-                                          Icon(Icons.skip_previous, size: 30.0),
-                                    ),
-                                    _play(
-                                        this,
-                                        3.0,
-                                        30.0,
-                                        Theme.of(context).primaryColor,
-                                        _changeState),
-                                    IconButton(
-                                      onPressed: () => onChange(index + 1),
-                                      tooltip: 'Next',
-                                      icon: Icon(Icons.skip_next, size: 30.0),
-                                    ),
-                                  ],
-                                ),
-                                Builder(builder: (BuildContext context) {
-                                  return Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
-                                    children: <Widget>[
-                                      Row(
-                                        children: <Widget>[
-                                          /*Tooltip(
-                                          message: 'Select start',
-                                          child: InkWell(
-                                              onTap: () {},
-                                              child: Padding(
-                                                padding: EdgeInsets.symmetric(
-                                                    horizontal: 20.0,
-                                                    vertical: 16.0),
-                                                child: Text('A',
-                                                    style: TextStyle(
-                                                        fontSize: 15.0,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color:
-                                                            backgroundColor)),
-                                              )),
-                                        ),
-                                        Tooltip(
-                                          message: 'Select end',
-                                          child: InkWell(
-                                              onTap: () {},
-                                              child: Padding(
-                                                padding: EdgeInsets.symmetric(
-                                                    horizontal: 20.0,
-                                                    vertical: 16.0),
-                                                child: Text('B',
-                                                    style: TextStyle(
-                                                        fontSize: 15.0,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color:
-                                                            backgroundColor)),
-                                              )),
-                                        ),*/
-                                          IconButton(
-                                            onPressed: () {
-                                              onSet(
-                                                  context,
-                                                  Theme.of(context)
-                                                      .primaryColor);
-                                            },
-                                            tooltip: 'Set (one, all, '
-                                                'or random songs)',
-                                            icon:
-                                                Icon(_status(_set), size: 20.0),
-                                          ),
-                                        ],
+                      ]
+                    : <Widget>[
+                        Expanded(
+                            child: Row(
+                          children: <Widget>[
+                            Expanded(
+                                child: Theme(
+                                    data: ThemeData(
+                                      accentColor:
+                                          Theme.of(context).primaryColor,
+                                      primaryColor:
+                                          Theme.of(context).primaryColor,
+                                      iconTheme: IconThemeData(
+                                        color: Theme.of(context).primaryColor,
                                       ),
-                                      Row(
-                                        children: <Widget>[
-                                          IconButton(
-                                            onPressed: () {
-                                              onMode(
-                                                  context,
-                                                  Theme.of(context)
-                                                      .primaryColor);
-                                            },
-                                            tooltip: 'Mode (once or in a loop)',
-                                            icon: Icon(
-                                                _mode == 'loop'
-                                                    ? Icons.repeat
-                                                    : Icons.trending_flat,
-                                                size: 20.0),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  );
-                                }),
-                              ],
+                                    ),
+                                    isMaterialAppTheme: true,
+                                    child: _playerControl(this))),
+                            Expanded(child: _playerSquared(this)),
+                          ],
+                        )),
+                        _playerOblong(this),
+                        Theme(
+                          data: ThemeData(
+                            accentColor: backgroundColor,
+                            primaryColor: Theme.of(context).primaryColor,
+                            iconTheme: IconThemeData(
+                              color: backgroundColor,
+                            ),
+                          ),
+                          isMaterialAppTheme: true,
+                          child: Container(
+                            color: Theme.of(context).primaryColor,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16.0, vertical: 6.0),
+                              child: _timeInfo(this),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
               ),
             ),
           ),
@@ -1292,7 +1130,9 @@ Drag curve vertically to change speed''',
                           }
                         },
                         tooltip: 'Sort or shuffle',
-                        shape: const _CubistButton(),
+                        shape: _orientation == Orientation.portrait
+                            ? const _CubistShapeB()
+                            : const _CubistShapeD(),
                         elevation: 6.0,
                         backgroundColor: unfocusedColor,
                         foregroundColor:
@@ -1333,12 +1173,12 @@ Color _sourceColor(_PlayerState parent) {
     case 'SD card':
       return parent.folder == sdCardRoot
           ? Theme.of(parent.context).primaryColor
-          : Theme.of(parent.context).textTheme.body1.color;
+          : Theme.of(parent.context).textTheme.bodyText2.color;
       break;
     default:
       return parent.folder == deviceRoot
           ? Theme.of(parent.context).primaryColor
-          : Theme.of(parent.context).textTheme.body1.color;
+          : Theme.of(parent.context).textTheme.bodyText2.color;
       break;
   }
 }
@@ -1388,7 +1228,7 @@ Widget _folderTile(_PlayerState parent, MapEntry<Entry, SplayTreeMap> entry) {
             fontSize: 14.0,
             color: parent.folder == _entry.path
                 ? Theme.of(parent.context).primaryColor
-                : Theme.of(parent.context).textTheme.body1.color),
+                : Theme.of(parent.context).textTheme.bodyText2.color),
       ),
       subtitle: Text(
         _entry.songs == 1 ? '1 song' : '${_entry.songs} songs',
@@ -1396,7 +1236,11 @@ Widget _folderTile(_PlayerState parent, MapEntry<Entry, SplayTreeMap> entry) {
           fontSize: 10.0,
           color: parent.folder == _entry.path
               ? Theme.of(parent.context).primaryColor
-              : Theme.of(parent.context).textTheme.body1.color.withOpacity(.55),
+              : Theme.of(parent.context)
+                  .textTheme
+                  .bodyText2
+                  .color
+                  .withOpacity(.55),
         ),
       ),
       children: _children.entries
@@ -1434,11 +1278,14 @@ Widget _folderTile(_PlayerState parent, MapEntry<Entry, SplayTreeMap> entry) {
 /// Renders play/pause button
 Widget _play(_PlayerState parent, double elevation, double iconSize,
     Color foregroundColor, VoidCallback onPressed) {
+  final ShapeBorder _shape = parent._orientation == Orientation.portrait
+      ? const _CubistShapeB()
+      : const _CubistShapeD();
   if (parent._queueComplete == 0) {
     return FloatingActionButton(
       onPressed: () {},
       tooltip: 'Loading...',
-      shape: const _CubistButton(),
+      shape: _shape,
       elevation: elevation,
       child: SizedBox(
         width: iconSize - 10.0,
@@ -1452,7 +1299,7 @@ Widget _play(_PlayerState parent, double elevation, double iconSize,
     return FloatingActionButton(
       onPressed: () {},
       tooltip: 'Unable to retrieve songs!',
-      shape: const _CubistButton(),
+      shape: _shape,
       elevation: elevation,
       foregroundColor: foregroundColor,
       child: Icon(Icons.close, size: iconSize),
@@ -1461,7 +1308,7 @@ Widget _play(_PlayerState parent, double elevation, double iconSize,
   return FloatingActionButton(
     onPressed: onPressed,
     tooltip: parent._state == AudioPlayerState.PLAYING ? 'Pause' : 'Play',
-    shape: const _CubistButton(),
+    shape: _shape,
     elevation: elevation,
     foregroundColor: foregroundColor,
     child: Icon(
@@ -1472,8 +1319,24 @@ Widget _play(_PlayerState parent, double elevation, double iconSize,
   );
 }
 
-/// Renders album cover or rate selector
-Widget _album(parent) {
+/// Handles squared player section
+Widget _playerSquared(_PlayerState parent) {
+  return Material(
+    clipBehavior: Clip.antiAlias,
+    elevation: 2.0,
+    shape: parent._orientation == Orientation.portrait
+        ? const _CubistShapeA()
+        : const _CubistShapeC(),
+    child: SizedBox(
+      width: 160.0,
+      height: 140.0,
+      child: _rangeCover(parent),
+    ),
+  );
+}
+
+/// Renders album artwork or rate selector
+Widget _rangeCover(parent) {
   if (parent._ratePicker == true) {
     String _message = 'Hide speed selector';
     dynamic _onTap = () => parent.setState(() => parent._ratePicker = false);
@@ -1520,6 +1383,195 @@ Widget _album(parent) {
           child: _cover));
 }
 
+/// Handles oblong player section
+Widget _playerOblong(_PlayerState parent) {
+  return Builder(builder: (BuildContext context) {
+    return Tooltip(
+        message: '''
+Drag position horizontally to change it
+Drag curve vertically to change speed''',
+/*Double tap to add prelude''',*/
+        showDuration: _defaultDuration,
+        waitDuration: _defaultDuration,
+        child: GestureDetector(
+          onHorizontalDragStart: (DragStartDetails details) {
+            parent.onPositionDragStart(
+                context,
+                details,
+                _bad.contains(parent._queueComplete)
+                    ? _defaultDuration
+                    : parent.duration);
+          },
+          onHorizontalDragUpdate: (DragUpdateDetails details) {
+            parent.onPositionDragUpdate(
+                context,
+                details,
+                _bad.contains(parent._queueComplete)
+                    ? _defaultDuration
+                    : parent.duration);
+          },
+          onHorizontalDragEnd: (DragEndDetails details) {
+            parent.onPositionDragEnd(
+                context,
+                details,
+                _bad.contains(parent._queueComplete)
+                    ? _defaultDuration
+                    : parent.duration);
+          },
+          onTapUp: (TapUpDetails details) {
+            parent.onPositionTapUp(
+                context,
+                details,
+                _bad.contains(parent._queueComplete)
+                    ? _defaultDuration
+                    : parent.duration);
+          },
+          onVerticalDragStart: (DragStartDetails details) {
+            parent.onRateDragStart(context, details);
+          },
+          onVerticalDragUpdate: (DragUpdateDetails details) {
+            parent.onRateDragUpdate(context, details);
+          },
+          onVerticalDragEnd: (DragEndDetails details) {
+            parent.onRateDragEnd(context, details);
+          },
+          /*onDoubleTap: () {},*/
+          child: CustomPaint(
+            size: const Size.fromHeight(120.0),
+            painter: CubistWave(
+              _bad.contains(parent._queueComplete)
+                  ? 'zapaz'
+                  : parent.song.title,
+              _bad.contains(parent._queueComplete)
+                  ? _defaultDuration
+                  : parent.duration,
+              parent._position,
+              parent._rate,
+              Theme.of(context).primaryColor,
+            ),
+          ),
+        ));
+  });
+}
+
+/// Handles control player section
+Widget _playerControl(_PlayerState parent) {
+  return Builder(builder: (BuildContext context) {
+    return Column(
+      mainAxisAlignment: parent._orientation == Orientation.portrait
+          ? MainAxisAlignment.spaceBetween
+          : MainAxisAlignment.end,
+      children: <Widget>[
+        if (parent._orientation == Orientation.portrait) _timeInfo(parent),
+        Column(
+          children: <Widget>[
+            _title(parent),
+            _artist(parent),
+          ],
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: <Widget>[
+            IconButton(
+              onPressed: () => parent.onChange(parent.index - 1),
+              tooltip: 'Previous',
+              icon: Icon(Icons.skip_previous, size: 30.0),
+            ),
+            _play(parent, 3.0, 30.0, Theme.of(context).primaryColor,
+                parent._changeState),
+            IconButton(
+              onPressed: () => parent.onChange(parent.index + 1),
+              tooltip: 'Next',
+              icon: Icon(Icons.skip_next, size: 30.0),
+            ),
+          ],
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                /*Tooltip(
+                  message: 'Select start',
+                  child: InkWell(
+                      onTap: () {},
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20.0, vertical: 16.0),
+                        child: Text('A',
+                            style: TextStyle(
+                                fontSize: 15.0,
+                                fontWeight: FontWeight.bold,
+                                color: backgroundColor)),
+                      )),
+                ),
+                Tooltip(
+                  message: 'Select end',
+                  child: InkWell(
+                      onTap: () {},
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20.0, vertical: 16.0),
+                        child: Text('B',
+                            style: TextStyle(
+                                fontSize: 15.0,
+                                fontWeight: FontWeight.bold,
+                                color: backgroundColor)),
+                      )),
+                ),*/
+                IconButton(
+                  onPressed: () {
+                    parent.onSet(context, Theme.of(context).primaryColor);
+                  },
+                  tooltip: 'Set (one, all, or random songs)',
+                  icon: Icon(_status(parent._set), size: 20.0),
+                ),
+              ],
+            ),
+            Row(
+              children: <Widget>[
+                IconButton(
+                  onPressed: () {
+                    parent.onMode(context, Theme.of(context).primaryColor);
+                  },
+                  tooltip: 'Mode (once or in a loop)',
+                  icon: Icon(
+                      parent._mode == 'loop'
+                          ? Icons.repeat
+                          : Icons.trending_flat,
+                      size: 20.0),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+  });
+}
+
+/// Current playback position and duration info
+Widget _timeInfo(_PlayerState parent) {
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: <Widget>[
+      Text(
+        _bad.contains(parent._queueComplete)
+            ? '0:00'
+            : '${parent._position.inMinutes}:'
+                '${zero(parent._position.inSeconds % 60)}',
+        style: TextStyle(color: backgroundColor, fontWeight: FontWeight.bold),
+      ),
+      Text(
+          _bad.contains(parent._queueComplete)
+              ? '0:00'
+              : '${parent.duration.inMinutes}:'
+                  '${zero(parent.duration.inSeconds % 60)}',
+          style: TextStyle(color: backgroundColor)),
+    ],
+  );
+}
+
 /// Renders current song title
 Widget _title(_PlayerState parent) {
   if (parent._queueComplete == 0) {
@@ -1535,7 +1587,7 @@ Widget _title(_PlayerState parent) {
           fontSize: 15.0,
         ));
   }
-  return Text('${parent.song.title.replaceAll('_', ' ').toUpperCase()}',
+  return Text(parent.song.title.replaceAll('_', ' ').toUpperCase(),
       overflow: TextOverflow.ellipsis,
       maxLines: 2,
       textAlign: TextAlign.center,
@@ -1553,7 +1605,7 @@ Widget _artist(_PlayerState parent) {
     return const SizedBox.shrink();
 
   return Text(
-    '${parent.song.artist.toUpperCase()}',
+    parent.song.artist.toUpperCase(),
     overflow: TextOverflow.ellipsis,
     maxLines: 1,
     style: TextStyle(
@@ -1585,7 +1637,7 @@ Widget _navigation(_PlayerState parent) {
   final List<Widget> _row = [];
 
   final String _root = parent.source == 'SD card' ? sdCardRoot : deviceRoot;
-  String _path = '${parent.folder}';
+  String _path = parent.folder;
   if (_path == _root) _path += '/${parent.source} home';
   final Iterable<int> relatives = parent.getRelatives(_root, _path);
   int j = 0;
@@ -1608,7 +1660,7 @@ Widget _navigation(_PlayerState parent) {
           onTap: () => parent.onFolder(_path.substring(0, _end)),
           child: Text(_title,
               style: TextStyle(
-                  color: Theme.of(parent.context).textTheme.body1.color)),
+                  color: Theme.of(parent.context).textTheme.bodyText2.color)),
         ))
         ..add(Text(' > ', style: TextStyle(color: unfocusedColor)));
     }
@@ -1648,14 +1700,14 @@ Widget _songPicker(parent) {
               ..onPlay();
           }
         },
-        leading: _albumList(parent, _song),
+        leading: _listCover(parent, _song),
         title: Text(_song.title.replaceAll('_', ' '),
             overflow: TextOverflow.ellipsis, maxLines: 2),
         subtitle: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
             Expanded(
-              child: Text(_song.artist == '<unknown>' ? '' : '${_song.artist}',
+              child: Text(_song.artist == '<unknown>' ? '' : _song.artist,
                   style: const TextStyle(fontSize: 11.0),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1),
@@ -1675,8 +1727,8 @@ Widget _songPicker(parent) {
   );
 }
 
-/// Renders album covers for queue list
-Widget _albumList(_PlayerState parent, SongInfo _song) {
+/// Renders album artworks for queue list
+Widget _listCover(_PlayerState parent, SongInfo _song) {
   if (!_bad.contains(parent._tempFolderComplete)) {
     final File _coverFile = File('$_tempFolder/${_song.id}.jpg');
     if (!_bad.contains(parent._coversComplete) &&
@@ -1684,7 +1736,9 @@ Widget _albumList(_PlayerState parent, SongInfo _song) {
         _coverFile.existsSync()) {
       return Material(
         clipBehavior: Clip.antiAlias,
-        shape: const _CubistFrame(),
+        shape: parent._orientation == Orientation.portrait
+            ? const _CubistShapeA()
+            : const _CubistShapeC(),
         child: Image.file(
           _coverFile,
           fit: BoxFit.cover,
@@ -1701,9 +1755,9 @@ Widget _albumList(_PlayerState parent, SongInfo _song) {
 }
 
 /// Cubist shape for player slider.
-class Wave extends CustomPainter {
+class CubistWave extends CustomPainter {
   /// Player slider constructor
-  Wave(this.title, this.duration, this.position, this.rate, this.color);
+  CubistWave(this.title, this.duration, this.position, this.rate, this.color);
 
   /// Song title to parse
   String title;
@@ -1774,7 +1828,7 @@ class Wave extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(Wave oldDelegate) => true;
+  bool shouldRepaint(CubistWave oldDelegate) => true;
 }
 
 /// Generates wave data for slider
@@ -1800,9 +1854,9 @@ List<double> wave(String s) {
   return codes;
 }
 
-/// Cubist shape for album artworks.
-class _CubistFrame extends ShapeBorder {
-  const _CubistFrame();
+/// Cubist shape for portrait album artworks.
+class _CubistShapeA extends ShapeBorder {
+  const _CubistShapeA();
 
   @override
   EdgeInsetsGeometry get dimensions => const EdgeInsets.only();
@@ -1830,9 +1884,9 @@ class _CubistFrame extends ShapeBorder {
   ShapeBorder scale(double t) => null;
 }
 
-/// Cubist shape for floating buttons.
-class _CubistButton extends ShapeBorder {
-  const _CubistButton();
+/// Cubist shape for portrait floating buttons.
+class _CubistShapeB extends ShapeBorder {
+  const _CubistShapeB();
 
   @override
   EdgeInsetsGeometry get dimensions => const EdgeInsets.only();
@@ -1848,6 +1902,64 @@ class _CubistButton extends ShapeBorder {
       ..lineTo(rect.right - rect.width / 10.0, rect.top + rect.height / 10.0)
       ..lineTo(rect.right - rect.width / 5.0, rect.bottom - rect.height / 5.0)
       ..lineTo(rect.left + rect.width / 10.0, rect.bottom - rect.height / 10.0)
+      ..close();
+  }
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection textDirection}) {}
+
+  @override
+  ShapeBorder scale(double t) => null;
+}
+
+/// Cubist shape for landscape album artworks.
+class _CubistShapeC extends ShapeBorder {
+  const _CubistShapeC();
+
+  @override
+  EdgeInsetsGeometry get dimensions => const EdgeInsets.only();
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection textDirection}) =>
+      getOuterPath(rect, textDirection: textDirection);
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection textDirection}) {
+    return Path()
+      ..moveTo(rect.left + rect.width / 20, rect.top + rect.height / 20)
+      ..lineTo(rect.left + rect.width / 1.8, rect.top + rect.height / 10)
+      ..lineTo(rect.right - rect.width / 20, rect.top)
+      ..lineTo(rect.right, rect.top + rect.height / 2.2)
+      ..lineTo(rect.right - rect.width / 10, rect.bottom - rect.height / 20)
+      ..lineTo(rect.left + rect.width / 10, rect.bottom)
+      ..lineTo(rect.left, rect.top + rect.height / 1.8)
+      ..close();
+  }
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection textDirection}) {}
+
+  @override
+  ShapeBorder scale(double t) => null;
+}
+
+/// Cubist shape for landscape floating buttons.
+class _CubistShapeD extends ShapeBorder {
+  const _CubistShapeD();
+
+  @override
+  EdgeInsetsGeometry get dimensions => const EdgeInsets.only();
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection textDirection}) =>
+      getOuterPath(rect, textDirection: textDirection);
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection textDirection}) {
+    return Path()
+      ..moveTo(rect.left, rect.top + rect.height / 5)
+      ..lineTo(rect.right, rect.top + rect.height / 5)
+      ..lineTo(rect.left + rect.width / 2, rect.bottom)
       ..close();
   }
 
