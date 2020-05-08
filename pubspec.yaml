@@ -1,6 +1,10 @@
 name: stepslow
 description: Simple music player for dancers
 
+# The following line prevents the package from being accidentally published to
+# pub.dev using `pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
 # followed by an optional build number separated by a +.
@@ -16,12 +20,13 @@ author: Pavel Dvořák <dvorapa~seznam~cz>
 homepage: https://www.dvorapa.cz
 
 environment:
-  sdk: ">=2.1.0 <3.0.0"
-  flutter: ^1.0.0
+  sdk: ">=2.7.0 <3.0.0"
+  flutter: ^1.13.8
 
 dependencies:
   flutter:
     sdk: flutter
+
 
   permissions_plugin: ^1.1.4
   audioplayers: ">=0.15.1 <1.0.0"
@@ -38,7 +43,6 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
-
 flutter_icons:
   image_path: "assets/icon.png"
   android: true
@@ -50,8 +54,8 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   # assets:
-  #  - images/a_dot_burr.jpeg
-  #  - images/a_dot_ham.jpeg
+  #   - images/a_dot_burr.jpeg
+  #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.
