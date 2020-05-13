@@ -631,7 +631,7 @@ class _PlayerState extends State<Player> {
         if (!_coversMap.containsKey(_songPath)) {
           await _flutterFFmpeg
               .execute(
-                  '-i "$_songPath" -vf scale="-2:\'min(140,ih)\'":flags=lanczos -an "$_tempFolder/${_song.id}.jpg"')
+                  '-i "$_songPath" -vf scale="-2:\'min(260,ih)\'":flags=lanczos -an "$_tempFolder/${_song.id}.jpg"')
               .then((int _status) {
             _coversMap[_songPath] = _status;
             _coversYaml += '"$_songPath": $_status\n';
@@ -1026,78 +1026,121 @@ class _PlayerState extends State<Player> {
                   ),
                 ],
               ),
-              body: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: _orientation == Orientation.portrait
-                    ? <Widget>[
-                        _playerSquared(this),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            _playerOblong(this),
-                            Theme(
-                              data: ThemeData(
-                                accentColor: backgroundColor,
-                                primaryColor: Theme.of(context).primaryColor,
-                                iconTheme: IconThemeData(
-                                  color: backgroundColor,
+              body: _orientation == Orientation.portrait
+                  ? Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: <Widget>[
+                          _playerSquared(this),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              _playerOblong(this),
+                              Theme(
+                                data: ThemeData(
+                                  accentColor: backgroundColor,
+                                  primaryColor: Theme.of(context).primaryColor,
+                                  iconTheme: IconThemeData(
+                                    color: backgroundColor,
+                                  ),
+                                ),
+                                isMaterialAppTheme: true,
+                                child: Container(
+                                  height: 220.0,
+                                  color: Theme.of(context).primaryColor,
+                                  child: Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        16.0, 12.0, 16.0, .0),
+                                    child: _playerControl(this),
+                                  ),
                                 ),
                               ),
-                              isMaterialAppTheme: true,
-                              child: Container(
-                                height: 220.0,
-                                color: Theme.of(context).primaryColor,
-                                child: Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                      16.0, 12.0, 16.0, .0),
-                                  child: _playerControl(this),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ]
-                    : <Widget>[
-                        Expanded(
-                            child: Row(
-                          children: <Widget>[
-                            Expanded(
-                                child: Theme(
-                                    data: ThemeData(
-                                      accentColor:
-                                          Theme.of(context).primaryColor,
-                                      primaryColor:
-                                          Theme.of(context).primaryColor,
-                                      iconTheme: IconThemeData(
-                                        color: Theme.of(context).primaryColor,
+                            ],
+                          ),
+                        ])
+                  : Column(children: <Widget>[
+                      Expanded(
+                          flex: 90,
+                          child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: <Widget>[
+                                const Expanded(
+                                    flex: 25, child: SizedBox.shrink()),
+                                Expanded(
+                                    flex: 95,
+                                    child: Theme(
+                                        data: ThemeData(
+                                          accentColor:
+                                              Theme.of(context).primaryColor,
+                                          primaryColor: backgroundColor,
+                                          iconTheme: IconThemeData(
+                                            color:
+                                                Theme.of(context).primaryColor,
+                                          ),
+                                        ),
+                                        isMaterialAppTheme: true,
+                                        child: _playerControl(this))),
+                                const Expanded(
+                                    flex: 25, child: SizedBox.shrink()),
+                                Expanded(
+                                    flex: 105, child: _playerSquared(this)),
+                                const Expanded(
+                                    flex: 25, child: SizedBox.shrink()),
+                              ])),
+                      Expanded(
+                          flex: 60,
+                          child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: <Widget>[
+                                FractionallySizedBox(
+                                    heightFactor:
+                                        (((3.0 * 1) / 4.0) * (_rate / 200.0)) +
+                                            ((1 / 4.0) *
+                                                (wave(song?.title ?? 'zapaz')
+                                                        .first /
+                                                    100.0)),
+                                    child: Container(
+                                      alignment: Alignment.centerLeft,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12.0),
+                                      color: _position == _emptyDuration
+                                          ? Theme.of(context)
+                                              .primaryColor
+                                              .withOpacity(.7)
+                                          : Theme.of(context).primaryColor,
+                                      child: Text(
+                                        _bad.contains(_queueComplete)
+                                            ? '0:00'
+                                            : '${_position.inMinutes}:'
+                                                '${zero(_position.inSeconds % 60)}',
+                                        style: TextStyle(
+                                            color: backgroundColor,
+                                            fontWeight: FontWeight.bold),
                                       ),
-                                    ),
-                                    isMaterialAppTheme: true,
-                                    child: _playerControl(this))),
-                            Expanded(child: _playerSquared(this)),
-                          ],
-                        )),
-                        _playerOblong(this),
-                        Theme(
-                          data: ThemeData(
-                            accentColor: backgroundColor,
-                            primaryColor: Theme.of(context).primaryColor,
-                            iconTheme: IconThemeData(
-                              color: backgroundColor,
-                            ),
-                          ),
-                          isMaterialAppTheme: true,
-                          child: Container(
-                            color: Theme.of(context).primaryColor,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16.0, vertical: 6.0),
-                              child: _timeInfo(this),
-                            ),
-                          ),
-                        ),
-                      ],
-              ),
+                                    )),
+                                Expanded(child: _playerOblong(this)),
+                                FractionallySizedBox(
+                                    heightFactor: (((3.0 * 1) / 4.0) *
+                                            (_rate / 200.0)) +
+                                        ((1 / 4.0) *
+                                            (wave(song?.title ?? 'zapaz').last /
+                                                100.0)),
+                                    child: Container(
+                                      alignment: Alignment.center,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12.0),
+                                      color: Theme.of(context)
+                                          .primaryColor
+                                          .withOpacity(.7),
+                                      child: Text(
+                                          _bad.contains(_queueComplete)
+                                              ? '0:00'
+                                              : '${duration.inMinutes}:'
+                                                  '${zero(duration.inSeconds % 60)}',
+                                          style: TextStyle(
+                                              color: backgroundColor)),
+                                    )),
+                              ])),
+                    ]),
             ),
           ),
           WillPopScope(
@@ -1321,15 +1364,25 @@ Widget _play(_PlayerState parent, double elevation, double iconSize,
 
 /// Handles squared player section
 Widget _playerSquared(_PlayerState parent) {
+  if (parent._orientation == Orientation.portrait) {
+    return Material(
+      clipBehavior: Clip.antiAlias,
+      elevation: 2.0,
+      shape: const _CubistShapeA(),
+      child: SizedBox(
+        width: 160.0,
+        height: 140.0,
+        child: _rangeCover(parent),
+      ),
+    );
+  }
   return Material(
     clipBehavior: Clip.antiAlias,
     elevation: 2.0,
-    shape: parent._orientation == Orientation.portrait
-        ? const _CubistShapeA()
-        : const _CubistShapeC(),
+    shape: const _CubistShapeC(),
     child: SizedBox(
-      width: 160.0,
-      height: 140.0,
+      width: 260.0,
+      height: 260.0,
       child: _rangeCover(parent),
     ),
   );
@@ -1460,15 +1513,16 @@ Widget _playerControl(_PlayerState parent) {
     return Column(
       mainAxisAlignment: parent._orientation == Orientation.portrait
           ? MainAxisAlignment.spaceBetween
-          : MainAxisAlignment.end,
+          : MainAxisAlignment.start,
       children: <Widget>[
         if (parent._orientation == Orientation.portrait) _timeInfo(parent),
-        Column(
-          children: <Widget>[
-            _title(parent),
-            _artist(parent),
-          ],
-        ),
+        if (parent._orientation == Orientation.portrait)
+          Column(
+            children: <Widget>[
+              _title(parent),
+              _artist(parent),
+            ],
+          ),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: <Widget>[
@@ -1545,6 +1599,13 @@ Widget _playerControl(_PlayerState parent) {
             ),
           ],
         ),
+        if (parent._orientation == Orientation.landscape)
+          Column(
+            children: <Widget>[
+              _title(parent),
+              _artist(parent),
+            ],
+          ),
       ],
     );
   });
@@ -1926,12 +1987,12 @@ class _CubistShapeC extends ShapeBorder {
   @override
   Path getOuterPath(Rect rect, {TextDirection textDirection}) {
     return Path()
-      ..moveTo(rect.left + rect.width / 20, rect.top + rect.height / 20)
-      ..lineTo(rect.left + rect.width / 1.8, rect.top + rect.height / 10)
-      ..lineTo(rect.right - rect.width / 20, rect.top)
-      ..lineTo(rect.right, rect.top + rect.height / 2.2)
-      ..lineTo(rect.right - rect.width / 10, rect.bottom - rect.height / 20)
-      ..lineTo(rect.left + rect.width / 10, rect.bottom)
+      ..moveTo(rect.left + rect.width / 6.6, rect.top + rect.height / 9.8)
+      ..lineTo(rect.left + rect.width / 1.9, rect.top + rect.height / 4.9)
+      ..lineTo(rect.right - rect.width / 4.7, rect.top)
+      ..lineTo(rect.right, rect.top + rect.height / 2)
+      ..lineTo(rect.right - rect.width / 3.9, rect.bottom - rect.height / 24.5)
+      ..lineTo(rect.left + rect.width / 3.5, rect.bottom - rect.height / 49)
       ..lineTo(rect.left, rect.top + rect.height / 1.8)
       ..close();
   }
@@ -1957,9 +2018,9 @@ class _CubistShapeD extends ShapeBorder {
   @override
   Path getOuterPath(Rect rect, {TextDirection textDirection}) {
     return Path()
-      ..moveTo(rect.left, rect.top + rect.height / 5)
-      ..lineTo(rect.right, rect.top + rect.height / 5)
-      ..lineTo(rect.left + rect.width / 2, rect.bottom)
+      ..moveTo(rect.left - rect.width / 20, rect.top + rect.height / 6)
+      ..lineTo(rect.right + rect.width / 20, rect.top + rect.height / 6)
+      ..lineTo(rect.left + rect.width / 2, rect.bottom + rect.height / 20)
       ..close();
   }
 
