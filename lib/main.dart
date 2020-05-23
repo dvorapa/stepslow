@@ -1038,7 +1038,11 @@ class _PlayerState extends State<Player> {
                   ? Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: <Widget>[
-                          _playerSquared(this),
+                          SizedBox(
+                              height: 140,
+                              child: AspectRatio(
+                                  aspectRatio: 8 / 7,
+                                  child: _playerSquared(this))),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: <Widget>[
@@ -1090,8 +1094,9 @@ class _PlayerState extends State<Player> {
                                         child: _playerControl(this))),
                                 const Expanded(
                                     flex: 25, child: SizedBox.shrink()),
-                                Expanded(
-                                    flex: 105, child: _playerSquared(this)),
+                                AspectRatio(
+                                    aspectRatio: 6.9 / 5.6,
+                                    child: _playerSquared(this)),
                                 const Expanded(
                                     flex: 25, child: SizedBox.shrink()),
                               ])),
@@ -1390,11 +1395,7 @@ Widget _playerSquared(_PlayerState parent) {
         shape: parent._orientation == Orientation.portrait
             ? const _CubistShapeA()
             : const _CubistShapeC(),
-        child: SizedBox(
-          width: parent._orientation == Orientation.portrait ? 160.0 : 260.0,
-          height: parent._orientation == Orientation.portrait ? 140.0 : 260.0,
-          child: _rangeCover(parent),
-        ),
+        child: _rangeCover(parent),
       ));
 }
 
@@ -1518,123 +1519,47 @@ Drag curve vertically to change speed''',
 /// Handles control player section
 Widget _playerControl(_PlayerState parent) {
   return Builder(builder: (BuildContext context) {
-    return Column(
-      mainAxisAlignment: parent._orientation == Orientation.portrait
-          ? MainAxisAlignment.spaceBetween
-          : MainAxisAlignment.start,
-      children: <Widget>[
-        if (parent._orientation == Orientation.portrait)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: <Widget>[
-              Text(
-                _bad.contains(parent._queueComplete)
-                    ? '0:00'
-                    : '${parent._position.inMinutes}:'
-                        '${zero(parent._position.inSeconds % 60)}',
-                style: TextStyle(
-                    color: Theme.of(context).textTheme.bodyText2.color,
-                    fontWeight: FontWeight.bold),
-              ),
-              Text(
+    if (parent._orientation == Orientation.portrait) {
+      return Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: <Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Text(
                   _bad.contains(parent._queueComplete)
                       ? '0:00'
-                      : '${parent.duration.inMinutes}:'
-                          '${zero(parent.duration.inSeconds % 60)}',
+                      : '${parent._position.inMinutes}:'
+                          '${zero(parent._position.inSeconds % 60)}',
                   style: TextStyle(
-                    color: Theme.of(context).textTheme.bodyText2.color,
-                  )),
-            ],
-          ),
-        if (parent._orientation == Orientation.portrait)
-          Column(
-            children: <Widget>[
-              _title(parent),
-              _artist(parent),
-            ],
-          ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: <Widget>[
-            IconButton(
-              onPressed: () => parent.onChange(parent.index - 1),
-              tooltip: 'Previous',
-              icon: Icon(Icons.skip_previous, size: 30.0),
-            ),
-            _play(parent, 3.0, 30.0, parent._changeState),
-            IconButton(
-              onPressed: () => parent.onChange(parent.index + 1),
-              tooltip: 'Next',
-              icon: Icon(Icons.skip_next, size: 30.0),
-            ),
-          ],
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                /*Tooltip(
-                  message: 'Select start',
-                  child: InkWell(
-                      onTap: () {},
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20.0, vertical: 16.0),
-                        child: Text('A',
-                            style: TextStyle(
-                                fontSize: 15.0,
-                                fontWeight: FontWeight.bold)),
-                      )),
+                      color: Theme.of(context).textTheme.bodyText2.color,
+                      fontWeight: FontWeight.bold),
                 ),
-                Tooltip(
-                  message: 'Select end',
-                  child: InkWell(
-                      onTap: () {},
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20.0, vertical: 16.0),
-                        child: Text('B',
-                            style: TextStyle(
-                                fontSize: 15.0,
-                                fontWeight: FontWeight.bold)),
-                      )),
-                ),*/
-                IconButton(
-                  onPressed: () {
-                    parent.onSet(context);
-                  },
-                  tooltip: 'Set (one, all, or random songs)',
-                  icon: Icon(_status(parent._set), size: 20.0),
-                ),
+                Text(
+                    _bad.contains(parent._queueComplete)
+                        ? '0:00'
+                        : '${parent.duration.inMinutes}:'
+                            '${zero(parent.duration.inSeconds % 60)}',
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodyText2.color,
+                    )),
               ],
             ),
-            Row(
-              children: <Widget>[
-                IconButton(
-                  onPressed: () {
-                    parent.onMode(context);
-                  },
-                  tooltip: 'Mode (once or in a loop)',
-                  icon: Icon(
-                      parent._mode == 'loop'
-                          ? Icons.repeat
-                          : Icons.trending_flat,
-                      size: 20.0),
-                ),
-              ],
-            ),
-          ],
-        ),
-        if (parent._orientation == Orientation.landscape)
-          Column(
-            children: <Widget>[
-              _title(parent),
-              _artist(parent),
-            ],
-          ),
-      ],
-    );
+            _title(parent),
+            _artist(parent),
+            _mainControl(parent),
+            _minorControl(parent),
+          ]);
+    } else {
+      return Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: <Widget>[
+            _mainControl(parent),
+            _minorControl(parent),
+            _artist(parent),
+            _title(parent),
+          ]);
+    }
   });
 }
 
@@ -1685,6 +1610,85 @@ Widget _artist(_PlayerState parent) {
       ),
     );
   });
+}
+
+/// Renders main player control buttons
+Widget _mainControl(_PlayerState parent) {
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    children: <Widget>[
+      IconButton(
+        onPressed: () => parent.onChange(parent.index - 1),
+        tooltip: 'Previous',
+        icon: Icon(Icons.skip_previous, size: 30.0),
+      ),
+      _play(parent, 3.0, 30.0, parent._changeState),
+      IconButton(
+        onPressed: () => parent.onChange(parent.index + 1),
+        tooltip: 'Next',
+        icon: Icon(Icons.skip_next, size: 30.0),
+      ),
+    ],
+  );
+}
+
+/// Renders minor player control buttons
+Widget _minorControl(_PlayerState parent) {
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    children: <Widget>[
+      Row(
+        children: <Widget>[
+          /*Tooltip(
+                    message: 'Select start',
+                    child: InkWell(
+                        onTap: () {},
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20.0, vertical: 16.0),
+                          child: Text('A',
+                              style: TextStyle(
+                                  fontSize: 15.0,
+                                  fontWeight: FontWeight.bold)),
+                        )),
+                  ),
+                  Tooltip(
+                    message: 'Select end',
+                    child: InkWell(
+                        onTap: () {},
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20.0, vertical: 16.0),
+                          child: Text('B',
+                              style: TextStyle(
+                                  fontSize: 15.0,
+                                  fontWeight: FontWeight.bold)),
+                        )),
+                  ),*/
+          IconButton(
+            onPressed: () {
+              parent.onSet(parent.context);
+            },
+            tooltip: 'Set (one, all, or random songs)',
+            icon: Icon(_status(parent._set), size: 20.0),
+          ),
+        ],
+      ),
+      Row(
+        children: <Widget>[
+          IconButton(
+            onPressed: () {
+              parent.onMode(parent.context);
+            },
+            tooltip: 'Mode (once or in a loop)',
+            icon: Icon(
+                parent._mode == 'loop' ? Icons.repeat : Icons.trending_flat,
+                size: 20.0),
+          ),
+        ],
+      ),
+    ],
+  );
 }
 
 /// Picks appropriate [_set] icon
@@ -1768,7 +1772,14 @@ Widget _songPicker(parent) {
               ..onPlay();
           }
         },
-        leading: _listCover(parent, _song),
+        leading: SizedBox(
+          height: 35.0,
+          child: AspectRatio(
+            aspectRatio:
+                parent._orientation == Orientation.portrait ? 8 / 7 : 6.9 / 5.6,
+            child: _listCover(parent, _song),
+          ),
+        ),
         title: Text(_song.title.replaceAll('_', ' '),
             overflow: TextOverflow.ellipsis, maxLines: 2),
         subtitle: Row(
@@ -1807,19 +1818,11 @@ Widget _listCover(_PlayerState parent, SongInfo _song) {
         shape: parent._orientation == Orientation.portrait
             ? const _CubistShapeA()
             : const _CubistShapeC(),
-        child: Image.file(
-          _coverFile,
-          fit: BoxFit.cover,
-          width: 40.0,
-          height: 35.0,
-        ),
+        child: Image.file(_coverFile, fit: BoxFit.cover),
       );
     }
   }
-  return FittedBox(
-    child: SizedBox(
-        width: 40.0, height: 35.0, child: Icon(Icons.music_note, size: 24.0)),
-  );
+  return Icon(Icons.music_note, size: 24.0);
 }
 
 /// Cubist shape for player slider.
@@ -1923,6 +1926,10 @@ List<double> wave(String s) {
 }
 
 /// Cubist shape for portrait album artworks.
+/// ------
+/// \    /
+/// /    \
+/// ------
 class _CubistShapeA extends ShapeBorder {
   const _CubistShapeA();
 
@@ -1953,6 +1960,9 @@ class _CubistShapeA extends ShapeBorder {
 }
 
 /// Cubist shape for portrait floating buttons.
+///   ----
+///  /  /
+/// ----
 class _CubistShapeB extends ShapeBorder {
   const _CubistShapeB();
 
@@ -1981,8 +1991,15 @@ class _CubistShapeB extends ShapeBorder {
 }
 
 /// Cubist shape for landscape album artworks.
+///  /\  /\
+/// /  \/  \
+/// \      /
+///  \____/
 class _CubistShapeC extends ShapeBorder {
   const _CubistShapeC();
+
+  static const double _w = 7.3;
+  static const double _h = 5.6;
 
   @override
   EdgeInsetsGeometry get dimensions => const EdgeInsets.only();
@@ -1994,13 +2011,16 @@ class _CubistShapeC extends ShapeBorder {
   @override
   Path getOuterPath(Rect rect, {TextDirection textDirection}) {
     return Path()
-      ..moveTo(rect.left + rect.width / 6.6, rect.top + rect.height / 9.8)
-      ..lineTo(rect.left + rect.width / 1.9, rect.top + rect.height / 4.9)
-      ..lineTo(rect.right - rect.width / 4.7, rect.top)
-      ..lineTo(rect.right, rect.top + rect.height / 2)
-      ..lineTo(rect.right - rect.width / 3.9, rect.bottom - rect.height / 24.5)
-      ..lineTo(rect.left + rect.width / 3.5, rect.bottom - rect.height / 49)
-      ..lineTo(rect.left, rect.top + rect.height / 1.8)
+      ..moveTo(
+          rect.left + rect.width * 1.3 / _w, rect.top + rect.height * .5 / _h)
+      ..lineTo(
+          rect.left + rect.width * 3.2 / _w, rect.top + rect.height * .8 / _h)
+      ..lineTo(rect.right - rect.width * 2.0 / _w, rect.top)
+      ..lineTo(rect.right, rect.top + rect.height * 1.9 / _h)
+      ..lineTo(rect.right - rect.width * 1.0 / _w,
+          rect.bottom - rect.height * .8 / _h)
+      ..lineTo(rect.left + rect.width * 2.6 / _w, rect.bottom)
+      ..lineTo(rect.left, rect.top + rect.height * 2.9 / _h)
       ..close();
   }
 
@@ -2012,6 +2032,9 @@ class _CubistShapeC extends ShapeBorder {
 }
 
 /// Cubist shape for landscape floating buttons.
+/// ____
+/// \  /
+///  \/
 class _CubistShapeD extends ShapeBorder {
   const _CubistShapeD();
 
