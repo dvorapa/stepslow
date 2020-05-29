@@ -64,6 +64,11 @@ String zero(int n) {
   return '0$n';
 }
 
+/// Calculates height factor for wave
+double _heightFactor(_height, _rate, _value) {
+  return (_height / 400.0) * (3.0 * _rate / 2.0 + _value);
+}
+
 /// Finds sd card root folder(s) if any
 Future<List<String>> getSdCardRoot() async {
   final List<String> result = [];
@@ -126,25 +131,19 @@ class Stepslow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Stepslow music player',
-      theme: ThemeData(
-        primaryColor: interactiveColor,
-        accentColor: interactiveColor,
-        appBarTheme: AppBarTheme(
-            color: Colors.transparent,
-            elevation: .0,
-            iconTheme: IconThemeData(
-              color: unfocusedColor,
-            ),
-            textTheme: TextTheme(
-              headline6: TextStyle(color: blackColor),
-            )),
-        colorScheme: ColorScheme.light(
-            secondary: interactiveColor, onSecondary: backgroundColor),
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: const Player(title: 'Player'),
-    );
+        title: 'Stepslow music player',
+        theme: ThemeData(
+            primaryColor: interactiveColor,
+            accentColor: interactiveColor,
+            appBarTheme: AppBarTheme(
+                color: Colors.transparent,
+                elevation: .0,
+                iconTheme: IconThemeData(color: unfocusedColor),
+                textTheme: TextTheme(headline6: TextStyle(color: blackColor))),
+            colorScheme: ColorScheme.light(
+                secondary: interactiveColor, onSecondary: backgroundColor),
+            visualDensity: VisualDensity.adaptivePlatformDensity),
+        home: const Player(title: 'Player'));
   }
 }
 
@@ -393,16 +392,14 @@ class _PlayerState extends State<Player> {
         backgroundColor: Theme.of(context).accentColor,
         elevation: .0,
         duration: const Duration(seconds: 2),
-        content: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(_mode == 'loop' ? 'playing in a loop ' : 'playing once ',
-                style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSecondary)),
-            Icon(_mode == 'loop' ? Icons.repeat : Icons.trending_flat,
-                color: Theme.of(context).colorScheme.onSecondary, size: 20.0),
-          ],
-        )));
+        content:
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
+          Text(_mode == 'loop' ? 'playing in a loop ' : 'playing once ',
+              style:
+                  TextStyle(color: Theme.of(context).colorScheme.onSecondary)),
+          Icon(_mode == 'loop' ? Icons.repeat : Icons.trending_flat,
+              color: Theme.of(context).colorScheme.onSecondary, size: 20.0)
+        ])));
   }
 
   /// Changes playback [_set] and informs user using given [context]
@@ -434,16 +431,14 @@ class _PlayerState extends State<Player> {
         backgroundColor: Theme.of(context).accentColor,
         elevation: .0,
         duration: const Duration(seconds: 2),
-        content: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Icon(_status(_set),
-                color: Theme.of(context).colorScheme.onSecondary, size: 20.0),
-            Text(_set == '1' ? ' playing 1 song' : ' playing $_set songs',
-                style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSecondary)),
-          ],
-        )));
+        content:
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
+          Icon(_status(_set),
+              color: Theme.of(context).colorScheme.onSecondary, size: 20.0),
+          Text(_set == '1' ? ' playing 1 song' : ' playing $_set songs',
+              style:
+                  TextStyle(color: Theme.of(context).colorScheme.onSecondary))
+        ])));
   }
 
   /// Starts to listen seek drag actions
@@ -542,7 +537,11 @@ class _PlayerState extends State<Player> {
       rate = 5.0;
     }
     audioPlayer.setPlaybackRate(playbackRate: rate / 100.0);
-    setState(() => _rate = rate);
+    setState(() {
+      _position = _position * (_rate / rate);
+      duration = duration * (_rate / rate);
+      _rate = rate;
+    });
   }
 
   /// Switches playback [_state]
@@ -576,29 +575,22 @@ class _PlayerState extends State<Player> {
               itemBuilder: (String _source) {
                 switch (_source) {
                   case 'YouTube':
-                    return Row(
-                      children: <Widget>[
-                        Icon(Typicons.social_youtube, color: youTubeColor),
-                        Text(' $_source',
-                            style: TextStyle(color: youTubeColor)),
-                      ],
-                    );
+                    return Row(children: <Widget>[
+                      Icon(Typicons.social_youtube, color: youTubeColor),
+                      Text(' $_source', style: TextStyle(color: youTubeColor))
+                    ]);
                     break;
                   case 'SD card':
-                    return Row(
-                      children: <Widget>[
-                        Icon(Icons.sd_card),
-                        Text(' $_source'),
-                      ],
-                    );
+                    return Row(children: <Widget>[
+                      Icon(Icons.sd_card),
+                      Text(' $_source')
+                    ]);
                     break;
                   default:
-                    return Row(
-                      children: <Widget>[
-                        Icon(Icons.folder),
-                        Text(' $_source'),
-                      ],
-                    );
+                    return Row(children: <Widget>[
+                      Icon(Icons.folder),
+                      Text(' $_source')
+                    ]);
                     break;
                 }
               });
@@ -623,11 +615,8 @@ class _PlayerState extends State<Player> {
       setState(() => pageHistory = [1]);
       return true;
     }
-    _controller.animateToPage(
-      pageHistory[0],
-      duration: _animationDuration,
-      curve: Curves.ease,
-    );
+    _controller.animateToPage(pageHistory[0],
+        duration: _animationDuration, curve: Curves.ease);
     setState(() => pageHistory = [1]);
     return false;
   }
@@ -639,7 +628,7 @@ class _PlayerState extends State<Player> {
       if (_songPath.startsWith(deviceRoot) ||
           (_sdCard && _songPath.startsWith(sdCardRoot))) {
         if (!_coversMap.containsKey(_songPath)) {
-          /*MediaQuery.of(context).size.width*/
+          /*MediaQuery.of(context).size.width;*/
           await _flutterFFmpeg
               .execute(
                   '-i "$_songPath" -vf scale="-2:\'min(260,ih)\'":flags=lanczos -an "$_tempFolder/${_song.id}.jpg"')
@@ -980,232 +969,204 @@ class _PlayerState extends State<Player> {
     _previousRatePicker = _ratePicker;
     _orientation = MediaQuery.of(context).orientation;
     return Material(
-      child: PageView(
-        controller: _controller,
-        physics: const BouncingScrollPhysics(),
-        children: <Widget>[
+        child: PageView(
+            controller: _controller,
+            physics: const BouncingScrollPhysics(),
+            children: <Widget>[
           WillPopScope(
-            onWillPop: () => Future<bool>.sync(onBack),
-            child: Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                    tooltip: 'Change source',
-                    onPressed: _pickSource,
-                    icon: _sourceButton(source)),
-                title: Tooltip(
-                  message: 'Change source',
-                  child: InkWell(onTap: _pickSource, child: Text(source)),
-                ),
-                actions: <Widget>[
-                  IconButton(
-                    onPressed: _returnToPlayer,
-                    tooltip: 'Back to player',
-                    icon: Icon(Icons.navigate_next),
-                  ),
-                ],
-              ),
-              body: _folderPicker(this),
-              floatingActionButton: Align(
-                alignment: const Alignment(.8, .8),
-                child: Transform.scale(
-                  scale: 1.1,
-                  child: _play(this, 6.0, 32.0, () {
-                    _changeState();
-                    if (_state == AudioPlayerState.PLAYING) _returnToPlayer();
-                  }),
-                ),
-              ),
-            ),
-          ),
+              onWillPop: () => Future<bool>.sync(onBack),
+              child: Scaffold(
+                  appBar: AppBar(
+                      leading: IconButton(
+                          tooltip: 'Change source',
+                          onPressed: _pickSource,
+                          icon: _sourceButton(source)),
+                      title: Tooltip(
+                          message: 'Change source',
+                          child:
+                              InkWell(onTap: _pickSource, child: Text(source))),
+                      actions: <Widget>[
+                        IconButton(
+                            onPressed: _returnToPlayer,
+                            tooltip: 'Back to player',
+                            icon: Icon(Icons.navigate_next))
+                      ]),
+                  body: _folderPicker(this),
+                  floatingActionButton: Align(
+                      alignment: const Alignment(.8, .8),
+                      child: Transform.scale(
+                          scale: 1.1,
+                          child: _play(this, 6.0, 32.0, () {
+                            _changeState();
+                            if (_state == AudioPlayerState.PLAYING)
+                              _returnToPlayer();
+                          }))))),
           WillPopScope(
-            onWillPop: () => Future<bool>.sync(onBack),
-            child: Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                  onPressed: _pickFolder,
-                  tooltip: 'Pick folder',
-                  icon: Icon(Icons.folder_open),
-                ),
-                actions: <Widget>[
-                  IconButton(
-                    onPressed: _pickSong,
-                    tooltip: 'Pick song',
-                    icon: Icon(Icons.album),
-                  ),
-                ],
-              ),
-              body: _orientation == Orientation.portrait
-                  ? Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: <Widget>[
-                          SizedBox(
-                              height: 140,
-                              child: AspectRatio(
-                                  aspectRatio: 8 / 7,
-                                  child: _playerSquared(this))),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              _playerOblong(this),
-                              Container(
-                                height: 220.0,
-                                color: Theme.of(context).primaryColor,
-                                child: Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                        16.0, 12.0, 16.0, .0),
-                                    child: Theme(
-                                      data: ThemeData.from(
-                                          colorScheme: Theme.of(context)
-                                              .colorScheme
-                                              .copyWith(
-                                                  secondary: Theme.of(context)
-                                                      .scaffoldBackgroundColor,
-                                                  onSecondary: Theme.of(context)
-                                                      .primaryColor,
-                                                  brightness: Brightness.dark)),
-                                      child: _playerControl(this),
-                                    )),
-                              ),
-                            ],
-                          ),
-                        ])
-                  : Column(children: <Widget>[
-                      Expanded(
-                          flex: 90,
-                          child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: <Widget>[
-                                const Expanded(
-                                    flex: 25, child: SizedBox.shrink()),
-                                Expanded(
-                                    flex: 95,
-                                    child: Theme(
-                                        data: Theme.of(context).copyWith(
-                                            textTheme: Theme.of(context)
-                                                .textTheme
-                                                .apply(
-                                                  bodyColor: Theme.of(context)
-                                                      .primaryColor,
-                                                ),
-                                            iconTheme: IconThemeData(
-                                              color: Theme.of(context)
-                                                  .primaryColor,
-                                            )),
-                                        child: _playerControl(this))),
-                                const Expanded(
-                                    flex: 25, child: SizedBox.shrink()),
-                                AspectRatio(
-                                    aspectRatio: 6.9 / 5.6,
-                                    child: _playerSquared(this)),
-                                const Expanded(
-                                    flex: 25, child: SizedBox.shrink()),
-                              ])),
-                      Expanded(
-                          flex: 60,
-                          child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: <Widget>[
-                                FractionallySizedBox(
-                                    heightFactor:
-                                        (((3.0 * 1) / 4.0) * (_rate / 200.0)) +
-                                            ((1 / 4.0) *
-                                                (wave(song?.title ?? 'zapaz')
-                                                        .first /
-                                                    100.0)),
-                                    child: Container(
-                                      alignment: Alignment.centerLeft,
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 12.0),
-                                      color: _position == _emptyDuration
-                                          ? Theme.of(context)
-                                              .primaryColor
-                                              .withOpacity(.7)
-                                          : Theme.of(context).primaryColor,
-                                      child: Text(
-                                        _bad.contains(_queueComplete)
-                                            ? '0:00'
-                                            : '${_position.inMinutes}:'
-                                                '${zero(_position.inSeconds % 60)}',
-                                        style: TextStyle(
-                                            color: Theme.of(context)
-                                                .scaffoldBackgroundColor,
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                    )),
-                                Expanded(child: _playerOblong(this)),
-                                FractionallySizedBox(
-                                    heightFactor: (((3.0 * 1) / 4.0) *
-                                            (_rate / 200.0)) +
-                                        ((1 / 4.0) *
-                                            (wave(song?.title ?? 'zapaz').last /
-                                                100.0)),
-                                    child: Container(
-                                      alignment: Alignment.center,
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 12.0),
-                                      color: _position == duration &&
-                                              duration != _emptyDuration
-                                          ? Theme.of(context).primaryColor
-                                          : Theme.of(context)
-                                              .primaryColor
-                                              .withOpacity(.7),
-                                      child: Text(
-                                          _bad.contains(_queueComplete)
-                                              ? '0:00'
-                                              : '${duration.inMinutes}:'
-                                                  '${zero(duration.inSeconds % 60)}',
-                                          style: TextStyle(
-                                              color: Theme.of(context)
-                                                  .scaffoldBackgroundColor)),
-                                    )),
-                              ])),
-                    ]),
-            ),
-          ),
+              onWillPop: () => Future<bool>.sync(onBack),
+              child: Scaffold(
+                  appBar: AppBar(
+                      leading: IconButton(
+                          onPressed: _pickFolder,
+                          tooltip: 'Pick folder',
+                          icon: Icon(Icons.folder_open)),
+                      actions: <Widget>[
+                        IconButton(
+                            onPressed: _pickSong,
+                            tooltip: 'Pick song',
+                            icon: Icon(Icons.album))
+                      ]),
+                  body: _orientation == Orientation.portrait
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: <Widget>[
+                              SizedBox(
+                                  height: 140,
+                                  child: AspectRatio(
+                                      aspectRatio: 8 / 7,
+                                      child: _playerSquared(this))),
+                              Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: <Widget>[
+                                    _playerOblong(this),
+                                    Container(
+                                        height: 220.0,
+                                        color: Theme.of(context).primaryColor,
+                                        child: Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                                16.0, 12.0, 16.0, .0),
+                                            child: Theme(
+                                                data: ThemeData.from(
+                                                    colorScheme: Theme.of(context)
+                                                        .colorScheme
+                                                        .copyWith(
+                                                            secondary: Theme.of(
+                                                                    context)
+                                                                .scaffoldBackgroundColor,
+                                                            onSecondary:
+                                                                Theme.of(context)
+                                                                    .primaryColor,
+                                                            brightness:
+                                                                Brightness
+                                                                    .dark)),
+                                                child: _playerControl(this))))
+                                  ])
+                            ])
+                      : Column(children: <Widget>[
+                          Expanded(
+                              flex: 90,
+                              child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: <Widget>[
+                                    const Expanded(
+                                        flex: 25, child: SizedBox.shrink()),
+                                    Expanded(
+                                        flex: 95,
+                                        child: Theme(
+                                            data: Theme.of(context).copyWith(
+                                                textTheme: Theme.of(context)
+                                                    .textTheme
+                                                    .apply(
+                                                        bodyColor:
+                                                            Theme.of(context)
+                                                                .primaryColor),
+                                                iconTheme: IconThemeData(
+                                                    color: Theme.of(context)
+                                                        .primaryColor)),
+                                            child: _playerControl(this))),
+                                    const Expanded(
+                                        flex: 25, child: SizedBox.shrink()),
+                                    AspectRatio(
+                                        aspectRatio: 8 / 7,
+                                        child: _playerSquared(this)),
+                                    const Expanded(
+                                        flex: 25, child: SizedBox.shrink())
+                                  ])),
+                          Expanded(
+                              flex: 60,
+                              child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: <Widget>[
+                                    FractionallySizedBox(
+                                        heightFactor: _heightFactor(1, _rate,
+                                            wave(song?.title ?? 'zapaz').first),
+                                        child: Container(
+                                            alignment: Alignment.centerLeft,
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 12.0),
+                                            color: _position == _emptyDuration
+                                                ? Theme.of(context)
+                                                    .primaryColor
+                                                    .withOpacity(.7)
+                                                : Theme.of(context)
+                                                    .primaryColor,
+                                            child: Text(
+                                                _timeInfo(
+                                                    _queueComplete, _position),
+                                                style: TextStyle(
+                                                    color: Theme.of(context)
+                                                        .scaffoldBackgroundColor,
+                                                    fontWeight:
+                                                        FontWeight.bold)))),
+                                    Expanded(child: _playerOblong(this)),
+                                    FractionallySizedBox(
+                                        heightFactor: _heightFactor(1, _rate,
+                                            wave(song?.title ?? 'zapaz').last),
+                                        child: Container(
+                                            alignment: Alignment.center,
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 12.0),
+                                            color: _position == duration &&
+                                                    duration != _emptyDuration
+                                                ? Theme.of(context).primaryColor
+                                                : Theme.of(context)
+                                                    .primaryColor
+                                                    .withOpacity(.7),
+                                            child: Text(
+                                                _timeInfo(
+                                                    _queueComplete, duration),
+                                                style: TextStyle(
+                                                    color: Theme.of(context)
+                                                        .scaffoldBackgroundColor))))
+                                  ]))
+                        ]))),
           WillPopScope(
-            onWillPop: () => Future<bool>.sync(onBack),
-            child: Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                  onPressed: _returnToPlayer,
-                  tooltip: 'Back to player',
-                  icon: Icon(Icons.navigate_before),
-                ),
-                title: _navigation(this),
-              ),
-              body: _songPicker(this),
-              floatingActionButton: Align(
-                alignment: const Alignment(.8, .8),
-                child: Transform.scale(
-                    scale: 1.1,
-                    child: Builder(builder: (BuildContext context) {
-                      return FloatingActionButton(
-                        onPressed: () {
-                          if (_set == 'random') {
-                            setState(() {
-                              queue.shuffle();
-                              index = queue.indexOf(song);
-                            });
-                          } else {
-                            setState(() => _set = 'all');
-                            onSet(context);
-                          }
-                        },
-                        tooltip: 'Sort or shuffle',
-                        shape: _orientation == Orientation.portrait
-                            ? const _CubistShapeB()
-                            : const _CubistShapeD(),
-                        elevation: 6.0,
-                        backgroundColor: unfocusedColor,
-                        child: Icon(Icons.shuffle, size: 26.0),
-                      );
-                    })),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+              onWillPop: () => Future<bool>.sync(onBack),
+              child: Scaffold(
+                  appBar: AppBar(
+                      leading: IconButton(
+                          onPressed: _returnToPlayer,
+                          tooltip: 'Back to player',
+                          icon: Icon(Icons.navigate_before)),
+                      title: _navigation(this)),
+                  body: _songPicker(this),
+                  floatingActionButton: Align(
+                      alignment: const Alignment(.8, .8),
+                      child: Transform.scale(
+                          scale: 1.1,
+                          child: Builder(builder: (BuildContext context) {
+                            return FloatingActionButton(
+                                onPressed: () {
+                                  if (_set == 'random') {
+                                    setState(() {
+                                      queue.shuffle();
+                                      index = queue.indexOf(song);
+                                    });
+                                  } else {
+                                    setState(() => _set = 'all');
+                                    onSet(context);
+                                  }
+                                },
+                                tooltip: 'Sort or shuffle',
+                                shape: _orientation == Orientation.portrait
+                                    ? const _CubistShapeB()
+                                    : const _CubistShapeD(),
+                                elevation: 6.0,
+                                backgroundColor: unfocusedColor,
+                                child: Icon(Icons.shuffle, size: 26.0));
+                          })))))
+        ]));
   }
 }
 
@@ -1220,25 +1181,6 @@ Widget _sourceButton(String source) {
       break;
     default:
       return Icon(Icons.folder);
-      break;
-  }
-}
-
-/// Picks appropriate source list color according to source given
-Color _sourceColor(_PlayerState parent) {
-  switch (parent.source) {
-    case 'YouTube':
-      return youTubeColor;
-      break;
-    case 'SD card':
-      return parent.folder == sdCardRoot
-          ? Theme.of(parent.context).primaryColor
-          : Theme.of(parent.context).textTheme.bodyText2.color;
-      break;
-    default:
-      return parent.folder == deviceRoot
-          ? Theme.of(parent.context).primaryColor
-          : Theme.of(parent.context).textTheme.bodyText2.color;
       break;
   }
 }
@@ -1277,61 +1219,45 @@ Widget _folderTile(_PlayerState parent, MapEntry<Entry, SplayTreeMap> entry) {
   final Entry _entry = entry.key;
   if (_children.isNotEmpty) {
     return ExpansionTile(
-      key: PageStorageKey<MapEntry>(entry),
-      initiallyExpanded: parent.folder.contains(_entry.path),
-      onExpansionChanged: (bool value) {
-        if (value == true) parent.onFolder(_entry.path);
-      },
-      title: Text(_entry.name,
-          style: TextStyle(
-            fontSize: 14.0,
-            color: parent.folder == _entry.path
-                ? Theme.of(parent.context).primaryColor
-                : Theme.of(parent.context).textTheme.bodyText2.color,
-          )),
-      subtitle: Text(
-        _entry.songs == 1 ? '1 song' : '${_entry.songs} songs',
-        style: TextStyle(
-          fontSize: 10.0,
-          color: parent.folder == _entry.path
-              ? Theme.of(parent.context).primaryColor
-              : Theme.of(parent.context)
-                  .textTheme
-                  .bodyText2
-                  .color
-                  .withOpacity(.55),
-        ),
-      ),
-      children: _children.entries
-          .map((MapEntry<Entry, SplayTreeMap> entry) =>
-              _folderTile(parent, entry))
-          .toList(),
-    );
-  }
-  return ListTile(
-    selected: parent.folder == _entry.path,
-    onTap: () => parent.onFolder(_entry.path),
-    title: _entry.name.isEmpty
-        ? Align(
-            alignment: Alignment.centerLeft,
-            child: Icon(Icons.home,
+        key: PageStorageKey<MapEntry>(entry),
+        initiallyExpanded: parent.folder.contains(_entry.path),
+        onExpansionChanged: (bool value) {
+          if (value == true) parent.onFolder(_entry.path);
+        },
+        title: Text(_entry.name,
+            style: TextStyle(
+                fontSize: 14.0,
                 color: parent.folder == _entry.path
                     ? Theme.of(parent.context).primaryColor
-                    : unfocusedColor),
-          )
-        : Text(
-            _entry.name,
-            style: const TextStyle(
-              fontSize: 14.0,
-            ),
-          ),
-    subtitle: Text(
-      _entry.songs == 1 ? '1 song' : '${_entry.songs} songs',
-      style: const TextStyle(
-        fontSize: 10.0,
-      ),
-    ),
-  );
+                    : Theme.of(parent.context).textTheme.bodyText2.color)),
+        subtitle: Text(_entry.songs == 1 ? '1 song' : '${_entry.songs} songs',
+            style: TextStyle(
+                fontSize: 10.0,
+                color: parent.folder == _entry.path
+                    ? Theme.of(parent.context).primaryColor
+                    : Theme.of(parent.context)
+                        .textTheme
+                        .bodyText2
+                        .color
+                        .withOpacity(.55))),
+        children: _children.entries
+            .map((MapEntry<Entry, SplayTreeMap> entry) =>
+                _folderTile(parent, entry))
+            .toList());
+  }
+  return ListTile(
+      selected: parent.folder == _entry.path,
+      onTap: () => parent.onFolder(_entry.path),
+      title: _entry.name.isEmpty
+          ? Align(
+              alignment: Alignment.centerLeft,
+              child: Icon(Icons.home,
+                  color: parent.folder == _entry.path
+                      ? Theme.of(parent.context).primaryColor
+                      : unfocusedColor))
+          : Text(_entry.name, style: const TextStyle(fontSize: 14.0)),
+      subtitle: Text(_entry.songs == 1 ? '1 song' : '${_entry.songs} songs',
+          style: const TextStyle(fontSize: 10.0)));
 }
 
 /// Renders play/pause button
@@ -1343,39 +1269,34 @@ Widget _play(_PlayerState parent, double elevation, double iconSize,
         : const _CubistShapeD();
     if (parent._queueComplete == 0) {
       return FloatingActionButton(
-        onPressed: () {},
-        tooltip: 'Loading...',
-        shape: _shape,
-        elevation: elevation,
-        child: SizedBox(
-          width: iconSize - 10.0,
-          height: iconSize - 10.0,
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(
-                Theme.of(context).colorScheme.onSecondary),
-          ),
-        ),
-      );
+          onPressed: () {},
+          tooltip: 'Loading...',
+          shape: _shape,
+          elevation: elevation,
+          child: SizedBox(
+              width: iconSize - 10.0,
+              height: iconSize - 10.0,
+              child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                      Theme.of(context).colorScheme.onSecondary))));
     } else if (parent._queueComplete == false) {
       return FloatingActionButton(
-        onPressed: () {},
-        tooltip: 'Unable to retrieve songs!',
-        shape: _shape,
-        elevation: elevation,
-        child: Icon(Icons.close, size: iconSize),
-      );
+          onPressed: () {},
+          tooltip: 'Unable to retrieve songs!',
+          shape: _shape,
+          elevation: elevation,
+          child: Icon(Icons.close, size: iconSize));
     }
     return FloatingActionButton(
-      onPressed: onPressed,
-      tooltip: parent._state == AudioPlayerState.PLAYING ? 'Pause' : 'Play',
-      shape: _shape,
-      elevation: elevation,
-      child: Icon(
-          parent._state == AudioPlayerState.PLAYING
-              ? Icons.pause
-              : Icons.play_arrow,
-          size: iconSize),
-    );
+        onPressed: onPressed,
+        tooltip: parent._state == AudioPlayerState.PLAYING ? 'Pause' : 'Play',
+        shape: _shape,
+        elevation: elevation,
+        child: Icon(
+            parent._state == AudioPlayerState.PLAYING
+                ? Icons.pause
+                : Icons.play_arrow,
+            size: iconSize));
   });
 }
 
@@ -1383,20 +1304,17 @@ Widget _play(_PlayerState parent, double elevation, double iconSize,
 Widget _playerSquared(_PlayerState parent) {
   return Theme(
       data: ThemeData(
-          textTheme: Theme.of(parent.context).textTheme.apply(
-                bodyColor: unfocusedColor,
-              ),
-          iconTheme: IconThemeData(
-            color: unfocusedColor,
-          )),
+          textTheme: Theme.of(parent.context)
+              .textTheme
+              .apply(bodyColor: unfocusedColor),
+          iconTheme: IconThemeData(color: unfocusedColor)),
       child: Material(
-        clipBehavior: Clip.antiAlias,
-        elevation: 2.0,
-        shape: parent._orientation == Orientation.portrait
-            ? const _CubistShapeA()
-            : const _CubistShapeC(),
-        child: _rangeCover(parent),
-      ));
+          clipBehavior: Clip.antiAlias,
+          elevation: 2.0,
+          shape: parent._orientation == Orientation.portrait
+              ? const _CubistShapeA()
+              : const _CubistShapeC(),
+          child: _rangeCover(parent)));
 }
 
 /// Renders album artwork or rate selector
@@ -1425,9 +1343,9 @@ Widget _rangeCover(parent) {
         IconButton(
             onPressed: () => parent.onRate(parent._rate - 5.0),
             tooltip: 'Slow down',
-            icon: Icon(Icons.keyboard_arrow_down, size: 30)),
+            icon: Icon(Icons.keyboard_arrow_down, size: 30))
       ]),
-      const Text('%', style: _textStyle),
+      const Text('%', style: _textStyle)
     ]));
   }
   Widget _cover = Icon(Icons.music_note, size: 48.0);
@@ -1456,63 +1374,60 @@ Drag curve vertically to change speed''',
         showDuration: _defaultDuration,
         waitDuration: _defaultDuration,
         child: GestureDetector(
-          onHorizontalDragStart: (DragStartDetails details) {
-            parent.onPositionDragStart(
-                context,
-                details,
-                _bad.contains(parent._queueComplete)
-                    ? _defaultDuration
-                    : parent.duration);
-          },
-          onHorizontalDragUpdate: (DragUpdateDetails details) {
-            parent.onPositionDragUpdate(
-                context,
-                details,
-                _bad.contains(parent._queueComplete)
-                    ? _defaultDuration
-                    : parent.duration);
-          },
-          onHorizontalDragEnd: (DragEndDetails details) {
-            parent.onPositionDragEnd(
-                context,
-                details,
-                _bad.contains(parent._queueComplete)
-                    ? _defaultDuration
-                    : parent.duration);
-          },
-          onTapUp: (TapUpDetails details) {
-            parent.onPositionTapUp(
-                context,
-                details,
-                _bad.contains(parent._queueComplete)
-                    ? _defaultDuration
-                    : parent.duration);
-          },
-          onVerticalDragStart: (DragStartDetails details) {
-            parent.onRateDragStart(context, details);
-          },
-          onVerticalDragUpdate: (DragUpdateDetails details) {
-            parent.onRateDragUpdate(context, details);
-          },
-          onVerticalDragEnd: (DragEndDetails details) {
-            parent.onRateDragEnd(context, details);
-          },
-          /*onDoubleTap: () {},*/
-          child: CustomPaint(
-            size: const Size.fromHeight(120.0),
-            painter: CubistWave(
-              _bad.contains(parent._queueComplete)
-                  ? 'zapaz'
-                  : parent.song.title,
-              _bad.contains(parent._queueComplete)
-                  ? _defaultDuration
-                  : parent.duration,
-              parent._position,
-              parent._rate,
-              Theme.of(context).primaryColor,
-            ),
-          ),
-        ));
+            onHorizontalDragStart: (DragStartDetails details) {
+              parent.onPositionDragStart(
+                  context,
+                  details,
+                  _bad.contains(parent._queueComplete)
+                      ? _defaultDuration
+                      : parent.duration);
+            },
+            onHorizontalDragUpdate: (DragUpdateDetails details) {
+              parent.onPositionDragUpdate(
+                  context,
+                  details,
+                  _bad.contains(parent._queueComplete)
+                      ? _defaultDuration
+                      : parent.duration);
+            },
+            onHorizontalDragEnd: (DragEndDetails details) {
+              parent.onPositionDragEnd(
+                  context,
+                  details,
+                  _bad.contains(parent._queueComplete)
+                      ? _defaultDuration
+                      : parent.duration);
+            },
+            onTapUp: (TapUpDetails details) {
+              parent.onPositionTapUp(
+                  context,
+                  details,
+                  _bad.contains(parent._queueComplete)
+                      ? _defaultDuration
+                      : parent.duration);
+            },
+            onVerticalDragStart: (DragStartDetails details) {
+              parent.onRateDragStart(context, details);
+            },
+            onVerticalDragUpdate: (DragUpdateDetails details) {
+              parent.onRateDragUpdate(context, details);
+            },
+            onVerticalDragEnd: (DragEndDetails details) {
+              parent.onRateDragEnd(context, details);
+            },
+            /*onDoubleTap: () {},*/
+            child: CustomPaint(
+                size: const Size.fromHeight(120.0),
+                painter: CubistWave(
+                    _bad.contains(parent._queueComplete)
+                        ? 'zapaz'
+                        : parent.song.title,
+                    _bad.contains(parent._queueComplete)
+                        ? _defaultDuration
+                        : parent.duration,
+                    parent._position,
+                    parent._rate,
+                    Theme.of(context).primaryColor))));
   });
 }
 
@@ -1524,31 +1439,20 @@ Widget _playerControl(_PlayerState parent) {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: <Widget>[
-                Text(
-                  _bad.contains(parent._queueComplete)
-                      ? '0:00'
-                      : '${parent._position.inMinutes}:'
-                          '${zero(parent._position.inSeconds % 60)}',
-                  style: TextStyle(
-                      color: Theme.of(context).textTheme.bodyText2.color,
-                      fontWeight: FontWeight.bold),
-                ),
-                Text(
-                    _bad.contains(parent._queueComplete)
-                        ? '0:00'
-                        : '${parent.duration.inMinutes}:'
-                            '${zero(parent.duration.inSeconds % 60)}',
-                    style: TextStyle(
-                      color: Theme.of(context).textTheme.bodyText2.color,
-                    )),
-              ],
-            ),
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  Text(_timeInfo(parent._queueComplete, parent._position),
+                      style: TextStyle(
+                          color: Theme.of(context).textTheme.bodyText2.color,
+                          fontWeight: FontWeight.bold)),
+                  Text(_timeInfo(parent._queueComplete, parent.duration),
+                      style: TextStyle(
+                          color: Theme.of(context).textTheme.bodyText2.color))
+                ]),
             _title(parent),
             _artist(parent),
             _mainControl(parent),
-            _minorControl(parent),
+            _minorControl(parent)
           ]);
     } else {
       return Column(
@@ -1556,8 +1460,10 @@ Widget _playerControl(_PlayerState parent) {
           children: <Widget>[
             _mainControl(parent),
             _minorControl(parent),
-            _artist(parent),
-            _title(parent),
+            Expanded(
+                child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: <Widget>[_artist(parent), _title(parent)]))
           ]);
     }
   });
@@ -1569,26 +1475,25 @@ Widget _title(_PlayerState parent) {
     if (parent._queueComplete == 0) {
       return Text('Empty queue',
           style: TextStyle(
-            color: Theme.of(context).textTheme.bodyText2.color,
-            fontSize: 15.0,
-          ));
+              color: Theme.of(context).textTheme.bodyText2.color,
+              fontSize: 15.0));
     } else if (parent._queueComplete == false) {
       return Text('Unable to retrieve songs!',
           style: TextStyle(
-            color: Theme.of(context).textTheme.bodyText2.color,
-            fontSize: 15.0,
-          ));
+              color: Theme.of(context).textTheme.bodyText2.color,
+              fontSize: 15.0));
     }
     return Text(parent.song.title.replaceAll('_', ' ').toUpperCase(),
         overflow: TextOverflow.ellipsis,
         maxLines: 2,
         textAlign: TextAlign.center,
         style: TextStyle(
-          color: Theme.of(context).textTheme.bodyText2.color,
-          fontSize: parent.song.artist == '<unknown>' ? 12.0 : 13.0,
-          letterSpacing: 6.0,
-          fontWeight: FontWeight.bold,
-        ));
+            color: Theme.of(context).textTheme.bodyText2.color,
+            fontSize: parent.song.artist == '<unknown>' ? 12.0 : 13.0,
+            letterSpacing: 6.0,
+            fontWeight: parent._orientation == Orientation.portrait
+                ? FontWeight.bold
+                : FontWeight.w800));
   });
 }
 
@@ -1598,97 +1503,85 @@ Widget _artist(_PlayerState parent) {
     if (_bad.contains(parent._queueComplete) ||
         parent.song.artist == '<unknown>') return const SizedBox.shrink();
 
-    return Text(
-      parent.song.artist.toUpperCase(),
-      overflow: TextOverflow.ellipsis,
-      maxLines: 1,
-      style: TextStyle(
-        color: Theme.of(context).textTheme.bodyText2.color,
-        fontSize: 9.0,
-        height: 2.0,
-        letterSpacing: 6.0,
-      ),
-    );
+    return Text(parent.song.artist.toUpperCase(),
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
+        style: TextStyle(
+            color: Theme.of(context).textTheme.bodyText2.color,
+            fontSize: 9.0,
+            height: 2.0,
+            letterSpacing: 6.0,
+            fontWeight: parent._orientation == Orientation.portrait
+                ? FontWeight.normal
+                : FontWeight.w500));
   });
 }
 
 /// Renders main player control buttons
 Widget _mainControl(_PlayerState parent) {
   return Row(
-    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-    children: <Widget>[
-      IconButton(
-        onPressed: () => parent.onChange(parent.index - 1),
-        tooltip: 'Previous',
-        icon: Icon(Icons.skip_previous, size: 30.0),
-      ),
-      _play(parent, 3.0, 30.0, parent._changeState),
-      IconButton(
-        onPressed: () => parent.onChange(parent.index + 1),
-        tooltip: 'Next',
-        icon: Icon(Icons.skip_next, size: 30.0),
-      ),
-    ],
-  );
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: <Widget>[
+        IconButton(
+            onPressed: () => parent.onChange(parent.index - 1),
+            tooltip: 'Previous',
+            icon: Icon(Icons.skip_previous, size: 30.0)),
+        _play(parent, 3.0, 30.0, parent._changeState),
+        IconButton(
+            onPressed: () => parent.onChange(parent.index + 1),
+            tooltip: 'Next',
+            icon: Icon(Icons.skip_next, size: 30.0))
+      ]);
 }
 
 /// Renders minor player control buttons
 Widget _minorControl(_PlayerState parent) {
-  return Row(
-    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-    children: <Widget>[
-      Row(
+  return Builder(builder: (BuildContext context) {
+    return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: <Widget>[
-          /*Tooltip(
-                    message: 'Select start',
-                    child: InkWell(
-                        onTap: () {},
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20.0, vertical: 16.0),
-                          child: Text('A',
-                              style: TextStyle(
-                                  fontSize: 15.0,
-                                  fontWeight: FontWeight.bold)),
-                        )),
-                  ),
-                  Tooltip(
-                    message: 'Select end',
-                    child: InkWell(
-                        onTap: () {},
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20.0, vertical: 16.0),
-                          child: Text('B',
-                              style: TextStyle(
-                                  fontSize: 15.0,
-                                  fontWeight: FontWeight.bold)),
-                        )),
-                  ),*/
-          IconButton(
-            onPressed: () {
-              parent.onSet(parent.context);
-            },
-            tooltip: 'Set (one, all, or random songs)',
-            icon: Icon(_status(parent._set), size: 20.0),
-          ),
-        ],
-      ),
-      Row(
-        children: <Widget>[
-          IconButton(
-            onPressed: () {
-              parent.onMode(parent.context);
-            },
-            tooltip: 'Mode (once or in a loop)',
-            icon: Icon(
-                parent._mode == 'loop' ? Icons.repeat : Icons.trending_flat,
-                size: 20.0),
-          ),
-        ],
-      ),
-    ],
-  );
+          Row(children: <Widget>[
+            /*Tooltip(
+                message: 'Select start',
+                child: InkWell(
+                    onTap: () {},
+                    child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20.0, vertical: 16.0),
+                        child: Text('A',
+                            style: TextStyle(
+                                fontSize: 15.0,
+                                fontWeight: FontWeight.bold))))),
+            Tooltip(
+                message: 'Select end',
+                child: InkWell(
+                    onTap: () {},
+                    child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20.0, vertical: 16.0),
+                        child: Text('B',
+                            style: TextStyle(
+                                fontSize: 15.0,
+                                fontWeight: FontWeight.bold))))),*/
+            IconButton(
+                onPressed: () {
+                  parent.onSet(context);
+                },
+                tooltip: 'Set (one, all, or random songs)',
+                icon: Icon(_status(parent._set), size: 20.0))
+          ]),
+          Row(children: <Widget>[
+            IconButton(
+                onPressed: () {
+                  parent.onMode(context);
+                },
+                tooltip: 'Mode (once or in a loop)',
+                icon: Icon(
+                    parent._mode == 'loop' ? Icons.repeat : Icons.trending_flat,
+                    size: 20.0))
+          ])
+        ]);
+  });
 }
 
 /// Picks appropriate [_set] icon
@@ -1704,6 +1597,12 @@ IconData _status(String _set) {
       return Icons.shuffle;
       break;
   }
+}
+
+String _timeInfo(_queueComplete, _time) {
+  return _bad.contains(_queueComplete)
+      ? '0:00'
+      : '${_time.inMinutes}:${zero(_time.inSeconds % 60)}';
 }
 
 /// Renders current folder's ancestors
@@ -1723,25 +1622,20 @@ Widget _navigation(_PlayerState parent) {
     _title = _path.substring(start + 1, relatives.elementAt(j));
     if (j + 1 == length) {
       _row.add(InkWell(
-        onTap: parent._pickFolder,
-        child: Text(_title,
-            style: TextStyle(color: Theme.of(parent.context).primaryColor)),
-      ));
+          onTap: parent._pickFolder,
+          child: Text(_title,
+              style: TextStyle(color: Theme.of(parent.context).primaryColor))));
     } else {
       final int _end = relatives.elementAt(j);
       _row
         ..add(InkWell(
-          onTap: () => parent.onFolder(_path.substring(0, _end)),
-          child: Text(_title),
-        ))
+            onTap: () => parent.onFolder(_path.substring(0, _end)),
+            child: Text(_title)))
         ..add(Text(' > ', style: TextStyle(color: unfocusedColor)));
     }
     j++;
   }
-  return Tooltip(
-    message: 'Change folder',
-    child: Row(children: _row),
-  );
+  return Tooltip(message: 'Change folder', child: Row(children: _row));
 }
 
 /// Renders queue list
@@ -1757,53 +1651,45 @@ Widget _songPicker(parent) {
     return const Center(child: Text('Unable to retrieve songs!'));
   }
   return ListView.builder(
-    itemCount: parent.queue.length,
-    itemBuilder: (BuildContext context, int i) {
-      final SongInfo _song = parent.queue[i];
-      return ListTile(
-        selected: parent.index == i,
-        onTap: () {
-          if (parent.index == i) {
-            parent._changeState();
-          } else {
-            parent
-              ..onStop()
-              ..setState(() => parent.index = i)
-              ..onPlay();
-          }
-        },
-        leading: SizedBox(
-          height: 35.0,
-          child: AspectRatio(
-            aspectRatio:
-                parent._orientation == Orientation.portrait ? 8 / 7 : 6.9 / 5.6,
-            child: _listCover(parent, _song),
-          ),
-        ),
-        title: Text(_song.title.replaceAll('_', ' '),
-            overflow: TextOverflow.ellipsis, maxLines: 2),
-        subtitle: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: <Widget>[
-            Expanded(
-              child: Text(_song.artist == '<unknown>' ? '' : _song.artist,
-                  style: const TextStyle(fontSize: 11.0),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1),
-            ),
-            Text(
-                '${Duration(milliseconds: int.parse(_song.duration)).inMinutes}:'
-                '${zero(Duration(milliseconds: int.parse(_song.duration)).inSeconds % 60)}'),
-          ],
-        ),
-        trailing: Icon(
-            (parent.index == i && parent._state == AudioPlayerState.PLAYING)
-                ? Icons.pause
-                : Icons.play_arrow,
-            size: 30.0),
-      );
-    },
-  );
+      itemCount: parent.queue.length,
+      itemBuilder: (BuildContext context, int i) {
+        final SongInfo _song = parent.queue[i];
+        return ListTile(
+            selected: parent.index == i,
+            onTap: () {
+              if (parent.index == i) {
+                parent._changeState();
+              } else {
+                parent
+                  ..onStop()
+                  ..setState(() => parent.index = i)
+                  ..onPlay();
+              }
+            },
+            leading: SizedBox(
+                height: 35.0,
+                child: AspectRatio(
+                    aspectRatio: 8 / 7, child: _listCover(parent, _song))),
+            title: Text(_song.title.replaceAll('_', ' '),
+                overflow: TextOverflow.ellipsis, maxLines: 1),
+            subtitle: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  Expanded(
+                      child: Text(
+                          _song.artist == '<unknown>' ? '' : _song.artist,
+                          style: const TextStyle(fontSize: 11.0),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1)),
+                  Text(_timeInfo(
+                      true, Duration(milliseconds: int.parse(_song.duration))))
+                ]),
+            trailing: Icon(
+                (parent.index == i && parent._state == AudioPlayerState.PLAYING)
+                    ? Icons.pause
+                    : Icons.play_arrow,
+                size: 30.0));
+      });
 }
 
 /// Renders album artworks for queue list
@@ -1814,12 +1700,11 @@ Widget _listCover(_PlayerState parent, SongInfo _song) {
         parent._coversMap[_song.filePath] == 0 &&
         _coverFile.existsSync()) {
       return Material(
-        clipBehavior: Clip.antiAlias,
-        shape: parent._orientation == Orientation.portrait
-            ? const _CubistShapeA()
-            : const _CubistShapeC(),
-        child: Image.file(_coverFile, fit: BoxFit.cover),
-      );
+          clipBehavior: Clip.antiAlias,
+          shape: parent._orientation == Orientation.portrait
+              ? const _CubistShapeA()
+              : const _CubistShapeC(),
+          child: Image.file(_coverFile, fit: BoxFit.cover));
     }
   }
   return Icon(Icons.music_note, size: 24.0);
@@ -1858,11 +1743,8 @@ class CubistWave extends CustomPainter {
 
     final Path _songPath = Path()..moveTo(.0, size.height);
     _waveList.asMap().forEach((int index, double value) {
-      _songPath.lineTo(
-          (size.width * index) / _len,
-          size.height -
-              (((3.0 * size.height) / 4.0) * (rate / 200.0)) -
-              ((size.height / 4.0) * (value / 100.0)));
+      _songPath.lineTo((size.width * index) / _len,
+          size.height - _heightFactor(size.height, rate, value));
     });
     _songPath
       ..lineTo(size.width, size.height)
@@ -1875,11 +1757,8 @@ class CubistWave extends CustomPainter {
     _indicatorPath.moveTo(.0, size.height);
     _waveList.asMap().forEach((int index, double value) {
       if (index < ceil) {
-        _indicatorPath.lineTo(
-            (size.width * index) / _len,
-            size.height -
-                (((3.0 * size.height) / 4.0) * (rate / 200.0)) -
-                ((size.height / 4.0) * (value / 100.0)));
+        _indicatorPath.lineTo((size.width * index) / _len,
+            size.height - _heightFactor(size.height, rate, value));
       } else if (index == ceil) {
         final double previous = index == 0 ? size.height : _waveList[index - 1];
         final double diff = value - previous;
@@ -1887,9 +1766,7 @@ class CubistWave extends CustomPainter {
         _indicatorPath.lineTo(
             size.width * percentage,
             size.height -
-                (((3.0 * size.height) / 4.0) * (rate / 200.0)) -
-                ((size.height / 4.0) *
-                    ((previous + (diff * advance)) / 100.0)));
+                _heightFactor(size.height, rate, previous + (diff * advance)));
       }
     });
     _indicatorPath
@@ -1991,15 +1868,12 @@ class _CubistShapeB extends ShapeBorder {
 }
 
 /// Cubist shape for landscape album artworks.
-///  /\  /\
-/// /  \/  \
-/// \      /
-///  \____/
+///  ______
+/// /      \
+/// \       \
+///  \______/
 class _CubistShapeC extends ShapeBorder {
   const _CubistShapeC();
-
-  static const double _w = 7.3;
-  static const double _h = 5.6;
 
   @override
   EdgeInsetsGeometry get dimensions => const EdgeInsets.only();
@@ -2011,16 +1885,16 @@ class _CubistShapeC extends ShapeBorder {
   @override
   Path getOuterPath(Rect rect, {TextDirection textDirection}) {
     return Path()
-      ..moveTo(
-          rect.left + rect.width * 1.3 / _w, rect.top + rect.height * .5 / _h)
-      ..lineTo(
-          rect.left + rect.width * 3.2 / _w, rect.top + rect.height * .8 / _h)
-      ..lineTo(rect.right - rect.width * 2.0 / _w, rect.top)
-      ..lineTo(rect.right, rect.top + rect.height * 1.9 / _h)
-      ..lineTo(rect.right - rect.width * 1.0 / _w,
-          rect.bottom - rect.height * .8 / _h)
-      ..lineTo(rect.left + rect.width * 2.6 / _w, rect.bottom)
-      ..lineTo(rect.left, rect.top + rect.height * 2.9 / _h)
+      ..moveTo(rect.left + rect.width / 4, rect.top)
+      ..lineTo(rect.right - rect.width / 2, rect.top)
+      ..lineTo(rect.right - rect.width / 8, rect.top + rect.height / 8)
+      ..lineTo(rect.right, rect.top + rect.height / 2)
+      ..lineTo(rect.right, rect.bottom - rect.height / 4)
+      ..lineTo(rect.right - rect.width / 4, rect.bottom)
+      ..lineTo(rect.left + rect.width / 2, rect.bottom)
+      ..lineTo(rect.left + rect.width / 8, rect.bottom - rect.height / 8)
+      ..lineTo(rect.left, rect.bottom - rect.height / 2)
+      ..lineTo(rect.left, rect.top + rect.height / 4)
       ..close();
   }
 
