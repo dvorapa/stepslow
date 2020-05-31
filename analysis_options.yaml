@@ -6,7 +6,7 @@ linter:
     - always_require_non_null_named_parameters
  #38 - always_specify_types
     - annotate_overrides
-  #3 - avoid_annotating_with_dynamic
+  #4 - avoid_annotating_with_dynamic
     - avoid_as
     - avoid_bool_literals_in_conditional_expressions
     - avoid_catches_without_on_clauses
@@ -87,7 +87,7 @@ linter:
     - package_api_docs
     - package_names
     - package_prefixed_library_names
-  #3 - parameter_assignments
+  #5 - parameter_assignments
     - prefer_adjacent_string_concatenation
     - prefer_asserts_in_initializer_lists
     - prefer_asserts_with_message
@@ -101,7 +101,7 @@ linter:
     - prefer_contains
    # - prefer_double_quotes
     - prefer_equal_for_default_values
- #13 - prefer_expression_function_bodies
+ #18 - prefer_expression_function_bodies
     - prefer_final_fields
     - prefer_final_in_for_each
     - prefer_final_locals

@@ -65,9 +65,8 @@ String zero(int n) {
 }
 
 /// Calculates height factor for wave
-double _heightFactor(_height, _rate, _value) {
-  return (_height / 400.0) * (3.0 * _rate / 2.0 + _value);
-}
+double _heightFactor(double _height, double _rate, double _value) =>
+    (_height / 400.0) * (3.0 * _rate / 2.0 + _value);
 
 /// Finds sd card root folder(s) if any
 Future<List<String>> getSdCardRoot() async {
@@ -447,7 +446,7 @@ class _PlayerState extends State<Player> {
     final RenderBox slider = context.findRenderObject();
     final Offset position = slider.globalToLocal(details.globalPosition);
     if (_state == AudioPlayerState.PLAYING) onPause(quiet: true);
-    onSeek(position, duration, slider.constraints.smallest.width);
+    onSeek(position, duration, slider.constraints.biggest.width);
   }
 
   /// Listens seek drag actions
@@ -455,7 +454,7 @@ class _PlayerState extends State<Player> {
       BuildContext context, DragUpdateDetails details, Duration duration) {
     final RenderBox slider = context.findRenderObject();
     final Offset position = slider.globalToLocal(details.globalPosition);
-    onSeek(position, duration, slider.constraints.smallest.width);
+    onSeek(position, duration, slider.constraints.biggest.width);
   }
 
   /// Ends to listen seek drag actions
@@ -469,7 +468,7 @@ class _PlayerState extends State<Player> {
       BuildContext context, TapUpDetails details, Duration duration) {
     final RenderBox slider = context.findRenderObject();
     final Offset position = slider.globalToLocal(details.globalPosition);
-    onSeek(position, duration, slider.constraints.smallest.width);
+    onSeek(position, duration, slider.constraints.biggest.width);
   }
 
   /// Changes [_position] according to seek actions
@@ -494,15 +493,14 @@ class _PlayerState extends State<Player> {
     final RenderBox slider = context.findRenderObject();
     final Offset rate = slider.globalToLocal(details.globalPosition);
     if (_state == AudioPlayerState.PLAYING) onPause(quiet: true);
-
-    updateRate(rate);
+    updateRate(rate, slider.constraints.biggest.height);
   }
 
   /// Listens [_rate] drag actions
   void onRateDragUpdate(BuildContext context, DragUpdateDetails details) {
     final RenderBox slider = context.findRenderObject();
     final Offset rate = slider.globalToLocal(details.globalPosition);
-    updateRate(rate);
+    updateRate(rate, slider.constraints.biggest.height);
   }
 
   /// Ends to listen [_rate] drag actions
@@ -511,9 +509,8 @@ class _PlayerState extends State<Player> {
   }
 
   /// Changes playback [_rate] according to given offset
-  void updateRate(Offset rate) {
+  void updateRate(Offset rate, double height) {
     double newRate = 100.0;
-    const double height = 120.0;
 
     if (rate.dy <= .0) {
       newRate = .0;
@@ -523,10 +520,10 @@ class _PlayerState extends State<Player> {
       newRate = rate.dy;
     }
 
-    _rate = 200.0 * (1 - (newRate / height));
-    _rate = _rate - _rate % 5;
-    if (_rate < 5) _rate = 5;
-    onRate(_rate);
+    newRate = 200.0 * (1 - (newRate / height));
+    newRate = newRate - newRate % 5;
+    if (newRate < 5) newRate = 5;
+    onRate(newRate);
   }
 
   /// Changes playback [_rate] by given
@@ -623,15 +620,16 @@ class _PlayerState extends State<Player> {
 
   /// Queries album artworks to cache if missing
   Future<void> _checkCovers() async {
+    final int _height =
+        (MediaQuery.of(context).size.shortestSide * 7 / 10).ceil();
     for (final SongInfo _song in _songs) {
       final String _songPath = _song.filePath;
       if (_songPath.startsWith(deviceRoot) ||
           (_sdCard && _songPath.startsWith(sdCardRoot))) {
         if (!_coversMap.containsKey(_songPath)) {
-          /*MediaQuery.of(context).size.width;*/
           await _flutterFFmpeg
               .execute(
-                  '-i "$_songPath" -vf scale="-2:\'min(260,ih)\'":flags=lanczos -an "$_tempFolder/${_song.id}.jpg"')
+                  '-i "$_songPath" -vf scale="-2:\'min($_height,ih)\'":flags=lanczos -an "$_tempFolder/${_song.id}.jpg"')
               .then((int _status) {
             _coversMap[_songPath] = _status;
             _coversYaml += '"$_songPath": $_status\n';
@@ -1019,50 +1017,46 @@ class _PlayerState extends State<Player> {
                       ? Column(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: <Widget>[
-                              SizedBox(
-                                  height: 140,
-                                  child: AspectRatio(
-                                      aspectRatio: 8 / 7,
-                                      child: _playerSquared(this))),
-                              Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: <Widget>[
-                                    _playerOblong(this),
-                                    Container(
-                                        height: 220.0,
-                                        color: Theme.of(context).primaryColor,
-                                        child: Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                                16.0, 12.0, 16.0, .0),
-                                            child: Theme(
-                                                data: ThemeData.from(
-                                                    colorScheme: Theme.of(context)
-                                                        .colorScheme
-                                                        .copyWith(
-                                                            secondary: Theme.of(
-                                                                    context)
-                                                                .scaffoldBackgroundColor,
-                                                            onSecondary:
-                                                                Theme.of(context)
-                                                                    .primaryColor,
-                                                            brightness:
-                                                                Brightness
-                                                                    .dark)),
-                                                child: _playerControl(this))))
-                                  ])
+                              Flexible(
+                                  flex: 17,
+                                  child: FractionallySizedBox(
+                                      widthFactor: .45,
+                                      child: AspectRatio(
+                                          aspectRatio: 8 / 7,
+                                          child: _playerSquared(this)))),
+                              Flexible(flex: 11, child: _playerOblong(this)),
+                              Flexible(
+                                  flex: 20,
+                                  child: Container(
+                                      color: Theme.of(context).primaryColor,
+                                      padding: const EdgeInsets.fromLTRB(
+                                          16.0, 12.0, 16.0, .0),
+                                      child: Theme(
+                                          data: ThemeData.from(
+                                              colorScheme: Theme.of(context)
+                                                  .colorScheme
+                                                  .copyWith(
+                                                      secondary: Theme.of(
+                                                              context)
+                                                          .scaffoldBackgroundColor,
+                                                      onSecondary:
+                                                          Theme.of(context)
+                                                              .primaryColor,
+                                                      brightness:
+                                                          Brightness.dark)),
+                                          child: _playerControl(this))))
                             ])
                       : Column(children: <Widget>[
-                          Expanded(
-                              flex: 90,
+                          Flexible(
+                              flex: 3,
                               child: Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceEvenly,
                                   children: <Widget>[
-                                    const Expanded(
-                                        flex: 25, child: SizedBox.shrink()),
-                                    Expanded(
-                                        flex: 95,
+                                    SizedBox(
+                                        width:
+                                            MediaQuery.of(context).size.width *
+                                                .37,
                                         child: Theme(
                                             data: Theme.of(context).copyWith(
                                                 textTheme: Theme.of(context)
@@ -1075,16 +1069,12 @@ class _PlayerState extends State<Player> {
                                                     color: Theme.of(context)
                                                         .primaryColor)),
                                             child: _playerControl(this))),
-                                    const Expanded(
-                                        flex: 25, child: SizedBox.shrink()),
                                     AspectRatio(
                                         aspectRatio: 8 / 7,
-                                        child: _playerSquared(this)),
-                                    const Expanded(
-                                        flex: 25, child: SizedBox.shrink())
+                                        child: _playerSquared(this))
                                   ])),
-                          Expanded(
-                              flex: 60,
+                          Flexible(
+                              flex: 2,
                               child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: <Widget>[
@@ -1092,7 +1082,7 @@ class _PlayerState extends State<Player> {
                                         heightFactor: _heightFactor(1, _rate,
                                             wave(song?.title ?? 'zapaz').first),
                                         child: Container(
-                                            alignment: Alignment.centerLeft,
+                                            alignment: Alignment.center,
                                             padding: const EdgeInsets.symmetric(
                                                 horizontal: 12.0),
                                             color: _position == _emptyDuration
@@ -1127,8 +1117,9 @@ class _PlayerState extends State<Player> {
                                                 _timeInfo(
                                                     _queueComplete, duration),
                                                 style: TextStyle(
-                                                    color: Theme.of(context)
-                                                        .scaffoldBackgroundColor))))
+                                                  color: Theme.of(context)
+                                                      .scaffoldBackgroundColor,
+                                                ))))
                                   ]))
                         ]))),
           WillPopScope(
@@ -1417,7 +1408,7 @@ Drag curve vertically to change speed''',
             },
             /*onDoubleTap: () {},*/
             child: CustomPaint(
-                size: const Size.fromHeight(120.0),
+                size: Size.infinite,
                 painter: CubistWave(
                     _bad.contains(parent._queueComplete)
                         ? 'zapaz'
@@ -1455,16 +1446,14 @@ Widget _playerControl(_PlayerState parent) {
             _minorControl(parent)
           ]);
     } else {
-      return Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: <Widget>[
-            _mainControl(parent),
-            _minorControl(parent),
-            Expanded(
-                child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: <Widget>[_artist(parent), _title(parent)]))
-          ]);
+      return Column(children: <Widget>[
+        _mainControl(parent),
+        _minorControl(parent),
+        Expanded(
+            child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: <Widget>[_artist(parent), _title(parent)]))
+      ]);
     }
   });
 }
@@ -1599,7 +1588,7 @@ IconData _status(String _set) {
   }
 }
 
-String _timeInfo(_queueComplete, _time) {
+String _timeInfo(dynamic _queueComplete, Duration _time) {
   return _bad.contains(_queueComplete)
       ? '0:00'
       : '${_time.inMinutes}:${zero(_time.inSeconds % 60)}';
