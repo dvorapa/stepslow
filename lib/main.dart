@@ -579,13 +579,13 @@ class _PlayerState extends State<Player> {
                     break;
                   case 'SD card':
                     return Row(children: <Widget>[
-                      Icon(Icons.sd_card),
+                      const Icon(Icons.sd_card),
                       Text(' $_source')
                     ]);
                     break;
                   default:
                     return Row(children: <Widget>[
-                      Icon(Icons.folder),
+                      const Icon(Icons.folder),
                       Text(' $_source')
                     ]);
                     break;
@@ -987,7 +987,7 @@ class _PlayerState extends State<Player> {
                         IconButton(
                             onPressed: _returnToPlayer,
                             tooltip: 'Back to player',
-                            icon: Icon(Icons.navigate_next))
+                            icon: const Icon(Icons.navigate_next))
                       ]),
                   body: _folderPicker(this),
                   floatingActionButton: Align(
@@ -1006,12 +1006,12 @@ class _PlayerState extends State<Player> {
                       leading: IconButton(
                           onPressed: _pickFolder,
                           tooltip: 'Pick folder',
-                          icon: Icon(Icons.folder_open)),
+                          icon: const Icon(Icons.folder_open)),
                       actions: <Widget>[
                         IconButton(
                             onPressed: _pickSong,
                             tooltip: 'Pick song',
-                            icon: Icon(Icons.album))
+                            icon: const Icon(Icons.album))
                       ]),
                   body: _orientation == Orientation.portrait
                       ? Column(
@@ -1129,7 +1129,7 @@ class _PlayerState extends State<Player> {
                       leading: IconButton(
                           onPressed: _returnToPlayer,
                           tooltip: 'Back to player',
-                          icon: Icon(Icons.navigate_before)),
+                          icon: const Icon(Icons.navigate_before)),
                       title: _navigation(this)),
                   body: _songPicker(this),
                   floatingActionButton: Align(
@@ -1155,7 +1155,7 @@ class _PlayerState extends State<Player> {
                                     : const _CubistShapeD(),
                                 elevation: 6.0,
                                 backgroundColor: unfocusedColor,
-                                child: Icon(Icons.shuffle, size: 26.0));
+                                child: const Icon(Icons.shuffle, size: 26.0));
                           })))))
         ]));
   }
@@ -1168,10 +1168,10 @@ Widget _sourceButton(String source) {
       return Icon(Typicons.social_youtube, color: youTubeColor);
       break;
     case 'SD card':
-      return Icon(Icons.sd_card);
+      return const Icon(Icons.sd_card);
       break;
     default:
-      return Icon(Icons.folder);
+      return const Icon(Icons.folder);
       break;
   }
 }
@@ -1330,16 +1330,16 @@ Widget _rangeCover(parent) {
         IconButton(
             onPressed: () => parent.onRate(parent._rate + 5.0),
             tooltip: 'Speed up',
-            icon: Icon(Icons.keyboard_arrow_up, size: 30)),
+            icon: const Icon(Icons.keyboard_arrow_up, size: 30)),
         IconButton(
             onPressed: () => parent.onRate(parent._rate - 5.0),
             tooltip: 'Slow down',
-            icon: Icon(Icons.keyboard_arrow_down, size: 30))
+            icon: const Icon(Icons.keyboard_arrow_down, size: 30))
       ]),
       const Text('%', style: _textStyle)
     ]));
   }
-  Widget _cover = Icon(Icons.music_note, size: 48.0);
+  Widget _cover = const Icon(Icons.music_note, size: 48.0);
   if (!_bad.contains(parent._tempFolderComplete) && parent.song != null) {
     final File _coverFile = File('$_tempFolder/${parent.song.id}.jpg');
     if (!_bad.contains(parent._coversComplete) &&
@@ -1514,12 +1514,12 @@ Widget _mainControl(_PlayerState parent) {
         IconButton(
             onPressed: () => parent.onChange(parent.index - 1),
             tooltip: 'Previous',
-            icon: Icon(Icons.skip_previous, size: 30.0)),
+            icon: const Icon(Icons.skip_previous, size: 30.0)),
         _play(parent, 3.0, 30.0, parent._changeState),
         IconButton(
             onPressed: () => parent.onChange(parent.index + 1),
             tooltip: 'Next',
-            icon: Icon(Icons.skip_next, size: 30.0))
+            icon: const Icon(Icons.skip_next, size: 30.0))
       ]);
 }
 
@@ -1696,7 +1696,7 @@ Widget _listCover(_PlayerState parent, SongInfo _song) {
           child: Image.file(_coverFile, fit: BoxFit.cover));
     }
   }
-  return Icon(Icons.music_note, size: 24.0);
+  return const Icon(Icons.music_note, size: 24.0);
 }
 
 /// Cubist shape for player slider.
