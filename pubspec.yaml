@@ -39,7 +39,7 @@ dependencies:
   yaml: ^2.2.1
 
 dev_dependencies:
-  flutter_launcher_icons: ">=0.8.0 <1.0.0"
+  flutter_launcher_icons: ">=0.8.1 <1.0.0"
   flutter_test:
     sdk: flutter
 
