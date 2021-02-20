@@ -570,24 +570,54 @@ class _PlayerState extends State<Player> {
                 onFolder(_folder);
               },
               itemBuilder: (String _source) {
+                final Text _sourceText = source == _source
+                    ? Text(_source,
+                        style: TextStyle(color: Theme.of(context).primaryColor))
+                    : Text(_source);
                 switch (_source) {
                   case 'YouTube':
-                    return Row(children: <Widget>[
-                      Icon(Typicons.social_youtube, color: youTubeColor),
-                      Text(' $_source', style: TextStyle(color: youTubeColor))
-                    ]);
+                    return Wrap(
+                        spacing: 10.0,
+                        crossAxisAlignment: WrapCrossAlignment.end,
+                        children: <Widget>[
+                          Icon(Typicons.social_youtube,
+                              color: source == _source
+                                  ? Theme.of(context).primaryColor
+                                  : youTubeColor),
+                          _sourceText
+                        ]);
                     break;
                   case 'SD card':
-                    return Row(children: <Widget>[
-                      const Icon(Icons.sd_card),
-                      Text(' $_source')
-                    ]);
+                    return Wrap(
+                        spacing: 10.0,
+                        crossAxisAlignment: WrapCrossAlignment.end,
+                        children: <Widget>[
+                          Icon(Icons.sd_card,
+                              color: source == _source
+                                  ? Theme.of(context).primaryColor
+                                  : Theme.of(context)
+                                      .textTheme
+                                      .bodyText2
+                                      .color
+                                      .withOpacity(.55)),
+                          _sourceText
+                        ]);
                     break;
                   default:
-                    return Row(children: <Widget>[
-                      const Icon(Icons.folder),
-                      Text(' $_source')
-                    ]);
+                    return Wrap(
+                        spacing: 10.0,
+                        crossAxisAlignment: WrapCrossAlignment.end,
+                        children: <Widget>[
+                          Icon(Icons.folder,
+                              color: source == _source
+                                  ? Theme.of(context).primaryColor
+                                  : Theme.of(context)
+                                      .textTheme
+                                      .bodyText2
+                                      .color
+                                      .withOpacity(.55)),
+                          _sourceText
+                        ]);
                     break;
                 }
               });
@@ -978,7 +1008,13 @@ class _PlayerState extends State<Player> {
                       leading: IconButton(
                           tooltip: 'Change source',
                           onPressed: _pickSource,
-                          icon: _sourceButton(source)),
+                          icon: _sourceButton(
+                              source,
+                              Theme.of(context)
+                                  .textTheme
+                                  .bodyText2
+                                  .color
+                                  .withOpacity(.55))),
                       title: Tooltip(
                           message: 'Change source',
                           child:
@@ -1021,9 +1057,7 @@ class _PlayerState extends State<Player> {
                                   flex: 17,
                                   child: FractionallySizedBox(
                                       widthFactor: .45,
-                                      child: AspectRatio(
-                                          aspectRatio: 8 / 7,
-                                          child: _playerSquared(this)))),
+                                      child: _playerSquared(this))),
                               Flexible(flex: 11, child: _playerOblong(this)),
                               Flexible(
                                   flex: 20,
@@ -1069,9 +1103,7 @@ class _PlayerState extends State<Player> {
                                                     color: Theme.of(context)
                                                         .primaryColor)),
                                             child: _playerControl(this))),
-                                    AspectRatio(
-                                        aspectRatio: 8 / 7,
-                                        child: _playerSquared(this))
+                                    _playerSquared(this)
                                   ])),
                           Flexible(
                               flex: 2,
@@ -1162,16 +1194,16 @@ class _PlayerState extends State<Player> {
 }
 
 /// Picks appropriate [source] list icon according to source given
-Widget _sourceButton(String source) {
+Widget _sourceButton(String source, Color darkColor) {
   switch (source) {
     case 'YouTube':
       return Icon(Typicons.social_youtube, color: youTubeColor);
       break;
     case 'SD card':
-      return const Icon(Icons.sd_card);
+      return Icon(Icons.sd_card, color: darkColor);
       break;
     default:
-      return const Icon(Icons.folder);
+      return Icon(Icons.folder, color: darkColor);
       break;
   }
 }
@@ -1293,19 +1325,21 @@ Widget _play(_PlayerState parent, double elevation, double iconSize,
 
 /// Handles squared player section
 Widget _playerSquared(_PlayerState parent) {
-  return Theme(
-      data: ThemeData(
-          textTheme: Theme.of(parent.context)
-              .textTheme
-              .apply(bodyColor: unfocusedColor),
-          iconTheme: IconThemeData(color: unfocusedColor)),
-      child: Material(
-          clipBehavior: Clip.antiAlias,
-          elevation: 2.0,
-          shape: parent._orientation == Orientation.portrait
-              ? const _CubistShapeA()
-              : const _CubistShapeC(),
-          child: _rangeCover(parent)));
+  return AspectRatio(
+      aspectRatio: 8 / 7,
+      child: Theme(
+          data: ThemeData(
+              textTheme: Theme.of(parent.context)
+                  .textTheme
+                  .apply(bodyColor: unfocusedColor),
+              iconTheme: IconThemeData(color: unfocusedColor)),
+          child: Material(
+              clipBehavior: Clip.antiAlias,
+              elevation: 2.0,
+              shape: parent._orientation == Orientation.portrait
+                  ? const _CubistShapeA()
+                  : const _CubistShapeC(),
+              child: _rangeCover(parent))));
 }
 
 /// Renders album artwork or rate selector
@@ -1620,11 +1654,13 @@ Widget _navigation(_PlayerState parent) {
         ..add(InkWell(
             onTap: () => parent.onFolder(_path.substring(0, _end)),
             child: Text(_title)))
-        ..add(Text(' > ', style: TextStyle(color: unfocusedColor)));
+        ..add(Text('>', style: TextStyle(color: unfocusedColor)));
     }
     j++;
   }
-  return Tooltip(message: 'Change folder', child: Row(children: _row));
+  return Tooltip(
+      message: 'Change folder',
+      child: Wrap(runSpacing: 8.0, spacing: 8.0, children: _row));
 }
 
 /// Renders queue list
