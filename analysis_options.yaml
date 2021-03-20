@@ -4,17 +4,16 @@ linter:
    # - always_put_control_body_on_new_line
     - always_put_required_named_parameters_first
     - always_require_non_null_named_parameters
- #38 - always_specify_types
+ #40 - always_specify_types
     - always_use_package_imports
     - annotate_overrides
-  #4 - avoid_annotating_with_dynamic
-    - avoid_as
+    - avoid_annotating_with_dynamic
     - avoid_bool_literals_in_conditional_expressions
     - avoid_catches_without_on_clauses
     - avoid_catching_errors
     - avoid_classes_with_only_static_members
     - avoid_double_and_int_checks
-    - avoid_dynamic_calls
+ #57 - avoid_dynamic_calls
     - avoid_empty_else
    # - avoid_equals_and_hash_code_on_mutable_classes
     - avoid_escaping_inner_quotes
@@ -25,7 +24,7 @@ linter:
     - avoid_js_rounded_ints
     - avoid_null_checks_in_equality_operators
     - avoid_positional_boolean_parameters
-  #6 - avoid_print
+ #14 - avoid_print
     - avoid_private_typedef_functions
     - avoid_redundant_argument_values
     - avoid_relative_lib_imports
@@ -56,8 +55,9 @@ linter:
     - comment_references
     - constant_identifier_names
     - control_flow_in_finally
- #12 - curly_braces_in_flow_control_structures
- #13 - diagnostic_describe_all_properties
+ #13 - curly_braces_in_flow_control_structures
+    - deprecated_consistency
+ #12 - diagnostic_describe_all_properties
     - directives_ordering
     - do_not_use_environment
     - empty_catches
@@ -74,7 +74,7 @@ linter:
     - leading_newlines_in_multiline_strings
     - library_names
     - library_prefixes
-  #2 - lines_longer_than_80_chars
+  #4 - lines_longer_than_80_chars
     - list_remove_unrelated_type
     - literal_only_boolean_expressions
     - missing_whitespace_between_adjacent_strings
@@ -125,7 +125,7 @@ linter:
     - prefer_is_not_empty
     - prefer_is_not_operator
     - prefer_iterable_whereType
-    - prefer_mixin
+  #1 - prefer_mixin
     - prefer_null_aware_operators
     - prefer_relative_imports
     - prefer_single_quotes
@@ -139,7 +139,7 @@ linter:
     - slash_for_doc_comments
     - sort_child_properties_last
     - sort_constructors_first
-    - sort_pub_dependencies
+   # - sort_pub_dependencies
     - sort_unnamed_constructors_first
     - test_types_in_equals
     - throw_in_finally
@@ -169,9 +169,11 @@ linter:
     - unsafe_html
     - use_full_hex_values_for_flutter_colors
     - use_function_type_syntax_for_parameters
+    - use_if_null_to_convert_nulls_to_bools
     - use_is_even_rather_than_modulo
     - use_key_in_widget_constructors
     - use_late_for_private_fields_and_variables
+    - use_named_constants
     - use_raw_strings
     - use_rethrow_when_possible
     - use_setters_to_change_properties

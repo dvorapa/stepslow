@@ -2,17 +2,17 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
 import 'dart:math';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:permissions_plugin/permissions_plugin.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_audio_query/flutter_audio_query.dart';
-import 'package:flutter_file_manager/flutter_file_manager.dart';
+import 'package:flutter_ffmpeg/flutter_ffmpeg.dart';
+import 'package:wakelock/wakelock.dart';
 import 'package:easy_dialogs/easy_dialogs.dart';
 import 'package:typicons_flutter/typicons_flutter.dart';
-import 'package:flutter_ffmpeg/flutter_ffmpeg.dart';
 import 'package:yaml/yaml.dart';
+import 'package:permissions_plugin/permissions_plugin.dart';
+import 'package:flutter_file_manager/flutter_file_manager.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Theme main color
@@ -39,24 +39,22 @@ Duration _defaultDuration = const Duration(seconds: 5);
 /// Default duration for animations
 Duration _animationDuration = const Duration(milliseconds: 300);
 
-/// Root folder of device
-const String deviceRoot = '/storage/emulated/0';
-
-/// Root folder of an SD card if any, provided by [getSdCardRoot()]
-String sdCardRoot;
-
-/// App folder for temporary files, provided by [getExternalCacheDirectories()]
-String _tempFolder;
+/// Available sources
+final List<Source> _sources = [Source('/storage/emulated/0', 0)];
 
 /// List of completer bad states
-final List<dynamic> _bad = [0, false];
+// -1 for complete, -2 for error, natural for count
+final List<int> _bad = [0, -2];
 
 /// Prints long messages, e.g. maps
-void printLong(dynamic text) {
+void printLong(Object text) {
   text = text.toString();
   final Pattern pattern = RegExp('.{1,1023}');
-  for (final Match match in pattern.allMatches(text)) print(match.group(0));
+  pattern.allMatches(text).map((Match match) => match.group(0)).forEach(print);
 }
+
+/// Changes app data folders
+bool _debug = true;
 
 /// Pads seconds
 String zero(int n) {
@@ -67,22 +65,6 @@ String zero(int n) {
 /// Calculates height factor for wave
 double _heightFactor(double _height, double _rate, double _value) =>
     (_height / 400.0) * (3.0 * _rate / 2.0 + _value);
-
-/// Finds sd card root folder(s) if any
-Future<List<String>> getSdCardRoot() async {
-  final List<String> result = [];
-  final Directory storage = Directory('/storage');
-  final List<FileSystemEntity> subDirs = storage.listSync();
-  for (final Directory dir in subDirs) {
-    try {
-      final List<FileSystemEntity> subSubDirs = dir.listSync();
-      if (subSubDirs.isNotEmpty) result.add(dir.path);
-    } on FileSystemException {
-      continue;
-    }
-  }
-  return result;
-}
 
 /// Filesystem entity representing a song or a folder.
 class Entry implements Comparable<Entry> {
@@ -106,16 +88,91 @@ class Entry implements Comparable<Entry> {
   String toString() => 'Entry( $path )';
 
   @override
-  bool operator ==(dynamic other) => other is Entry && other.path == path;
+  bool operator ==(Object other) => other is Entry && other.path == path;
 
   @override
   int get hashCode => path.hashCode;
 
   /// Entry name
   String get name {
-    if ([deviceRoot, sdCardRoot].contains(path)) return '';
+    if (_sources.any((Source _source) => _source.root == path)) return '';
 
     return path.split('/').lastWhere((String e) => e != '');
+  }
+}
+
+/// Filesystem entity representing a source of songs.
+class Source implements Pattern {
+  /// Source constructor
+  Source(this.root, this.id);
+
+  /// Source root path
+  String root;
+
+  /// Order factor
+  /// -1 for YouTube, 0 for Device, natural for others
+  int id = 0;
+
+  /// Stack of filesystem entities inside Source
+  SplayTreeMap<Entry, SplayTreeMap> browse = SplayTreeMap();
+
+  /// Source folder stack completer
+  int browseFoldersComplete = 0;
+
+  /// Source path to store covers
+  String coversPath;
+
+  @override
+  bool operator ==(Object other) => other is Source && other.root == root;
+
+  @override
+  int get hashCode => root.hashCode;
+
+  @override
+  Iterable<Match> allMatches(String string, [int start = 0]) =>
+      root.allMatches(string, start);
+
+  @override
+  Match matchAsPrefix(String string, [int start = 0]) =>
+      root.matchAsPrefix(string, start);
+
+  @override
+  String toString() => 'Source( $root )';
+
+  /// YouTube, internal or external device
+  String get type {
+    switch (id) {
+      case 0:
+        return 'Device';
+        break;
+      case -1:
+        return 'YouTube';
+        break;
+      default:
+        return 'SD card';
+        break;
+    }
+  }
+
+  /// Source name
+  String get name {
+    if (id <= 0) return type;
+    return '$type $id';
+  }
+}
+
+/// Finds SD card(s) if any and creates [Source] from them
+Stream<Source> checkoutSdCards() async* {
+  int n = 1;
+  await for (final FileSystemEntity subDir in Directory('/storage').list()) {
+    try {
+      if (subDir is Directory && !await subDir.list().isEmpty) {
+        yield Source(subDir.path, n);
+        n++;
+      }
+    } on FileSystemException {
+      continue;
+    }
   }
 }
 
@@ -159,9 +216,13 @@ class Player extends StatefulWidget {
 }
 
 /// State handler.
-class _PlayerState extends State<Player> {
+class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Audio player entity
   final AudioPlayer audioPlayer = AudioPlayer();
+
+  /// Android intent channel entity
+  final MethodChannel bridge =
+      const MethodChannel('cz.dvorapa.stepslow/sharedPath');
 
   /// Current playback state
   AudioPlayerState _state = AudioPlayerState.STOPPED;
@@ -201,17 +262,8 @@ class _PlayerState extends State<Player> {
   /// [PageView] controller
   final PageController _controller = PageController(initialPage: 1);
 
-  /// Available sources
-  final List<String> _sources = ['Device'];
-
-  /// False if SD card is not available
-  bool _sdCard = false;
-
-  /// False if YouTube is not available
-  /*bool _youTube = false;*/
-
   /// Current playback source
-  String source = 'Device';
+  Source source = _sources[0];
 
   /// Current playback folder
   String folder = '/storage/emulated/0/Music';
@@ -228,11 +280,14 @@ class _PlayerState extends State<Player> {
   /// Current song duration
   Duration duration = _emptyDuration;
 
+  /// Source cover stack completer
+  int _coversComplete = 0;
+
   /// File containing album artwork paths YAML map
   File _coversFile;
 
   /// YAML map of album artwork paths
-  String _coversYaml = '---\n';
+  List<String> _coversYaml = ['---'];
 
   /// Map representation of album artwork paths YAML map
   Map<String, int> _coversMap = {};
@@ -247,37 +302,16 @@ class _PlayerState extends State<Player> {
   final FlutterFFmpegConfig _flutterFFmpegConfig = FlutterFFmpegConfig();
 
   /// Queue completer
-  dynamic _queueComplete = 0;
+  int _queueComplete = 0;
 
   /// Song stack completer
-  dynamic _songsComplete = 0;
+  int _songsComplete = 0;
 
-  /// Device song stack completer
-  dynamic _deviceBrowseSongsComplete = 0;
+  /// Source stack completer
+  int _browseComplete = 0;
 
-  /// Device folder stack completer
-  dynamic _deviceBrowseFoldersComplete = 0;
-
-  /// Device stack completer
-  dynamic _deviceBrowseComplete = 0;
-
-  /// SD card song stack completer
-  dynamic _sdCardBrowseSongsComplete = 0;
-
-  /// SD card folder stack completer
-  dynamic _sdCardBrowseFoldersComplete = 0;
-
-  /// SD card stack completer
-  dynamic _sdCardBrowseComplete = 0;
-
-  /// Album artwork completer
-  dynamic _coversComplete = 0;
-
-  /// Temporary storage completer
-  dynamic _tempFolderComplete = 0;
-
-  /// Preferences storage completer
-  dynamic _privateFolderComplete = 0;
+  /// Source song stack completer
+  int _browseSongsComplete = 0;
 
   /// Current playback queue
   List<SongInfo> queue = [];
@@ -285,22 +319,17 @@ class _PlayerState extends State<Player> {
   /// Stack of available songs
   final List<SongInfo> _songs = [];
 
-  /// Stack of filesystem entities inside device
-  SplayTreeMap<Entry, SplayTreeMap> deviceBrowse = SplayTreeMap();
-
-  /// Stack of filesystem entities inside SD card
-  SplayTreeMap<Entry, SplayTreeMap> sdCardBrowse = SplayTreeMap();
-
   /// Initializes [song] playback
   void onPlay({bool quiet = false}) {
     if (_state == AudioPlayerState.PAUSED || quiet) {
       audioPlayer.resume();
     } else {
       setState(() => song = queue[index]);
-      audioPlayer.play(song.filePath);
+      audioPlayer.play(song.filePath, isLocal: true);
     }
     onRate(_rate);
     if (!quiet) setState(() => _state = AudioPlayerState.PLAYING);
+    Wakelock.enable();
   }
 
   /// Changes [song] according to given [_index]
@@ -348,6 +377,7 @@ class _PlayerState extends State<Player> {
       duration = _emptyDuration;
       _position = _emptyDuration;
       _state = AudioPlayerState.STOPPED;
+      Wakelock.disable();
     });
   }
 
@@ -373,7 +403,7 @@ class _PlayerState extends State<Player> {
           }
         }
         if (_queueComplete > 0) {
-          setState(() => _queueComplete = true);
+          setState(() => _queueComplete = -1);
         } else {
           onStop();
           setState(() => song = null);
@@ -384,10 +414,27 @@ class _PlayerState extends State<Player> {
     }
   }
 
+  /// Initializes shared [song] playback
+  Future<void> openSharedPath() async {
+    final String _url = await bridge.invokeMethod('openSharedPath');
+    if (_url != null && _url != song?.filePath) {
+      final String _sharedFolder = File(_url).parent.path;
+      final Source _newSource =
+          _sources.firstWhere(_sharedFolder.startsWith, orElse: () => null) ??
+              source;
+      if (source != _newSource) setState(() => source = _newSource);
+      onFolder(_sharedFolder);
+      final int _index =
+          queue.indexWhere((SongInfo _song) => _song.filePath == _url);
+      onChange(_index);
+      onPlay();
+    }
+  }
+
   /// Changes playback [_mode] and informs user using given [context]
   void onMode(StatelessElement context) {
     setState(() => _mode = _mode == 'loop' ? 'once' : 'loop');
-    Scaffold.of(context).showSnackBar(SnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: Theme.of(context).accentColor,
         elevation: .0,
         duration: const Duration(seconds: 2),
@@ -426,7 +473,7 @@ class _PlayerState extends State<Player> {
       }
     });
 
-    Scaffold.of(context).showSnackBar(SnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: Theme.of(context).accentColor,
         elevation: .0,
         duration: const Duration(seconds: 2),
@@ -550,34 +597,22 @@ class _PlayerState extends State<Player> {
     showDialog(
         context: context,
         builder: (BuildContext context) {
-          return SingleChoiceDialog<String>(
+          return SingleChoiceDialog<Source>(
               isDividerEnabled: true,
               items: _sources,
-              onSelected: (String _source) {
+              onSelected: (Source _source) {
                 setState(() => source = _source);
-                String _folder;
-                switch (_source) {
-                  case 'YouTube':
-                    _folder = '';
-                    break;
-                  case 'SD card':
-                    _folder = sdCardRoot;
-                    break;
-                  default:
-                    _folder = deviceRoot;
-                    break;
-                }
-                onFolder(_folder);
+                onFolder(_source.root);
               },
-              itemBuilder: (String _source) {
+              itemBuilder: (Source _source) {
                 final Text _sourceText = source == _source
-                    ? Text(_source,
+                    ? Text(_source.name,
                         style: TextStyle(color: Theme.of(context).primaryColor))
-                    : Text(_source);
-                switch (_source) {
-                  case 'YouTube':
+                    : Text(_source.name);
+                switch (_source.id) {
+                  case -1:
                     return Wrap(
-                        spacing: 10.0,
+                        spacing: 12.0,
                         crossAxisAlignment: WrapCrossAlignment.end,
                         children: <Widget>[
                           Icon(Typicons.social_youtube,
@@ -587,12 +622,12 @@ class _PlayerState extends State<Player> {
                           _sourceText
                         ]);
                     break;
-                  case 'SD card':
+                  case 0:
                     return Wrap(
-                        spacing: 10.0,
+                        spacing: 12.0,
                         crossAxisAlignment: WrapCrossAlignment.end,
                         children: <Widget>[
-                          Icon(Icons.sd_card,
+                          Icon(Icons.folder,
                               color: source == _source
                                   ? Theme.of(context).primaryColor
                                   : Theme.of(context)
@@ -605,10 +640,10 @@ class _PlayerState extends State<Player> {
                     break;
                   default:
                     return Wrap(
-                        spacing: 10.0,
+                        spacing: 12.0,
                         crossAxisAlignment: WrapCrossAlignment.end,
                         children: <Widget>[
-                          Icon(Icons.folder,
+                          Icon(Icons.sd_card,
                               color: source == _source
                                   ? Theme.of(context).primaryColor
                                   : Theme.of(context)
@@ -648,28 +683,108 @@ class _PlayerState extends State<Player> {
     return false;
   }
 
-  /// Queries album artworks to cache if missing
-  Future<void> _checkCovers() async {
-    final int _height =
-        (MediaQuery.of(context).size.shortestSide * 7 / 10).ceil();
+  /// Queries album artworks to cache
+  Future<void> _cacheCovers() async {
+    _coversYaml = ['---'];
+    _coversMap.clear();
     for (final SongInfo _song in _songs) {
       final String _songPath = _song.filePath;
-      if (_songPath.startsWith(deviceRoot) ||
-          (_sdCard && _songPath.startsWith(sdCardRoot))) {
-        if (!_coversMap.containsKey(_songPath)) {
-          await _flutterFFmpeg
-              .execute(
-                  '-i "$_songPath" -vf scale="-2:\'min($_height,ih)\'":flags=lanczos -an "$_tempFolder/${_song.id}.jpg"')
-              .then((int _status) {
-            _coversMap[_songPath] = _status;
-            _coversYaml += '"$_songPath": $_status\n';
-            setState(() => ++_coversComplete);
-          });
-        }
+      final String _coversPath =
+          _sources.firstWhere(_songPath.startsWith).coversPath;
+      final String _coverPath = '$_coversPath/${_song.id}.jpg';
+      final bool _ffmpeg = _coversComplete != -2;
+      int _status = _ffmpeg ? 0 : 1;
+      if (!File(_coverPath).existsSync() && _ffmpeg) {
+        final int _height =
+            (MediaQuery.of(context).size.shortestSide * 7 / 10).ceil();
+        _status = await _flutterFFmpeg
+            .execute(
+                '-i "$_songPath" -vf scale="-2:\'min($_height,ih)\'":flags=lanczos -an "$_coverPath"')
+            .catchError((error) {
+          setState(() => _coversComplete = -2);
+          print(error.stackTrace);
+          return 1;
+        });
+      }
+      _coversMap[_songPath] = _status;
+      _coversYaml.add('"$_songPath": $_status');
+      if (_coversComplete != -2) setState(() => ++_coversComplete);
+    }
+    if (!_bad.contains(_coversComplete)) setState(() => _coversComplete = -1);
+    await _coversFile.writeAsString(_coversYaml.join('\n'));
+  }
+
+  /// Checks album artworks cache
+  Future<void> _checkCovers() async {
+    if (!_coversFile.existsSync()) {
+      await _cacheCovers();
+    } else {
+      try {
+        _coversYaml = await _coversFile.readAsLines();
+        _coversMap = Map<String, int>.from(loadYaml(_coversYaml.join('\n')));
+        setState(() => _coversComplete = -1);
+      } on FileSystemException catch (error) {
+        print(error);
+        await _cacheCovers();
+      } on YamlException catch (error) {
+        print(error);
+        await _cacheCovers();
       }
     }
-    _coversFile.writeAsString(_coversYaml); // ignore: unawaited_futures
-    setState(() => _coversComplete = true);
+  }
+
+  /// Fixes album artwork in cache
+  Future<void> _fixCover(SongInfo _song) async {
+    setState(() => _coversComplete = _coversMap.length);
+    final String _songPath = _song.filePath;
+    final String _coversPath = _sources
+            .firstWhere(_songPath.startsWith, orElse: () => null)
+            ?.coversPath ??
+        _sources[0].coversPath;
+    final String _coverPath = '$_coversPath/${_song.id}.jpg';
+    int _status = 0;
+    if (!File(_coverPath).existsSync()) {
+      final int _height =
+          (MediaQuery.of(context).size.shortestSide * 7 / 10).ceil();
+      _status = await _flutterFFmpeg
+          .execute(
+              '-i "$_songPath" -vf scale="-2:\'min($_height,ih)\'":flags=lanczos -an "$_coverPath"')
+          .catchError((error) {
+        setState(() => _coversComplete = -2);
+        print(error.stackTrace);
+        return 1;
+      });
+    }
+    _coversMap[_songPath] = _status;
+    _coversYaml
+      ..removeWhere((String _line) => _line.startsWith('"$_songPath": '))
+      ..add('"$_songPath": $_status');
+    if (_coversComplete != -2) setState(() => _coversComplete = -1);
+    await _coversFile.writeAsString(_coversYaml.join('\n'));
+  }
+
+  /// Gets album artwork from cache
+  Widget _getCover(SongInfo _song) {
+    if (!_bad.contains(_coversComplete)) {
+      final String _songPath = _song.filePath;
+      if (_coversMap.containsKey(_songPath)) {
+        if (_coversMap[_songPath] == 0) {
+          final String _coversPath = _sources
+                  .firstWhere(_songPath.startsWith, orElse: () => null)
+                  ?.coversPath ??
+              _sources[0].coversPath;
+          final File _returnCover = File('$_coversPath/${_song.id}.jpg');
+          if (_returnCover.existsSync()) {
+            return Image.file(_returnCover, fit: BoxFit.cover);
+          } else if (_coversComplete == -1) {
+            _fixCover(_song);
+          }
+        }
+      } else if (_coversComplete == -1) {
+        _fixCover(_song);
+      }
+    }
+    return null;
   }
 
   /// Gets relative urls for [fillBrowse]
@@ -685,8 +800,8 @@ class _PlayerState extends State<Player> {
       String _path,
       String _root,
       SplayTreeMap<Entry, SplayTreeMap> browse,
-      dynamic value,
-      ValueChanged<dynamic> valueChanged,
+      int value,
+      ValueChanged<int> valueChanged,
       String type) {
     final Iterable<int> relatives = getRelatives(_root, _path);
     int j = 0;
@@ -701,7 +816,7 @@ class _PlayerState extends State<Player> {
         entry = browse.keys.firstWhere((Entry key) => key == entry);
       } else {
         browse[entry] = SplayTreeMap<Entry, SplayTreeMap>();
-        setState(() => valueChanged(++value));
+        if (value != -2) setState(() => valueChanged(++value));
       }
       if (type == 'song') entry.songs++;
       browse = browse[entry];
@@ -730,11 +845,7 @@ class _PlayerState extends State<Player> {
       }
     });
     audioPlayer.onPlayerError.listen((String error) {
-      setState(() {
-        duration = _emptyDuration;
-        _position = _emptyDuration;
-        _state = AudioPlayerState.STOPPED;
-      });
+      onStop();
       print(error);
     });
 
@@ -751,226 +862,187 @@ class _PlayerState extends State<Player> {
 
     super.initState();
 
-    Stream<Map<Permission, PermissionState>>.fromFuture(
-            PermissionsPlugin.requestPermissions(
-                [Permission.READ_EXTERNAL_STORAGE]))
-        .listen((Map<Permission, PermissionState> status) {
-      if (status[Permission.READ_EXTERNAL_STORAGE] != PermissionState.GRANTED) {
+    PermissionsPlugin.requestPermissions([Permission.READ_EXTERNAL_STORAGE])
+        .then((Map<Permission, PermissionState> _states) {
+      if (_states[Permission.READ_EXTERNAL_STORAGE] != PermissionState.GRANTED)
         SystemChannels.platform.invokeMethod('SystemNavigator.pop');
-      } else {
-        Stream<List<Directory>>.fromFuture(getExternalCacheDirectories())
-            .listen((List<Directory> _tempFolders) {
-          for (final Directory tempFolder in _tempFolders) {
-            final String _tempFolderPath = tempFolder.path;
-            if (_tempFolderPath.startsWith(deviceRoot)) {
-              _tempFolder = _tempFolderPath;
-              setState(() => _tempFolderComplete = true);
-              if ((_songsComplete == true) && (_privateFolderComplete == true))
-                _checkCovers();
-            }
-          }
-        });
-        Stream<List<Directory>>.fromFuture(getExternalStorageDirectories())
-            .listen((List<Directory> _privateFolders) {
-          for (final Directory privateFolder in _privateFolders) {
-            final String _privateFolderPath = privateFolder.path;
-            if (_privateFolderPath.startsWith(deviceRoot)) {
-              setState(() {
-                _coversFile = File('$_privateFolderPath/covers.yaml');
-                _privateFolderComplete = true;
-              });
-              if (_coversFile.existsSync()) {
-                setState(() {
-                  _coversYaml = _coversFile.readAsStringSync();
-                  _coversMap = Map<String, int>.from(
-                      loadYaml(_coversYaml) ?? <String, int>{});
-                });
-              } else {
-                _coversFile.createSync(recursive: true);
+      // Got permission (read user files and folders)
+      checkoutSdCards().listen(_sources.add,
+          onDone: () {
+            // Got _sources
+            Stream<List<SongInfo>>.fromFuture(audioQuery.getSongs())
+                .expand((List<SongInfo> _songs) => _songs)
+                .listen((SongInfo _song) {
+              final String _songPath = _song.filePath;
+              // queue
+              if (File(_songPath).parent.path == folder) {
+                if (_set != 'random' || [0, 1].contains(_queueComplete)) {
+                  queue.add(_song);
+                } else {
+                  queue.insert(1 + random.nextInt(_queueComplete), _song);
+                }
+                setState(() => ++_queueComplete);
+                if (_queueComplete == 1) {
+                  audioPlayer.setUrl(_songPath, isLocal: true);
+                  setState(() => song = queue[0]);
+                }
               }
-              if ((_songsComplete == true) && (_tempFolderComplete == true))
-                _checkCovers();
-            }
-          }
-        });
 
-        Stream<List<SongInfo>>.fromFuture(audioQuery.getSongs()).listen(
-            (List<SongInfo> _songList) {
-          for (final SongInfo _song in _songList) {
-            final String _songPath = _song.filePath;
-            final String _songFolder = File(_songPath).parent.path;
-            // queue
-            if (_songFolder == folder) {
-              if (_set != 'random' || [0, 1].contains(_queueComplete)) {
-                queue.add(_song);
-              } else {
-                queue.insert(1 + random.nextInt(_queueComplete), _song);
-              }
-              setState(() => ++_queueComplete);
+              if (_sources.any(_songPath.startsWith)) {
+                // _songs
+                _songs.add(_song);
+                setState(() => ++_songsComplete);
 
-              if (_queueComplete == 1) {
-                audioPlayer.setUrl(_songPath);
-                setState(() => song = queue[0]);
-              }
-            }
-
-            // _songs
-            if (_songPath.startsWith(deviceRoot) ||
-                (_sdCard && _songPath.startsWith(sdCardRoot))) {
-              _songs.add(_song);
-              setState(() => ++_songsComplete);
-            }
-
-            // browse
-            if (_songPath.startsWith(deviceRoot)) {
-              fillBrowse(
-                  _songPath,
-                  deviceRoot,
-                  deviceBrowse,
-                  _deviceBrowseSongsComplete,
-                  (value) => _deviceBrowseSongsComplete = value,
-                  'song');
-            } else if (_sdCard && _songPath.startsWith(sdCardRoot)) {
-              fillBrowse(
-                  _songPath,
-                  sdCardRoot,
-                  sdCardBrowse,
-                  _sdCardBrowseSongsComplete,
-                  (value) => _sdCardBrowseSongsComplete = value,
-                  'song');
-            }
-          }
-        }, onDone: () {
-          if (_songsComplete > 0) {
-            setState(() => _songsComplete = true);
-            if ((_tempFolderComplete == true) &&
-                (_privateFolderComplete == true)) _checkCovers();
-          }
-          setState(() {
-            _queueComplete = _queueComplete > 0 ? true : 0;
-            if (_deviceBrowseFoldersComplete == true) {
-              _deviceBrowseComplete = true;
-            } else {
-              _deviceBrowseSongsComplete =
-                  _deviceBrowseSongsComplete > 0 ? true : 0;
-            }
-            if (_sdCardBrowseFoldersComplete == true) {
-              _sdCardBrowseComplete = true;
-            } else {
-              _sdCardBrowseSongsComplete =
-                  _sdCardBrowseSongsComplete > 0 ? true : 0;
-            }
-          });
-        }, onError: (error) {
-          setState(() {
-            _queueComplete = false;
-            _songsComplete = false;
-            _deviceBrowseComplete = false;
-            _sdCardBrowseComplete = false;
-          });
-          print(error);
-        });
-
-        Stream<List<Directory>>.fromFuture(
-                FileManager(root: Directory(deviceRoot))
-                    .dirsTree(excludeHidden: true))
-            .listen((List<Directory> _deviceFolderList) {
-          for (final Directory _folder in _deviceFolderList) {
-            fillBrowse(
-                _folder.path,
-                deviceRoot,
-                deviceBrowse,
-                _deviceBrowseFoldersComplete,
-                (value) => _deviceBrowseFoldersComplete = value,
-                'folder');
-          }
-        }, onDone: () {
-          fillBrowse(
-              deviceRoot,
-              deviceRoot,
-              deviceBrowse,
-              _deviceBrowseFoldersComplete,
-              (value) => _deviceBrowseFoldersComplete = value,
-              'folder');
-          setState(() {
-            if (_deviceBrowseSongsComplete == true) {
-              _deviceBrowseComplete = true;
-            } else {
-              _deviceBrowseFoldersComplete =
-                  _deviceBrowseFoldersComplete > 0 ? true : 0;
-            }
-          });
-        }, onError: (error) {
-          setState(() => _deviceBrowseFoldersComplete = false);
-          print(error);
-        });
-
-        Stream<List<String>>.fromFuture(getSdCardRoot()).listen(
-            (List<String> _sdCardRoots) {
-          for (final String _sdCardRootPath in _sdCardRoots) {
-            setState(() {
-              _sdCard = true;
-              sdCardRoot = _sdCardRootPath;
-            });
-            _sources.add('SD card');
-          }
-        }, onDone: () {
-          if (_sdCard) {
-            Stream<List<Directory>>.fromFuture(
-                    FileManager(root: Directory(sdCardRoot))
-                        .dirsTree(excludeHidden: true))
-                .listen((List<Directory> _sdCardFolderList) {
-              for (final Directory _folder in _sdCardFolderList) {
+                // browse
+                final Source _source =
+                    _sources.firstWhere(_songPath.startsWith);
                 fillBrowse(
-                    _folder.path,
-                    sdCardRoot,
-                    sdCardBrowse,
-                    _sdCardBrowseFoldersComplete,
-                    (value) => _sdCardBrowseFoldersComplete = value,
-                    'folder');
+                    _songPath,
+                    _source.root,
+                    _source.browse,
+                    _browseSongsComplete,
+                    (value) => _browseSongsComplete = value,
+                    'song');
               }
             }, onDone: () {
-              fillBrowse(
-                  sdCardRoot,
-                  sdCardRoot,
-                  sdCardBrowse,
-                  _sdCardBrowseFoldersComplete,
-                  (value) => _sdCardBrowseFoldersComplete = value,
-                  'folder');
+              // Got queue, _songs, browse
               setState(() {
-                if (_sdCardBrowseSongsComplete == true) {
-                  _sdCardBrowseComplete = true;
-                } else {
-                  _sdCardBrowseFoldersComplete =
-                      _sdCardBrowseFoldersComplete > 0 ? true : 0;
-                }
+                _queueComplete = _queueComplete > 0 ? -1 : 0;
+                _songsComplete = _songsComplete > 0 ? -1 : 0;
+                if (_sources.every(
+                    (Source _source) => _source.browseFoldersComplete == -1))
+                  _browseComplete = -1;
+                _browseSongsComplete = _browseSongsComplete > 0 ? -1 : 0;
               });
+              openSharedPath();
+              WidgetsBinding.instance.addObserver(this);
+              if (_coversFile != null &&
+                  !_sources
+                      .any((Source _source) => _source.coversPath == null) &&
+                  _songsComplete == -1) _checkCovers();
             }, onError: (error) {
-              setState(() => _sdCardBrowseFoldersComplete = false);
-              print(error);
+              setState(() {
+                _queueComplete = -2;
+                _songsComplete = -2;
+                _browseComplete = -2;
+                _browseSongsComplete = -2;
+              });
+              print(error.stackTrace);
             });
-          }
-        }, onError: (error) {
-          setState(() => _sdCard = false);
-          print(error);
-        });
-      }
-    });
+
+            for (final Source _source in _sources) {
+              Stream<List<Directory>>.fromFuture(
+                      FileManager(root: Directory(_source.root))
+                          .dirsTree(excludeHidden: true))
+                  .expand((List<Directory> _folders) => _folders)
+                  .listen((Directory _folder) {
+                fillBrowse(
+                    _folder.path,
+                    _source.root,
+                    _source.browse,
+                    _source.browseFoldersComplete,
+                    (value) => _source.browseFoldersComplete = value,
+                    'folder');
+              }, onDone: () {
+                fillBrowse(
+                    _source.root,
+                    _source.root,
+                    _source.browse,
+                    _source.browseFoldersComplete,
+                    (value) => _source.browseFoldersComplete = value,
+                    'folder');
+                // Got folders
+                setState(() {
+                  _source.browseFoldersComplete = -1;
+                  if ((_browseSongsComplete == -1) &&
+                      _sources.every((Source _source) =>
+                          _source.browseFoldersComplete == -1))
+                    _browseComplete = -1;
+                });
+              }, onError: (error) {
+                setState(() {
+                  _browseComplete = -2;
+                  _source.browseFoldersComplete = -2;
+                });
+                print(error.stackTrace);
+              });
+            }
+
+            getTemporaryDirectory().then((Directory _appCache) {
+              final String _appCachePath = _appCache.path;
+              for (final Source _source in _sources)
+                _source.coversPath = _appCachePath;
+
+              if (Platform.isAndroid) {
+                Stream<List<Directory>>.fromFuture(
+                        getExternalCacheDirectories())
+                    .expand((List<Directory> _extCaches) => _extCaches)
+                    .listen((Directory _extCache) {
+                  final String _extCachePath = _extCache.path;
+                  if (!_extCachePath.startsWith(_sources[0])) {
+                    _sources.firstWhere(_extCachePath.startsWith).coversPath =
+                        _extCachePath;
+                  } else if (_debug) {
+                    _sources[0].coversPath = _extCachePath;
+                  }
+                }, onDone: () {
+                  // Got coversPath
+                  if (_coversFile != null && !_bad.contains(_songsComplete))
+                    _checkCovers();
+                }, onError: (error) => print(error.stackTrace));
+              } else {
+                if (_coversFile != null && !_bad.contains(_songsComplete))
+                  _checkCovers();
+              }
+            }, onError: (error) => print(error.stackTrace));
+          },
+          onError: (error) => print(error.stackTrace));
+    }, onError: (error) => print(error.stackTrace));
 
     /*Stream<List<InternetAddress>>.fromFuture(
             InternetAddress.lookup('youtube.com'))
-        .listen((List<InternetAddress> result) {
-      if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-        setState(() => _youTube = true);
-        _sources.add('YouTube');
+        .expand((List<InternetAddress> _addresses) => _addresses)
+        .firstWhere(
+            (InternetAddress _address) => _address.rawAddress.isNotEmpty)
+        .then((_) => _sources.add(Source('', -1)),
+            onError: (error) => print(error.stackTrace));*/
+    // Got YouTube
+
+    getApplicationSupportDirectory().then((Directory _appData) {
+      _coversFile = File('${_appData.path}/covers.yaml');
+
+      if (Platform.isAndroid && _debug) {
+        StreamSubscription<Directory> _extDataStream;
+        _extDataStream =
+            Stream<List<Directory>>.fromFuture(getExternalStorageDirectories())
+                .expand((List<Directory> _extDatas) => _extDatas)
+                .listen((Directory _extData) {
+          final String _extDataPath = _extData.path;
+          if (_extDataPath.startsWith(_sources[0])) {
+            _coversFile = File('$_extDataPath/covers.yaml');
+            // Got _coversFile
+            if (!_sources.any((Source _source) => _source.coversPath == null) &&
+                !_bad.contains(_songsComplete)) _checkCovers();
+            _extDataStream.cancel();
+          }
+        }, onError: (error) => print(error.stackTrace));
+      } else {
+        if (!_sources.any((Source _source) => _source.coversPath == null) &&
+            !_bad.contains(_songsComplete)) _checkCovers();
       }
-    }, onError: print);*/
+    }, onError: (error) => print(error.stackTrace));
   }
 
   @override
   void dispose() {
     audioPlayer.release();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState _state) {
+    if (_state == AppLifecycleState.resumed) openSharedPath();
   }
 
   @override
@@ -1009,7 +1081,7 @@ class _PlayerState extends State<Player> {
                           tooltip: 'Change source',
                           onPressed: _pickSource,
                           icon: _sourceButton(
-                              source,
+                              source.id,
                               Theme.of(context)
                                   .textTheme
                                   .bodyText2
@@ -1017,8 +1089,8 @@ class _PlayerState extends State<Player> {
                                   .withOpacity(.55))),
                       title: Tooltip(
                           message: 'Change source',
-                          child:
-                              InkWell(onTap: _pickSource, child: Text(source))),
+                          child: InkWell(
+                              onTap: _pickSource, child: Text(source.name))),
                       actions: <Widget>[
                         IconButton(
                             onPressed: _returnToPlayer,
@@ -1193,40 +1265,33 @@ class _PlayerState extends State<Player> {
   }
 }
 
-/// Picks appropriate [source] list icon according to source given
-Widget _sourceButton(String source, Color darkColor) {
-  switch (source) {
-    case 'YouTube':
+/// Picks appropriate icon according to [sourceId] given
+Widget _sourceButton(int sourceId, Color darkColor) {
+  switch (sourceId) {
+    case -1:
       return Icon(Typicons.social_youtube, color: youTubeColor);
       break;
-    case 'SD card':
-      return Icon(Icons.sd_card, color: darkColor);
+    case 0:
+      return Icon(Icons.folder, color: darkColor);
       break;
     default:
-      return Icon(Icons.folder, color: darkColor);
+      return Icon(Icons.sd_card, color: darkColor);
       break;
   }
 }
 
 /// Renders folder list
 Widget _folderPicker(_PlayerState parent) {
-  if (parent.source == 'YouTube')
+  if (parent.source.id == -1)
     return const Center(child: Text('Not yet supported'));
 
-  dynamic _browseComplete;
-  SplayTreeMap<Entry, SplayTreeMap> browse;
-  if (parent.source == 'SD card') {
-    _browseComplete = parent._sdCardBrowseComplete;
-    browse = parent.sdCardBrowse;
-  } else {
-    _browseComplete = parent._deviceBrowseComplete;
-    browse = parent.deviceBrowse;
-  }
+  final int _browseComplete = parent._browseComplete;
+  final SplayTreeMap<Entry, SplayTreeMap> browse = parent.source.browse;
   if (_browseComplete == 0) {
     return Center(
         child:
             Text('No folders found', style: TextStyle(color: unfocusedColor)));
-  } else if (_browseComplete == false) {
+  } else if (_browseComplete == -2) {
     return const Center(child: Text('Unable to retrieve folders!'));
   }
   return ListView.builder(
@@ -1237,7 +1302,7 @@ Widget _folderPicker(_PlayerState parent) {
 }
 
 /// Renders folder list tile
-Widget _folderTile(_PlayerState parent, MapEntry<Entry, SplayTreeMap> entry) {
+Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> entry) {
   final SplayTreeMap<Entry, SplayTreeMap> _children = entry.value;
   final Entry _entry = entry.key;
   if (_children.isNotEmpty) {
@@ -1302,7 +1367,7 @@ Widget _play(_PlayerState parent, double elevation, double iconSize,
               child: CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(
                       Theme.of(context).colorScheme.onSecondary))));
-    } else if (parent._queueComplete == false) {
+    } else if (parent._queueComplete == -2) {
       return FloatingActionButton(
           onPressed: () {},
           tooltip: 'Unable to retrieve songs!',
@@ -1346,7 +1411,9 @@ Widget _playerSquared(_PlayerState parent) {
 Widget _rangeCover(parent) {
   if (parent._ratePicker == true) {
     String _message = 'Hide speed selector';
-    dynamic _onTap = () => parent.setState(() => parent._ratePicker = false);
+    GestureTapCallback _onTap = () {
+      parent.setState(() => parent._ratePicker = false);
+    };
     const TextStyle _textStyle = TextStyle(fontSize: 30);
     if (parent._rate != 100.0) {
       _message = 'Reset player speed';
@@ -1373,18 +1440,15 @@ Widget _rangeCover(parent) {
       const Text('%', style: _textStyle)
     ]));
   }
-  Widget _cover = const Icon(Icons.music_note, size: 48.0);
-  if (!_bad.contains(parent._tempFolderComplete) && parent.song != null) {
-    final File _coverFile = File('$_tempFolder/${parent.song.id}.jpg');
-    if (!_bad.contains(parent._coversComplete) &&
-        parent._coversMap[parent.song.filePath] == 0 &&
-        _coverFile.existsSync())
-      _cover = Image.file(_coverFile, fit: BoxFit.cover);
-  }
+  Widget _cover;
+  if (parent.song != null) _cover = parent._getCover(parent.song);
+  _cover ??= const Icon(Icons.music_note, size: 48.0);
   return Tooltip(
       message: 'Show speed selector',
       child: InkWell(
-          onTap: () => parent.setState(() => parent._ratePicker = true),
+          onTap: () {
+            parent.setState(() => parent._ratePicker = true);
+          },
           child: _cover));
 }
 
@@ -1431,15 +1495,12 @@ Drag curve vertically to change speed''',
                       ? _defaultDuration
                       : parent.duration);
             },
-            onVerticalDragStart: (DragStartDetails details) {
-              parent.onRateDragStart(context, details);
-            },
-            onVerticalDragUpdate: (DragUpdateDetails details) {
-              parent.onRateDragUpdate(context, details);
-            },
-            onVerticalDragEnd: (DragEndDetails details) {
-              parent.onRateDragEnd(context, details);
-            },
+            onVerticalDragStart: (DragStartDetails details) =>
+                parent.onRateDragStart(context, details),
+            onVerticalDragUpdate: (DragUpdateDetails details) =>
+                parent.onRateDragUpdate(context, details),
+            onVerticalDragEnd: (DragEndDetails details) =>
+                parent.onRateDragEnd(context, details),
             /*onDoubleTap: () {},*/
             child: CustomPaint(
                 size: Size.infinite,
@@ -1479,16 +1540,15 @@ Widget _playerControl(_PlayerState parent) {
             _mainControl(parent),
             _minorControl(parent)
           ]);
-    } else {
-      return Column(children: <Widget>[
-        _mainControl(parent),
-        _minorControl(parent),
-        Expanded(
-            child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: <Widget>[_artist(parent), _title(parent)]))
-      ]);
     }
+    return Column(children: <Widget>[
+      _mainControl(parent),
+      _minorControl(parent),
+      Expanded(
+          child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: <Widget>[_artist(parent), _title(parent)]))
+    ]);
   });
 }
 
@@ -1500,7 +1560,7 @@ Widget _title(_PlayerState parent) {
           style: TextStyle(
               color: Theme.of(context).textTheme.bodyText2.color,
               fontSize: 15.0));
-    } else if (parent._queueComplete == false) {
+    } else if (parent._queueComplete == -2) {
       return Text('Unable to retrieve songs!',
           style: TextStyle(
               color: Theme.of(context).textTheme.bodyText2.color,
@@ -1587,17 +1647,13 @@ Widget _minorControl(_PlayerState parent) {
                                 fontSize: 15.0,
                                 fontWeight: FontWeight.bold))))),*/
             IconButton(
-                onPressed: () {
-                  parent.onSet(context);
-                },
+                onPressed: () => parent.onSet(context),
                 tooltip: 'Set (one, all, or random songs)',
                 icon: Icon(_status(parent._set), size: 20.0))
           ]),
           Row(children: <Widget>[
             IconButton(
-                onPressed: () {
-                  parent.onMode(context);
-                },
+                onPressed: () => parent.onMode(context),
                 tooltip: 'Mode (once or in a loop)',
                 icon: Icon(
                     parent._mode == 'loop' ? Icons.repeat : Icons.trending_flat,
@@ -1622,7 +1678,7 @@ IconData _status(String _set) {
   }
 }
 
-String _timeInfo(dynamic _queueComplete, Duration _time) {
+String _timeInfo(int _queueComplete, Duration _time) {
   return _bad.contains(_queueComplete)
       ? '0:00'
       : '${_time.inMinutes}:${zero(_time.inSeconds % 60)}';
@@ -1632,9 +1688,9 @@ String _timeInfo(dynamic _queueComplete, Duration _time) {
 Widget _navigation(_PlayerState parent) {
   final List<Widget> _row = [];
 
-  final String _root = parent.source == 'SD card' ? sdCardRoot : deviceRoot;
+  final String _root = parent.source.root;
   String _path = parent.folder;
-  if (_path == _root) _path += '/${parent.source} home';
+  if (_path == _root) _path += '/${parent.source.name} home';
   final Iterable<int> relatives = parent.getRelatives(_root, _path);
   int j = 0;
   final int length = relatives.length;
@@ -1665,14 +1721,14 @@ Widget _navigation(_PlayerState parent) {
 
 /// Renders queue list
 Widget _songPicker(parent) {
-  if (parent.source == 'YouTube')
+  if (parent.source.id == -1)
     return const Center(child: Text('Not yet supported'));
 
   if (parent._queueComplete == 0) {
     return Center(
         child: Text('No songs in folder',
             style: TextStyle(color: unfocusedColor)));
-  } else if (parent._queueComplete == false) {
+  } else if (parent._queueComplete == -2) {
     return const Center(child: Text('Unable to retrieve songs!'));
   }
   return ListView.builder(
@@ -1706,8 +1762,8 @@ Widget _songPicker(parent) {
                           style: const TextStyle(fontSize: 11.0),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1)),
-                  Text(_timeInfo(
-                      true, Duration(milliseconds: int.parse(_song.duration))))
+                  Text(_timeInfo(parent._queueComplete,
+                      Duration(milliseconds: int.parse(_song.duration))))
                 ]),
             trailing: Icon(
                 (parent.index == i && parent._state == AudioPlayerState.PLAYING)
@@ -1719,18 +1775,14 @@ Widget _songPicker(parent) {
 
 /// Renders album artworks for queue list
 Widget _listCover(_PlayerState parent, SongInfo _song) {
-  if (!_bad.contains(parent._tempFolderComplete)) {
-    final File _coverFile = File('$_tempFolder/${_song.id}.jpg');
-    if (!_bad.contains(parent._coversComplete) &&
-        parent._coversMap[_song.filePath] == 0 &&
-        _coverFile.existsSync()) {
-      return Material(
-          clipBehavior: Clip.antiAlias,
-          shape: parent._orientation == Orientation.portrait
-              ? const _CubistShapeA()
-              : const _CubistShapeC(),
-          child: Image.file(_coverFile, fit: BoxFit.cover));
-    }
+  final Widget _cover = parent._getCover(_song);
+  if (_cover != null) {
+    return Material(
+        clipBehavior: Clip.antiAlias,
+        shape: parent._orientation == Orientation.portrait
+            ? const _CubistShapeA()
+            : const _CubistShapeC(),
+        child: _cover);
   }
   return const Icon(Icons.music_note, size: 24.0);
 }
@@ -1757,7 +1809,7 @@ class CubistWave extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final List<double> _waveList = wave(title);
+    final Map<int, double> _waveList = wave(title).asMap();
     final int _len = _waveList.length - 1;
     if (duration == _emptyDuration) {
       duration = _defaultDuration;
@@ -1767,7 +1819,7 @@ class CubistWave extends CustomPainter {
     final double percentage = position.inSeconds / duration.inSeconds;
 
     final Path _songPath = Path()..moveTo(.0, size.height);
-    _waveList.asMap().forEach((int index, double value) {
+    _waveList.forEach((int index, double value) {
       _songPath.lineTo((size.width * index) / _len,
           size.height - _heightFactor(size.height, rate, value));
     });
@@ -1780,7 +1832,7 @@ class CubistWave extends CustomPainter {
     final double pos = _len * percentage;
     final int ceil = pos.ceil();
     _indicatorPath.moveTo(.0, size.height);
-    _waveList.asMap().forEach((int index, double value) {
+    _waveList.forEach((int index, double value) {
       if (index < ceil) {
         _indicatorPath.lineTo((size.width * index) / _len,
             size.height - _heightFactor(size.height, rate, value));
@@ -1806,25 +1858,25 @@ class CubistWave extends CustomPainter {
 
 /// Generates wave data for slider
 List<double> wave(String s) {
-  List<double> codes = [];
-  for (final int code in s.toLowerCase().codeUnits) {
-    if (code >= 48) codes.add(code.toDouble());
-  }
-
-  final double minCode = codes.reduce(min);
-  final double maxCode = codes.reduce(max);
-
-  codes.asMap().forEach((int index, double value) {
-    value = value - minCode;
-    final double fraction = (100.0 / (maxCode - minCode)) * value;
-    codes[index] = fraction.roundToDouble();
+  List<double> _codes = [];
+  s.toLowerCase().codeUnits.forEach((final int _code) {
+    if (_code >= 48) _codes.add(_code.toDouble());
   });
 
-  final int codesCount = codes.length;
-  if (codesCount > 10)
-    codes = codes.sublist(0, 5) + codes.sublist(codesCount - 5);
+  final double minCode = _codes.reduce(min);
+  final double maxCode = _codes.reduce(max);
 
-  return codes;
+  _codes.asMap().forEach((int index, double value) {
+    value = value - minCode;
+    final double fraction = (100.0 / (maxCode - minCode)) * value;
+    _codes[index] = fraction.roundToDouble();
+  });
+
+  final int _codesCount = _codes.length;
+  if (_codesCount > 10)
+    _codes = _codes.sublist(0, 5) + _codes.sublist(_codesCount - 5);
+
+  return _codes;
 }
 
 /// Cubist shape for portrait album artworks.
