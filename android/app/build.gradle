@@ -34,7 +34,7 @@ android {
 
     defaultConfig {
         applicationId "cz.dvorapa.stepslow"
-        minSdkVersion 23
+        minSdkVersion 16
         targetSdkVersion 30
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

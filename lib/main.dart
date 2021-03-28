@@ -1114,7 +1114,14 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                       leading: IconButton(
                           onPressed: _pickFolder,
                           tooltip: 'Pick folder',
-                          icon: const Icon(Icons.folder_open)),
+                          icon: queue.isNotEmpty
+                              ? const Icon(Icons.folder_open)
+                              : Icon(Icons.folder_outlined,
+                                  color: Theme.of(context)
+                                      .textTheme
+                                      .bodyText2
+                                      .color
+                                      .withOpacity(.55))),
                       actions: <Widget>[
                         IconButton(
                             onPressed: _pickSong,
