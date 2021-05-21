@@ -31,7 +31,7 @@ final Color unfocusedColor = Colors.grey[400];
 final Color blackColor = Colors.black;
 
 /// Duration initializer
-Duration _emptyDuration = const Duration();
+Duration _emptyDuration = Duration.zero;
 
 /// Default duration for empty queue
 Duration _defaultDuration = const Duration(seconds: 5);
@@ -197,7 +197,9 @@ class Stepslow extends StatelessWidget {
                 iconTheme: IconThemeData(color: unfocusedColor),
                 textTheme: TextTheme(headline6: TextStyle(color: blackColor))),
             colorScheme: ColorScheme.light(
-                secondary: interactiveColor, onSecondary: backgroundColor),
+                primary: interactiveColor,
+                secondary: interactiveColor,
+                onSecondary: backgroundColor),
             visualDensity: VisualDensity.adaptivePlatformDensity),
         home: const Player(title: 'Player'));
   }
@@ -225,7 +227,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       const MethodChannel('cz.dvorapa.stepslow/sharedPath');
 
   /// Current playback state
-  AudioPlayerState _state = AudioPlayerState.STOPPED;
+  PlayerState _state = PlayerState.STOPPED;
 
   /// Current playback rate
   double _rate = 100.0;
@@ -321,14 +323,14 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   /// Initializes [song] playback
   void onPlay({bool quiet = false}) {
-    if (_state == AudioPlayerState.PAUSED || quiet) {
+    if (_state == PlayerState.PAUSED || quiet) {
       audioPlayer.resume();
     } else {
       setState(() => song = queue[index]);
       audioPlayer.play(song.filePath, isLocal: true);
     }
     onRate(_rate);
-    if (!quiet) setState(() => _state = AudioPlayerState.PLAYING);
+    if (!quiet) setState(() => _state = PlayerState.PLAYING);
     Wakelock.enable();
   }
 
@@ -352,7 +354,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
         index = _index;
       }
     });
-    if (_state == AudioPlayerState.PLAYING) {
+    if (_state == PlayerState.PLAYING) {
       onPlay();
     } else {
       onStop();
@@ -367,7 +369,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Pauses [song] playback
   void onPause({bool quiet = false}) {
     audioPlayer.pause();
-    if (!quiet) setState(() => _state = AudioPlayerState.PAUSED);
+    if (!quiet) setState(() => _state = PlayerState.PAUSED);
   }
 
   /// Shuts player down and resets its state
@@ -376,7 +378,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
     setState(() {
       duration = _emptyDuration;
       _position = _emptyDuration;
-      _state = AudioPlayerState.STOPPED;
+      _state = PlayerState.STOPPED;
       Wakelock.disable();
     });
   }
@@ -492,7 +494,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       BuildContext context, DragStartDetails details, Duration duration) {
     final RenderBox slider = context.findRenderObject();
     final Offset position = slider.globalToLocal(details.globalPosition);
-    if (_state == AudioPlayerState.PLAYING) onPause(quiet: true);
+    if (_state == PlayerState.PLAYING) onPause(quiet: true);
     onSeek(position, duration, slider.constraints.biggest.width);
   }
 
@@ -507,7 +509,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Ends to listen seek drag actions
   void onPositionDragEnd(
       BuildContext context, DragEndDetails details, Duration duration) {
-    if (_state == AudioPlayerState.PLAYING) onPlay(quiet: true);
+    if (_state == PlayerState.PLAYING) onPlay(quiet: true);
   }
 
   /// Listens seek tap actions
@@ -539,7 +541,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   void onRateDragStart(BuildContext context, DragStartDetails details) {
     final RenderBox slider = context.findRenderObject();
     final Offset rate = slider.globalToLocal(details.globalPosition);
-    if (_state == AudioPlayerState.PLAYING) onPause(quiet: true);
+    if (_state == PlayerState.PLAYING) onPause(quiet: true);
     updateRate(rate, slider.constraints.biggest.height);
   }
 
@@ -552,7 +554,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   /// Ends to listen [_rate] drag actions
   void onRateDragEnd(BuildContext context, DragEndDetails details) {
-    if (_state == AudioPlayerState.PLAYING) onPlay(quiet: true);
+    if (_state == PlayerState.PLAYING) onPlay(quiet: true);
   }
 
   /// Changes playback [_rate] according to given offset
@@ -589,8 +591,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   }
 
   /// Switches playback [_state]
-  void _changeState() =>
-      _state == AudioPlayerState.PLAYING ? onPause() : onPlay();
+  void _changeState() => _state == PlayerState.PLAYING ? onPause() : onPlay();
 
   /// Shows dialog to pick [source]
   void _pickSource() {
@@ -1104,7 +1105,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                           scale: 1.1,
                           child: _play(this, 6.0, 32.0, () {
                             _changeState();
-                            if (_state == AudioPlayerState.PLAYING)
+                            if (_state == PlayerState.PLAYING)
                               _returnToPlayer();
                           }))))),
           WillPopScope(
@@ -1384,11 +1385,11 @@ Widget _play(_PlayerState parent, double elevation, double iconSize,
     }
     return FloatingActionButton(
         onPressed: onPressed,
-        tooltip: parent._state == AudioPlayerState.PLAYING ? 'Pause' : 'Play',
+        tooltip: parent._state == PlayerState.PLAYING ? 'Pause' : 'Play',
         shape: _shape,
         elevation: elevation,
         child: Icon(
-            parent._state == AudioPlayerState.PLAYING
+            parent._state == PlayerState.PLAYING
                 ? Icons.pause
                 : Icons.play_arrow,
             size: iconSize));
@@ -1773,7 +1774,7 @@ Widget _songPicker(parent) {
                       Duration(milliseconds: int.parse(_song.duration))))
                 ]),
             trailing: Icon(
-                (parent.index == i && parent._state == AudioPlayerState.PLAYING)
+                (parent.index == i && parent._state == PlayerState.PLAYING)
                     ? Icons.pause
                     : Icons.play_arrow,
                 size: 30.0));
@@ -1895,7 +1896,7 @@ class _CubistShapeA extends ShapeBorder {
   const _CubistShapeA();
 
   @override
-  EdgeInsetsGeometry get dimensions => const EdgeInsets.only();
+  EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
 
   @override
   Path getInnerPath(Rect rect, {TextDirection textDirection}) =>
@@ -1928,7 +1929,7 @@ class _CubistShapeB extends ShapeBorder {
   const _CubistShapeB();
 
   @override
-  EdgeInsetsGeometry get dimensions => const EdgeInsets.only();
+  EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
 
   @override
   Path getInnerPath(Rect rect, {TextDirection textDirection}) =>
@@ -1960,7 +1961,7 @@ class _CubistShapeC extends ShapeBorder {
   const _CubistShapeC();
 
   @override
-  EdgeInsetsGeometry get dimensions => const EdgeInsets.only();
+  EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
 
   @override
   Path getInnerPath(Rect rect, {TextDirection textDirection}) =>
@@ -1997,7 +1998,7 @@ class _CubistShapeD extends ShapeBorder {
   const _CubistShapeD();
 
   @override
-  EdgeInsetsGeometry get dimensions => const EdgeInsets.only();
+  EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
 
   @override
   Path getInnerPath(Rect rect, {TextDirection textDirection}) =>
