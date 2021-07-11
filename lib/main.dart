@@ -1320,6 +1320,7 @@ Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> entry) {
         onExpansionChanged: (bool value) {
           if (value == true) parent.onFolder(_entry.path);
         },
+        childrenPadding: const EdgeInsets.only(left: 16.0),
         title: Text(_entry.name,
             style: TextStyle(
                 fontSize: 14.0,
