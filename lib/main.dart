@@ -5,14 +5,13 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter_audio_query/flutter_audio_query.dart';
+import 'package:on_audio_query/on_audio_query.dart';
 import 'package:flutter_ffmpeg/flutter_ffmpeg.dart';
 import 'package:wakelock/wakelock.dart';
 import 'package:easy_dialogs/easy_dialogs.dart';
 import 'package:typicons_flutter/typicons_flutter.dart';
 import 'package:yaml/yaml.dart';
-import 'package:permissions_plugin/permissions_plugin.dart';
-import 'package:flutter_file_manager/flutter_file_manager.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Theme main color
@@ -161,6 +160,25 @@ class Source implements Pattern {
   }
 }
 
+/// Lists subfolders of [root] path string
+Stream<String> getFolders(String root) async* {
+  await for (final FileSystemEntity subDir
+      in Directory(root).list(recursive: true)) {
+    try {
+      final String subDirPath = subDir.path;
+      if (subDir is Directory &&
+          !subDirPath
+              .split('/')
+              .lastWhere((String e) => e != '')
+              .startsWith('.')) {
+        yield subDirPath;
+      }
+    } on FileSystemException {
+      continue;
+    }
+  }
+}
+
 /// Finds SD card(s) if any and creates [Source] from them
 Stream<Source> checkoutSdCards() async* {
   int n = 1;
@@ -271,10 +289,10 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   String folder = '/storage/emulated/0/Music';
 
   /// Current playback song
-  SongInfo song;
+  SongModel song;
 
   /// Previous playback song
-  SongInfo _previousSong;
+  SongModel _previousSong;
 
   /// Current song index in queue
   int index = 0;
@@ -293,9 +311,6 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   /// Map representation of album artwork paths YAML map
   Map<String, int> _coversMap = {};
-
-  /// Audio query entity
-  final FlutterAudioQuery audioQuery = FlutterAudioQuery();
 
   /// FFmpeg entity to query album artworks
   final FlutterFFmpeg _flutterFFmpeg = FlutterFFmpeg();
@@ -316,10 +331,10 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   int _browseSongsComplete = 0;
 
   /// Current playback queue
-  List<SongInfo> queue = [];
+  List<SongModel> queue = [];
 
   /// Stack of available songs
-  final List<SongInfo> _songs = [];
+  final List<SongModel> _songs = [];
 
   /// Initializes [song] playback
   void onPlay({bool quiet = false}) {
@@ -327,7 +342,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       audioPlayer.resume();
     } else {
       setState(() => song = queue[index]);
-      audioPlayer.play(song.filePath, isLocal: true);
+      audioPlayer.play(song.data, isLocal: true);
     }
     onRate(_rate);
     if (!quiet) setState(() => _state = PlayerState.PLAYING);
@@ -360,8 +375,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       onStop();
       setState(() {
         song = queue.isNotEmpty ? queue[index] : null;
-        if (song != null)
-          duration = Duration(milliseconds: int.parse(song.duration));
+        if (song != null) duration = Duration(milliseconds: song.duration);
       });
     }
   }
@@ -392,8 +406,8 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
         _queueComplete = 0;
       });
       if (!_bad.contains(_songsComplete)) {
-        for (final SongInfo _song in _songs) {
-          if (File(_song.filePath).parent.path == _folder) {
+        for (final SongModel _song in _songs) {
+          if (File(_song.data).parent.path == _folder) {
             if (_set != 'random' || [0, 1].contains(_queueComplete)) {
               queue.add(_song);
             } else {
@@ -419,7 +433,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Initializes shared [song] playback
   Future<void> openSharedPath() async {
     final String _url = await bridge.invokeMethod('openSharedPath');
-    if (_url != null && _url != song?.filePath) {
+    if (_url != null && _url != song?.data) {
       final String _sharedFolder = File(_url).parent.path;
       final Source _newSource =
           _sources.firstWhere(_sharedFolder.startsWith, orElse: () => null) ??
@@ -427,7 +441,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       if (source != _newSource) setState(() => source = _newSource);
       onFolder(_sharedFolder);
       final int _index =
-          queue.indexWhere((SongInfo _song) => _song.filePath == _url);
+          queue.indexWhere((SongModel _song) => _song.data == _url);
       onChange(_index);
       onPlay();
     }
@@ -465,8 +479,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
           break;
         default:
-          queue.sort(
-              (SongInfo a, SongInfo b) => a.filePath.compareTo(b.filePath));
+          queue.sort((SongModel a, SongModel b) => a.data.compareTo(b.data));
 
           index = queue.indexOf(song);
           _set = '1';
@@ -688,8 +701,8 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   Future<void> _cacheCovers() async {
     _coversYaml = ['---'];
     _coversMap.clear();
-    for (final SongInfo _song in _songs) {
-      final String _songPath = _song.filePath;
+    for (final SongModel _song in _songs) {
+      final String _songPath = _song.data;
       final String _coversPath =
           _sources.firstWhere(_songPath.startsWith).coversPath;
       final String _coverPath = '$_coversPath/${_song.id}.jpg';
@@ -735,9 +748,9 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   }
 
   /// Fixes album artwork in cache
-  Future<void> _fixCover(SongInfo _song) async {
+  Future<void> _fixCover(SongModel _song) async {
     setState(() => _coversComplete = _coversMap.length);
-    final String _songPath = _song.filePath;
+    final String _songPath = _song.data;
     final String _coversPath = _sources
             .firstWhere(_songPath.startsWith, orElse: () => null)
             ?.coversPath ??
@@ -765,9 +778,9 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   }
 
   /// Gets album artwork from cache
-  Widget _getCover(SongInfo _song) {
+  Widget _getCover(SongModel _song) {
     if (!_bad.contains(_coversComplete)) {
-      final String _songPath = _song.filePath;
+      final String _songPath = _song.data;
       if (_coversMap.containsKey(_songPath)) {
         if (_coversMap[_songPath] == 0) {
           final String _coversPath = _sources
@@ -863,18 +876,20 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
     super.initState();
 
-    PermissionsPlugin.requestPermissions([Permission.READ_EXTERNAL_STORAGE])
-        .then((Map<Permission, PermissionState> _states) {
-      if (_states[Permission.READ_EXTERNAL_STORAGE] != PermissionState.GRANTED)
+    Permission.storage.request().then((PermissionStatus _status) {
+      if (_status == PermissionStatus.permanentlyDenied) {
+        openAppSettings();
+      } else if (_status == PermissionStatus.denied) {
         SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+      }
       // Got permission (read user files and folders)
       checkoutSdCards().listen(_sources.add,
           onDone: () {
             // Got _sources
-            Stream<List<SongInfo>>.fromFuture(audioQuery.getSongs())
-                .expand((List<SongInfo> _songs) => _songs)
-                .listen((SongInfo _song) {
-              final String _songPath = _song.filePath;
+            Stream<List<SongModel>>.fromFuture(OnAudioQuery().queryAudios())
+                .expand((List<SongModel> _songs) => _songs)
+                .listen((SongModel _song) {
+              final String _songPath = _song.data;
               // queue
               if (File(_songPath).parent.path == folder) {
                 if (_set != 'random' || [0, 1].contains(_queueComplete)) {
@@ -932,13 +947,9 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
             });
 
             for (final Source _source in _sources) {
-              Stream<List<Directory>>.fromFuture(
-                      FileManager(root: Directory(_source.root))
-                          .dirsTree(excludeHidden: true))
-                  .expand((List<Directory> _folders) => _folders)
-                  .listen((Directory _folder) {
+              getFolders(_source.root).listen((String _folderPath) {
                 fillBrowse(
-                    _folder.path,
+                    _folderPath,
                     _source.root,
                     _source.browse,
                     _source.browseFoldersComplete,
@@ -1743,7 +1754,7 @@ Widget _songPicker(parent) {
   return ListView.builder(
       itemCount: parent.queue.length,
       itemBuilder: (BuildContext context, int i) {
-        final SongInfo _song = parent.queue[i];
+        final SongModel _song = parent.queue[i];
         return ListTile(
             selected: parent.index == i,
             onTap: () {
@@ -1772,7 +1783,7 @@ Widget _songPicker(parent) {
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1)),
                   Text(_timeInfo(parent._queueComplete,
-                      Duration(milliseconds: int.parse(_song.duration))))
+                      Duration(milliseconds: _song.duration)))
                 ]),
             trailing: Icon(
                 (parent.index == i && parent._state == PlayerState.PLAYING)
@@ -1783,7 +1794,7 @@ Widget _songPicker(parent) {
 }
 
 /// Renders album artworks for queue list
-Widget _listCover(_PlayerState parent, SongInfo _song) {
+Widget _listCover(_PlayerState parent, SongModel _song) {
   final Widget _cover = parent._getCover(_song);
   if (_cover != null) {
     return Material(
