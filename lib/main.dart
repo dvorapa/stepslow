@@ -49,7 +49,10 @@ final List<int> _bad = [0, -2];
 void printLong(Object text) {
   text = text.toString();
   final Pattern pattern = RegExp('.{1,1023}');
-  pattern.allMatches(text).map((Match match) => match.group(0)).forEach(print);
+  pattern
+      .allMatches(text as String)
+      .map((Match match) => match.group(0))
+      .forEach(print);
 }
 
 /// Changes app data folders
@@ -143,13 +146,10 @@ class Source implements Pattern {
     switch (id) {
       case 0:
         return 'Device';
-        break;
       case -1:
         return 'YouTube';
-        break;
       default:
         return 'SD card';
-        break;
     }
   }
 
@@ -635,7 +635,6 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                   : youTubeColor),
                           _sourceText
                         ]);
-                    break;
                   case 0:
                     return Wrap(
                         spacing: 12.0,
@@ -651,7 +650,6 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                       .withOpacity(.55)),
                           _sourceText
                         ]);
-                    break;
                   default:
                     return Wrap(
                         spacing: 12.0,
@@ -667,7 +665,6 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                       .withOpacity(.55)),
                           _sourceText
                         ]);
-                    break;
                 }
               });
         });
@@ -705,7 +702,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       final String _songPath = _song.data;
       final String _coversPath =
           _sources.firstWhere(_songPath.startsWith).coversPath;
-      final String _coverPath = '$_coversPath/${_song.id}.jpg';
+      final String _coverPath = '$_coversPath/${_song.data.hashCode}.jpg';
       final bool _ffmpeg = _coversComplete != -2;
       int _status = _ffmpeg ? 0 : 1;
       if (!File(_coverPath).existsSync() && _ffmpeg) {
@@ -755,7 +752,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
             .firstWhere(_songPath.startsWith, orElse: () => null)
             ?.coversPath ??
         _sources[0].coversPath;
-    final String _coverPath = '$_coversPath/${_song.id}.jpg';
+    final String _coverPath = '$_coversPath/${_song.data.hashCode}.jpg';
     int _status = 0;
     if (!File(_coverPath).existsSync()) {
       final int _height =
@@ -787,7 +784,8 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                   .firstWhere(_songPath.startsWith, orElse: () => null)
                   ?.coversPath ??
               _sources[0].coversPath;
-          final File _returnCover = File('$_coversPath/${_song.id}.jpg');
+          final File _returnCover =
+              File('$_coversPath/${_song.data.hashCode}.jpg');
           if (_returnCover.existsSync()) {
             return Image.file(_returnCover, fit: BoxFit.cover);
           } else if (_coversComplete == -1) {
@@ -886,7 +884,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       checkoutSdCards().listen(_sources.add,
           onDone: () {
             // Got _sources
-            Stream<List<SongModel>>.fromFuture(OnAudioQuery().queryAudios())
+            Stream<List<SongModel>>.fromFuture(OnAudioQuery().querySongs())
                 .expand((List<SongModel> _songs) => _songs)
                 .listen((SongModel _song) {
               final String _songPath = _song.data;
@@ -1289,13 +1287,10 @@ Widget _sourceButton(int sourceId, Color darkColor) {
   switch (sourceId) {
     case -1:
       return Icon(Typicons.social_youtube, color: youTubeColor);
-      break;
     case 0:
       return Icon(Icons.folder, color: darkColor);
-      break;
     default:
       return Icon(Icons.sd_card, color: darkColor);
-      break;
   }
 }
 
@@ -1475,65 +1470,65 @@ Widget _rangeCover(parent) {
 /// Handles oblong player section
 Widget _playerOblong(_PlayerState parent) {
   return Builder(builder: (BuildContext context) {
-    return Tooltip(
+    /*return Tooltip(
         message: '''
 Drag position horizontally to change it
-Drag curve vertically to change speed''',
-/*Double tap to add prelude''',*/
+Drag curve vertically to change speed
+Double tap to add prelude''',
         showDuration: _defaultDuration,
-        waitDuration: _defaultDuration,
-        child: GestureDetector(
-            onHorizontalDragStart: (DragStartDetails details) {
-              parent.onPositionDragStart(
-                  context,
-                  details,
-                  _bad.contains(parent._queueComplete)
-                      ? _defaultDuration
-                      : parent.duration);
-            },
-            onHorizontalDragUpdate: (DragUpdateDetails details) {
-              parent.onPositionDragUpdate(
-                  context,
-                  details,
-                  _bad.contains(parent._queueComplete)
-                      ? _defaultDuration
-                      : parent.duration);
-            },
-            onHorizontalDragEnd: (DragEndDetails details) {
-              parent.onPositionDragEnd(
-                  context,
-                  details,
-                  _bad.contains(parent._queueComplete)
-                      ? _defaultDuration
-                      : parent.duration);
-            },
-            onTapUp: (TapUpDetails details) {
-              parent.onPositionTapUp(
-                  context,
-                  details,
-                  _bad.contains(parent._queueComplete)
-                      ? _defaultDuration
-                      : parent.duration);
-            },
-            onVerticalDragStart: (DragStartDetails details) =>
-                parent.onRateDragStart(context, details),
-            onVerticalDragUpdate: (DragUpdateDetails details) =>
-                parent.onRateDragUpdate(context, details),
-            onVerticalDragEnd: (DragEndDetails details) =>
-                parent.onRateDragEnd(context, details),
-            /*onDoubleTap: () {},*/
-            child: CustomPaint(
-                size: Size.infinite,
-                painter: CubistWave(
-                    _bad.contains(parent._queueComplete)
-                        ? 'zapaz'
-                        : parent.song.title,
-                    _bad.contains(parent._queueComplete)
-                        ? _defaultDuration
-                        : parent.duration,
-                    parent._position,
-                    parent._rate,
-                    Theme.of(context).primaryColor))));
+        child: GestureDetector(*/
+    return GestureDetector(
+        onHorizontalDragStart: (DragStartDetails details) {
+          parent.onPositionDragStart(
+              context,
+              details,
+              _bad.contains(parent._queueComplete)
+                  ? _defaultDuration
+                  : parent.duration);
+        },
+        onHorizontalDragUpdate: (DragUpdateDetails details) {
+          parent.onPositionDragUpdate(
+              context,
+              details,
+              _bad.contains(parent._queueComplete)
+                  ? _defaultDuration
+                  : parent.duration);
+        },
+        onHorizontalDragEnd: (DragEndDetails details) {
+          parent.onPositionDragEnd(
+              context,
+              details,
+              _bad.contains(parent._queueComplete)
+                  ? _defaultDuration
+                  : parent.duration);
+        },
+        onTapUp: (TapUpDetails details) {
+          parent.onPositionTapUp(
+              context,
+              details,
+              _bad.contains(parent._queueComplete)
+                  ? _defaultDuration
+                  : parent.duration);
+        },
+        onVerticalDragStart: (DragStartDetails details) =>
+            parent.onRateDragStart(context, details),
+        onVerticalDragUpdate: (DragUpdateDetails details) =>
+            parent.onRateDragUpdate(context, details),
+        onVerticalDragEnd: (DragEndDetails details) =>
+            parent.onRateDragEnd(context, details),
+        /*onDoubleTap: () {},*/
+        child: CustomPaint(
+            size: Size.infinite,
+            painter: CubistWave(
+                _bad.contains(parent._queueComplete)
+                    ? 'zapaz'
+                    : parent.song.title,
+                _bad.contains(parent._queueComplete)
+                    ? _defaultDuration
+                    : parent.duration,
+                parent._position,
+                parent._rate,
+                Theme.of(context).primaryColor)));
   });
 }
 
@@ -1666,10 +1661,12 @@ Widget _minorControl(_PlayerState parent) {
                             style: TextStyle(
                                 fontSize: 15.0,
                                 fontWeight: FontWeight.bold))))),*/
-            IconButton(
-                onPressed: () => parent.onSet(context),
-                tooltip: 'Set (one, all, or random songs)',
-                icon: Icon(_status(parent._set), size: 20.0))
+            GestureDetector(
+                onDoubleTap: () => parent..onSet(context)..onSet(context),
+                child: IconButton(
+                    onPressed: () => parent.onSet(context),
+                    tooltip: 'Set (one, all, or random songs)',
+                    icon: Icon(_status(parent._set), size: 20.0)))
           ]),
           Row(children: <Widget>[
             IconButton(
@@ -1688,13 +1685,10 @@ IconData _status(String _set) {
   switch (_set) {
     case 'all':
       return Icons.album;
-      break;
     case '1':
       return Icons.music_note;
-      break;
     default:
       return Icons.shuffle;
-      break;
   }
 }
 
@@ -1930,7 +1924,7 @@ class _CubistShapeA extends ShapeBorder {
   void paint(Canvas canvas, Rect rect, {TextDirection textDirection}) {}
 
   @override
-  ShapeBorder scale(double t) => null;
+  ShapeBorder scale(double t) => this;
 }
 
 /// Cubist shape for portrait floating buttons.
@@ -1961,7 +1955,7 @@ class _CubistShapeB extends ShapeBorder {
   void paint(Canvas canvas, Rect rect, {TextDirection textDirection}) {}
 
   @override
-  ShapeBorder scale(double t) => null;
+  ShapeBorder scale(double t) => this;
 }
 
 /// Cubist shape for landscape album artworks.
@@ -1999,7 +1993,7 @@ class _CubistShapeC extends ShapeBorder {
   void paint(Canvas canvas, Rect rect, {TextDirection textDirection}) {}
 
   @override
-  ShapeBorder scale(double t) => null;
+  ShapeBorder scale(double t) => this;
 }
 
 /// Cubist shape for landscape floating buttons.
@@ -2029,5 +2023,5 @@ class _CubistShapeD extends ShapeBorder {
   void paint(Canvas canvas, Rect rect, {TextDirection textDirection}) {}
 
   @override
-  ShapeBorder scale(double t) => null;
+  ShapeBorder scale(double t) => this;
 }
