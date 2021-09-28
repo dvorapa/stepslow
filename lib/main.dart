@@ -13,9 +13,11 @@ import 'package:typicons_flutter/typicons_flutter.dart';
 import 'package:yaml/yaml.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:collection/collection.dart' show IterableExtension;
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Theme main color
-final Color interactiveColor = Colors.orange[300]; // #FFB74D #FFA726
+final Color interactiveColor = Colors.orange[300]!; // #FFB74D #FFA726
 
 /// Light theme color
 final Color backgroundColor = Colors.white;
@@ -24,7 +26,7 @@ final Color backgroundColor = Colors.white;
 final Color youTubeColor = Colors.red; // #E4273A
 
 /// Text main color
-final Color unfocusedColor = Colors.grey[400];
+final Color unfocusedColor = Colors.grey[400]!;
 
 /// Dark theme color
 final Color blackColor = Colors.black;
@@ -122,7 +124,7 @@ class Source implements Pattern {
   int browseFoldersComplete = 0;
 
   /// Source path to store covers
-  String coversPath;
+  String? coversPath;
 
   @override
   bool operator ==(Object other) => other is Source && other.root == root;
@@ -135,7 +137,7 @@ class Source implements Pattern {
       root.allMatches(string, start);
 
   @override
-  Match matchAsPrefix(String string, [int start = 0]) =>
+  Match? matchAsPrefix(String string, [int start = 0]) =>
       root.matchAsPrefix(string, start);
 
   @override
@@ -200,7 +202,7 @@ void main() => runApp(const Stepslow());
 /// Stateless app entrypoint and theme initializer.
 class Stepslow extends StatelessWidget {
   /// Stepslow constructor
-  const Stepslow({Key key}) : super(key: key);
+  const Stepslow({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -208,12 +210,12 @@ class Stepslow extends StatelessWidget {
         title: 'Stepslow music player',
         theme: ThemeData(
             primaryColor: interactiveColor,
-            accentColor: interactiveColor,
             appBarTheme: AppBarTheme(
                 color: Colors.transparent,
                 elevation: .0,
                 iconTheme: IconThemeData(color: unfocusedColor),
-                textTheme: TextTheme(headline6: TextStyle(color: blackColor))),
+                titleTextStyle: TextStyle(color: blackColor),
+                toolbarTextStyle: TextStyle(color: blackColor)),
             colorScheme: ColorScheme.light(
                 primary: interactiveColor,
                 secondary: interactiveColor,
@@ -226,7 +228,7 @@ class Stepslow extends StatelessWidget {
 /// Stateful app entrypoint.
 class Player extends StatefulWidget {
   /// Player constructor
-  const Player({Key key, this.title}) : super(key: key);
+  const Player({Key? key, required this.title}) : super(key: key);
 
   /// Basic app title
   final String title;
@@ -256,13 +258,16 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Current playback position
   Duration _position = _emptyDuration;
 
+  /// Playback song from last run
+  String? lastSongPath;
+
   /// Current playback mode
   String _mode = 'loop';
 
   /// Current playback set
   String _set = 'random';
 
-  Orientation _orientation;
+  late Orientation _orientation;
 
   /// False if [_rate] picker should be hidden
   bool _ratePicker = false;
@@ -271,7 +276,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   bool _previousRatePicker = false;
 
   /// Timer to release [_ratePicker]
-  Timer _ratePickerTimer;
+  Timer? _ratePickerTimer;
 
   /// Random generator to shuffle queue after startup
   final Random random = Random();
@@ -289,10 +294,10 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   String folder = '/storage/emulated/0/Music';
 
   /// Current playback song
-  SongModel song;
+  SongModel? song;
 
   /// Previous playback song
-  SongModel _previousSong;
+  SongModel? _previousSong;
 
   /// Current song index in queue
   int index = 0;
@@ -304,7 +309,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   int _coversComplete = 0;
 
   /// File containing album artwork paths YAML map
-  File _coversFile;
+  File? _coversFile;
 
   /// YAML map of album artwork paths
   List<String> _coversYaml = ['---'];
@@ -342,7 +347,9 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       audioPlayer.resume();
     } else {
       setState(() => song = queue[index]);
-      audioPlayer.play(song.data, isLocal: true);
+      final String _songPath = song!.data;
+      audioPlayer.play(_songPath, isLocal: true);
+      _setValue('lastSongPath', _songPath);
     }
     onRate(_rate);
     if (!quiet) setState(() => _state = PlayerState.PLAYING);
@@ -375,8 +382,9 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       onStop();
       setState(() {
         song = queue.isNotEmpty ? queue[index] : null;
-        if (song != null) duration = Duration(milliseconds: song.duration);
+        if (song != null) duration = Duration(milliseconds: song!.duration!);
       });
+      if (song != null) _setValue('lastSongPath', song!.data);
     }
   }
 
@@ -415,7 +423,10 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
             }
             setState(() => ++_queueComplete);
 
-            if (_queueComplete == 1) onChange(index);
+            if (_queueComplete == 1) {
+              onRate(100.0);
+              onChange(index);
+            }
           }
         }
         if (_queueComplete > 0) {
@@ -423,35 +434,37 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
         } else {
           onStop();
           setState(() => song = null);
-          if (_controller.page > .1) _pickFolder();
+          if (_controller.page! > .1) _pickFolder();
         }
       }
       setState(() => folder = _folder);
     }
   }
 
-  /// Initializes shared [song] playback
-  Future<void> openSharedPath() async {
-    final String _url = await bridge.invokeMethod('openSharedPath');
-    if (_url != null && _url != song?.data) {
-      final String _sharedFolder = File(_url).parent.path;
+  /// Initializes shared or saved [song] playback
+  Future<void> loadSpecificSong() async {
+    final String? _sharedPath = await bridge.invokeMethod('openSharedPath');
+    final String? _path = _sharedPath ?? lastSongPath;
+    if (_path != null && _path != song?.data) {
+      final String _newFolder = File(_path).parent.path;
       final Source _newSource =
-          _sources.firstWhere(_sharedFolder.startsWith, orElse: () => null) ??
-              source;
+          _sources.firstWhereOrNull(_newFolder.startsWith) ?? source;
       if (source != _newSource) setState(() => source = _newSource);
-      onFolder(_sharedFolder);
+      onFolder(_newFolder);
       final int _index =
-          queue.indexWhere((SongModel _song) => _song.data == _url);
+          queue.indexWhere((SongModel _song) => _song.data == _path);
       onChange(_index);
-      onPlay();
+      if (_sharedPath != null) onPlay();
     }
   }
 
   /// Changes playback [_mode] and informs user using given [context]
   void onMode(StatelessElement context) {
     setState(() => _mode = _mode == 'loop' ? 'once' : 'loop');
+    _setValue('_mode', _mode);
+
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        backgroundColor: Theme.of(context).accentColor,
+        backgroundColor: Theme.of(context).colorScheme.secondary,
         elevation: .0,
         duration: const Duration(seconds: 2),
         content:
@@ -474,22 +487,23 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
         case 'all':
           queue.shuffle();
 
-          index = queue.indexOf(song);
+          if (song != null) index = queue.indexOf(song!);
           _set = 'random';
 
           break;
         default:
           queue.sort((SongModel a, SongModel b) => a.data.compareTo(b.data));
 
-          index = queue.indexOf(song);
+          if (song != null) index = queue.indexOf(song!);
           _set = '1';
 
           break;
       }
     });
+    _setValue('_set', _set);
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        backgroundColor: Theme.of(context).accentColor,
+        backgroundColor: Theme.of(context).colorScheme.secondary,
         elevation: .0,
         duration: const Duration(seconds: 2),
         content:
@@ -505,7 +519,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Starts to listen seek drag actions
   void onPositionDragStart(
       BuildContext context, DragStartDetails details, Duration duration) {
-    final RenderBox slider = context.findRenderObject();
+    final RenderBox slider = context.findRenderObject() as RenderBox;
     final Offset position = slider.globalToLocal(details.globalPosition);
     if (_state == PlayerState.PLAYING) onPause(quiet: true);
     onSeek(position, duration, slider.constraints.biggest.width);
@@ -514,7 +528,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Listens seek drag actions
   void onPositionDragUpdate(
       BuildContext context, DragUpdateDetails details, Duration duration) {
-    final RenderBox slider = context.findRenderObject();
+    final RenderBox slider = context.findRenderObject() as RenderBox;
     final Offset position = slider.globalToLocal(details.globalPosition);
     onSeek(position, duration, slider.constraints.biggest.width);
   }
@@ -528,7 +542,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Listens seek tap actions
   void onPositionTapUp(
       BuildContext context, TapUpDetails details, Duration duration) {
-    final RenderBox slider = context.findRenderObject();
+    final RenderBox slider = context.findRenderObject() as RenderBox;
     final Offset position = slider.globalToLocal(details.globalPosition);
     onSeek(position, duration, slider.constraints.biggest.width);
   }
@@ -552,7 +566,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   /// Starts to listen [_rate] drag actions
   void onRateDragStart(BuildContext context, DragStartDetails details) {
-    final RenderBox slider = context.findRenderObject();
+    final RenderBox slider = context.findRenderObject() as RenderBox;
     final Offset rate = slider.globalToLocal(details.globalPosition);
     if (_state == PlayerState.PLAYING) onPause(quiet: true);
     updateRate(rate, slider.constraints.biggest.height);
@@ -560,7 +574,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   /// Listens [_rate] drag actions
   void onRateDragUpdate(BuildContext context, DragUpdateDetails details) {
-    final RenderBox slider = context.findRenderObject();
+    final RenderBox slider = context.findRenderObject() as RenderBox;
     final Offset rate = slider.globalToLocal(details.globalPosition);
     updateRate(rate, slider.constraints.biggest.height);
   }
@@ -595,7 +609,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
     } else if (rate < 5.0) {
       rate = 5.0;
     }
-    audioPlayer.setPlaybackRate(playbackRate: rate / 100.0);
+    audioPlayer.setPlaybackRate(rate / 100.0);
     setState(() {
       _position = _position * (_rate / rate);
       duration = duration * (_rate / rate);
@@ -640,13 +654,13 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                         spacing: 12.0,
                         crossAxisAlignment: WrapCrossAlignment.end,
                         children: <Widget>[
-                          Icon(Icons.folder,
+                          Icon(Icons.phone_iphone,
                               color: source == _source
                                   ? Theme.of(context).primaryColor
                                   : Theme.of(context)
                                       .textTheme
-                                      .bodyText2
-                                      .color
+                                      .bodyText2!
+                                      .color!
                                       .withOpacity(.55)),
                           _sourceText
                         ]);
@@ -660,8 +674,8 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                   ? Theme.of(context).primaryColor
                                   : Theme.of(context)
                                       .textTheme
-                                      .bodyText2
-                                      .color
+                                      .bodyText2!
+                                      .color!
                                       .withOpacity(.55)),
                           _sourceText
                         ]);
@@ -684,7 +698,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   /// Goes back to the previous page
   bool onBack() {
-    if (.9 < _controller.page && _controller.page < 1.1) {
+    if (.9 < _controller.page! && _controller.page! < 1.1) {
       setState(() => pageHistory = [1]);
       return true;
     }
@@ -694,109 +708,141 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
     return false;
   }
 
-  /// Queries album artworks to cache
-  Future<void> _cacheCovers() async {
+  /// Get cached or preferred value
+  void _getSavedValues() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      lastSongPath = prefs.getString('lastSongPath');
+      _mode = prefs.getString('_mode') ?? 'loop';
+      _set = prefs.getString('_set') ?? 'random';
+    });
+    await prefs.setString('_mode', _mode);
+    await prefs.setString('_set', _set);
+  }
+
+  /// Save cached or preferred value
+  Future<void> _setValue(String variable, dynamic value) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (value is String) await prefs.setString(variable, value);
+    if (value is double) await prefs.setDouble(variable, value);
+  }
+
+  /// Queries album artworks to app cache
+  Future<void> _loadCoversMap() async {
+    if (_coversComplete == 0) {
+      if (!_coversFile!.existsSync()) {
+        await _createCoversMap();
+      } else {
+        try {
+          _coversYaml = await _coversFile!.readAsLines();
+          _coversMap = Map<String, int>.from(loadYaml(_coversYaml.join('\n')));
+          setState(() => _coversComplete = -1);
+        } on FileSystemException catch (error) {
+          print(error);
+          await _createCoversMap();
+        } on YamlException catch (error) {
+          print(error);
+          await _createCoversMap();
+        }
+      }
+    }
+  }
+
+  /// Fixes album artworks cache
+  Future<void> _fixCoversMap() async {
+    if (_coversComplete == -1) {
+      setState(() => _coversComplete = 0);
+      await _createCoversMap();
+    }
+  }
+
+  /// Queries album artworks to phone cache
+  Future<void> _createCoversMap() async {
     _coversYaml = ['---'];
     _coversMap.clear();
     for (final SongModel _song in _songs) {
       final String _songPath = _song.data;
       final String _coversPath =
-          _sources.firstWhere(_songPath.startsWith).coversPath;
-      final String _coverPath = '$_coversPath/${_song.data.hashCode}.jpg';
-      final bool _ffmpeg = _coversComplete != -2;
-      int _status = _ffmpeg ? 0 : 1;
-      if (!File(_coverPath).existsSync() && _ffmpeg) {
+          (_sources.firstWhereOrNull(_songPath.startsWith)?.coversPath ??
+              _sources[0].coversPath)!;
+      final String _coverPath = '$_coversPath/${_songPath.hashCode}.jpg';
+      int _status = 0;
+      if (!File(_coverPath).existsSync()) {
         final int _height =
             (MediaQuery.of(context).size.shortestSide * 7 / 10).ceil();
         _status = await _flutterFFmpeg
             .execute(
                 '-i "$_songPath" -vf scale="-2:\'min($_height,ih)\'":flags=lanczos -an "$_coverPath"')
             .catchError((error) {
-          setState(() => _coversComplete = -2);
           print(error.stackTrace);
+          setState(() => _coversComplete = -2);
           return 1;
         });
       }
       _coversMap[_songPath] = _status;
       _coversYaml.add('"$_songPath": $_status');
-      if (_coversComplete != -2) setState(() => ++_coversComplete);
+      setState(() => ++_coversComplete);
     }
-    if (!_bad.contains(_coversComplete)) setState(() => _coversComplete = -1);
-    await _coversFile.writeAsString(_coversYaml.join('\n'));
+    await _cacheCoversMap();
   }
 
-  /// Checks album artworks cache
-  Future<void> _checkCovers() async {
-    if (!_coversFile.existsSync()) {
-      await _cacheCovers();
-    } else {
-      try {
-        _coversYaml = await _coversFile.readAsLines();
-        _coversMap = Map<String, int>.from(loadYaml(_coversYaml.join('\n')));
-        setState(() => _coversComplete = -1);
-      } on FileSystemException catch (error) {
-        print(error);
-        await _cacheCovers();
-      } on YamlException catch (error) {
-        print(error);
-        await _cacheCovers();
+  /// Writes app cache into a file
+  Future<void> _cacheCoversMap() async {
+    await _coversFile!.writeAsString(_coversYaml.join('\n'));
+    setState(() => _coversComplete = -1);
+  }
+
+  /// Gets album artwork from cache
+  Widget? _getCover(SongModel _song) {
+    if (_coversComplete == -1) {
+      final String _songPath = _song.data;
+      if (_coversMap.containsKey(_songPath)) {
+        if (_coversMap[_songPath] == 0) {
+          final String _coversPath =
+              (_sources.firstWhereOrNull(_songPath.startsWith)?.coversPath ??
+                  _sources[0].coversPath)!;
+          final File _coverFile =
+              File('$_coversPath/${_songPath.hashCode}.jpg');
+          if (_coverFile.existsSync()) {
+            return Image.file(_coverFile, fit: BoxFit.cover);
+          } else {
+            _fixCover(_song);
+          }
+        }
+      } else {
+        _fixCoversMap();
       }
     }
+    return null;
   }
 
   /// Fixes album artwork in cache
   Future<void> _fixCover(SongModel _song) async {
-    setState(() => _coversComplete = _coversMap.length);
-    final String _songPath = _song.data;
-    final String _coversPath = _sources
-            .firstWhere(_songPath.startsWith, orElse: () => null)
-            ?.coversPath ??
-        _sources[0].coversPath;
-    final String _coverPath = '$_coversPath/${_song.data.hashCode}.jpg';
-    int _status = 0;
-    if (!File(_coverPath).existsSync()) {
+    if (_coversComplete == -1) {
+      setState(() => _coversComplete = 0);
+      final String _songPath = _song.data;
+      final String _coversPath =
+          (_sources.firstWhereOrNull(_songPath.startsWith)?.coversPath ??
+              _sources[0].coversPath)!;
+      final String _coverPath = '$_coversPath/${_songPath.hashCode}.jpg';
+      int _status = 0;
       final int _height =
           (MediaQuery.of(context).size.shortestSide * 7 / 10).ceil();
       _status = await _flutterFFmpeg
           .execute(
               '-i "$_songPath" -vf scale="-2:\'min($_height,ih)\'":flags=lanczos -an "$_coverPath"')
           .catchError((error) {
-        setState(() => _coversComplete = -2);
         print(error.stackTrace);
+        setState(() => _coversComplete = -2);
         return 1;
       });
+      _coversMap[_songPath] = _status;
+      setState(() => ++_coversComplete);
+      _coversYaml = ['---'];
+      _coversMap.forEach((String _coverSong, int _coverStatus) =>
+          _coversYaml.add('"$_coverSong": $_coverStatus'));
+      await _cacheCoversMap();
     }
-    _coversMap[_songPath] = _status;
-    _coversYaml
-      ..removeWhere((String _line) => _line.startsWith('"$_songPath": '))
-      ..add('"$_songPath": $_status');
-    if (_coversComplete != -2) setState(() => _coversComplete = -1);
-    await _coversFile.writeAsString(_coversYaml.join('\n'));
-  }
-
-  /// Gets album artwork from cache
-  Widget _getCover(SongModel _song) {
-    if (!_bad.contains(_coversComplete)) {
-      final String _songPath = _song.data;
-      if (_coversMap.containsKey(_songPath)) {
-        if (_coversMap[_songPath] == 0) {
-          final String _coversPath = _sources
-                  .firstWhere(_songPath.startsWith, orElse: () => null)
-                  ?.coversPath ??
-              _sources[0].coversPath;
-          final File _returnCover =
-              File('$_coversPath/${_song.data.hashCode}.jpg');
-          if (_returnCover.existsSync()) {
-            return Image.file(_returnCover, fit: BoxFit.cover);
-          } else if (_coversComplete == -1) {
-            _fixCover(_song);
-          }
-        }
-      } else if (_coversComplete == -1) {
-        _fixCover(_song);
-      }
-    }
-    return null;
   }
 
   /// Gets relative urls for [fillBrowse]
@@ -831,7 +877,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
         if (value != -2) setState(() => valueChanged(++value));
       }
       if (type == 'song') entry.songs++;
-      browse = browse[entry];
+      browse = browse[entry] as SplayTreeMap<Entry, SplayTreeMap>;
       j++;
     }
   }
@@ -839,6 +885,8 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   @override
   void initState() {
     _flutterFFmpegConfig.disableRedirection();
+
+    _getSavedValues();
 
     audioPlayer.onDurationChanged.listen((Duration d) {
       setState(() => duration = d * (100.0 / _rate));
@@ -862,9 +910,9 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
     });
 
     _controller.addListener(() {
-      final double _modulo = _controller.page % 1;
+      final double _modulo = _controller.page! % 1;
       if (.9 < _modulo || _modulo < .1) {
-        final int _page = _controller.page.round();
+        final int _page = _controller.page!.round();
         if (!pageHistory.contains(_page)) {
           pageHistory.add(_page);
           while (pageHistory.length > 2) pageHistory.removeAt(0);
@@ -928,12 +976,10 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                   _browseComplete = -1;
                 _browseSongsComplete = _browseSongsComplete > 0 ? -1 : 0;
               });
-              openSharedPath();
-              WidgetsBinding.instance.addObserver(this);
-              if (_coversFile != null &&
-                  !_sources
-                      .any((Source _source) => _source.coversPath == null) &&
-                  _songsComplete == -1) _checkCovers();
+              if (_songsComplete == -1 &&
+                  _coversFile != null &&
+                  !_sources.any((Source _source) => _source.coversPath == null))
+                _loadCoversMap();
             }, onError: (error) {
               setState(() {
                 _queueComplete = -2;
@@ -969,6 +1015,8 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                           _source.browseFoldersComplete == -1))
                     _browseComplete = -1;
                 });
+                loadSpecificSong();
+                WidgetsBinding.instance!.addObserver(this);
               }, onError: (error) {
                 setState(() {
                   _browseComplete = -2;
@@ -984,9 +1032,9 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                 _source.coversPath = _appCachePath;
 
               if (Platform.isAndroid) {
-                Stream<List<Directory>>.fromFuture(
+                Stream<List<Directory>?>.fromFuture(
                         getExternalCacheDirectories())
-                    .expand((List<Directory> _extCaches) => _extCaches)
+                    .expand((List<Directory>? _extCaches) => _extCaches!)
                     .listen((Directory _extCache) {
                   final String _extCachePath = _extCache.path;
                   if (!_extCachePath.startsWith(_sources[0])) {
@@ -997,12 +1045,12 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                   }
                 }, onDone: () {
                   // Got coversPath
-                  if (_coversFile != null && !_bad.contains(_songsComplete))
-                    _checkCovers();
+                  if (_songsComplete == -1 && _coversFile != null)
+                    _loadCoversMap();
                 }, onError: (error) => print(error.stackTrace));
               } else {
-                if (_coversFile != null && !_bad.contains(_songsComplete))
-                  _checkCovers();
+                if (_songsComplete == -1 && _coversFile != null)
+                  _loadCoversMap();
               }
             }, onError: (error) => print(error.stackTrace));
           },
@@ -1022,23 +1070,25 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       _coversFile = File('${_appData.path}/covers.yaml');
 
       if (Platform.isAndroid && _debug) {
-        StreamSubscription<Directory> _extDataStream;
+        late StreamSubscription<Directory> _extDataStream;
         _extDataStream =
-            Stream<List<Directory>>.fromFuture(getExternalStorageDirectories())
-                .expand((List<Directory> _extDatas) => _extDatas)
+            Stream<List<Directory>?>.fromFuture(getExternalStorageDirectories())
+                .expand((List<Directory>? _extDatas) => _extDatas!)
                 .listen((Directory _extData) {
           final String _extDataPath = _extData.path;
           if (_extDataPath.startsWith(_sources[0])) {
             _coversFile = File('$_extDataPath/covers.yaml');
             // Got _coversFile
-            if (!_sources.any((Source _source) => _source.coversPath == null) &&
-                !_bad.contains(_songsComplete)) _checkCovers();
+            if (_songsComplete == -1 &&
+                !_sources.any((Source _source) => _source.coversPath == null))
+              _loadCoversMap();
             _extDataStream.cancel();
           }
         }, onError: (error) => print(error.stackTrace));
       } else {
-        if (!_sources.any((Source _source) => _source.coversPath == null) &&
-            !_bad.contains(_songsComplete)) _checkCovers();
+        if (_songsComplete == -1 &&
+            !_sources.any((Source _source) => _source.coversPath == null))
+          _loadCoversMap();
       }
     }, onError: (error) => print(error.stackTrace));
   }
@@ -1046,13 +1096,13 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   @override
   void dispose() {
     audioPlayer.release();
-    WidgetsBinding.instance.removeObserver(this);
+    WidgetsBinding.instance!.removeObserver(this);
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState _state) {
-    if (_state == AppLifecycleState.resumed) openSharedPath();
+    if (_state == AppLifecycleState.resumed) loadSpecificSong();
   }
 
   @override
@@ -1094,8 +1144,8 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                               source.id,
                               Theme.of(context)
                                   .textTheme
-                                  .bodyText2
-                                  .color
+                                  .bodyText2!
+                                  .color!
                                   .withOpacity(.55))),
                       title: Tooltip(
                           message: 'Change source',
@@ -1125,18 +1175,19 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                           onPressed: _pickFolder,
                           tooltip: 'Pick folder',
                           icon: queue.isNotEmpty
-                              ? const Icon(Icons.folder_open)
-                              : Icon(Icons.folder_outlined,
+                              ? const Icon(Typicons.folder_open)
+                              : Icon(Icons.create_new_folder_outlined,
                                   color: Theme.of(context)
                                       .textTheme
-                                      .bodyText2
-                                      .color
+                                      .bodyText2!
+                                      .color!
                                       .withOpacity(.55))),
                       actions: <Widget>[
                         IconButton(
                             onPressed: _pickSong,
                             tooltip: 'Pick song',
-                            icon: const Icon(Icons.album))
+                            icon: const Icon(Icons.playlist_play_rounded,
+                                size: 28.0))
                       ]),
                   body: _orientation == Orientation.portrait
                       ? Column(
@@ -1263,11 +1314,12 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                   if (_set == 'random') {
                                     setState(() {
                                       queue.shuffle();
-                                      index = queue.indexOf(song);
+                                      if (song != null)
+                                        index = queue.indexOf(song!);
                                     });
                                   } else {
                                     setState(() => _set = 'all');
-                                    onSet(context);
+                                    onSet(context as StatelessElement);
                                   }
                                 },
                                 tooltip: 'Sort or shuffle',
@@ -1288,7 +1340,7 @@ Widget _sourceButton(int sourceId, Color darkColor) {
     case -1:
       return Icon(Typicons.social_youtube, color: youTubeColor);
     case 0:
-      return Icon(Icons.folder, color: darkColor);
+      return Icon(Icons.phone_iphone, color: darkColor);
     default:
       return Icon(Icons.sd_card, color: darkColor);
   }
@@ -1317,7 +1369,8 @@ Widget _folderPicker(_PlayerState parent) {
 
 /// Renders folder list tile
 Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> entry) {
-  final SplayTreeMap<Entry, SplayTreeMap> _children = entry.value;
+  final SplayTreeMap<Entry, SplayTreeMap> _children =
+      entry.value as SplayTreeMap<Entry, SplayTreeMap>;
   final Entry _entry = entry.key;
   if (_children.isNotEmpty) {
     return ExpansionTile(
@@ -1332,7 +1385,7 @@ Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> entry) {
                 fontSize: 14.0,
                 color: parent.folder == _entry.path
                     ? Theme.of(parent.context).primaryColor
-                    : Theme.of(parent.context).textTheme.bodyText2.color)),
+                    : Theme.of(parent.context).textTheme.bodyText2!.color)),
         subtitle: Text(_entry.songs == 1 ? '1 song' : '${_entry.songs} songs',
             style: TextStyle(
                 fontSize: 10.0,
@@ -1340,8 +1393,8 @@ Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> entry) {
                     ? Theme.of(parent.context).primaryColor
                     : Theme.of(parent.context)
                         .textTheme
-                        .bodyText2
-                        .color
+                        .bodyText2!
+                        .color!
                         .withOpacity(.55))),
         children: _children.entries
             .map((MapEntry<Entry, SplayTreeMap> entry) =>
@@ -1455,7 +1508,7 @@ Widget _rangeCover(parent) {
       const Text('%', style: _textStyle)
     ]));
   }
-  Widget _cover;
+  Widget? _cover;
   if (parent.song != null) _cover = parent._getCover(parent.song);
   _cover ??= const Icon(Icons.music_note, size: 48.0);
   return Tooltip(
@@ -1522,7 +1575,7 @@ Double tap to add prelude''',
             painter: CubistWave(
                 _bad.contains(parent._queueComplete)
                     ? 'zapaz'
-                    : parent.song.title,
+                    : parent.song!.title,
                 _bad.contains(parent._queueComplete)
                     ? _defaultDuration
                     : parent.duration,
@@ -1544,11 +1597,11 @@ Widget _playerControl(_PlayerState parent) {
                 children: <Widget>[
                   Text(_timeInfo(parent._queueComplete, parent._position),
                       style: TextStyle(
-                          color: Theme.of(context).textTheme.bodyText2.color,
+                          color: Theme.of(context).textTheme.bodyText2!.color,
                           fontWeight: FontWeight.bold)),
                   Text(_timeInfo(parent._queueComplete, parent.duration),
                       style: TextStyle(
-                          color: Theme.of(context).textTheme.bodyText2.color))
+                          color: Theme.of(context).textTheme.bodyText2!.color))
                 ]),
             _title(parent),
             _artist(parent),
@@ -1573,21 +1626,21 @@ Widget _title(_PlayerState parent) {
     if (parent._queueComplete == 0) {
       return Text('Empty queue',
           style: TextStyle(
-              color: Theme.of(context).textTheme.bodyText2.color,
+              color: Theme.of(context).textTheme.bodyText2!.color,
               fontSize: 15.0));
     } else if (parent._queueComplete == -2) {
       return Text('Unable to retrieve songs!',
           style: TextStyle(
-              color: Theme.of(context).textTheme.bodyText2.color,
+              color: Theme.of(context).textTheme.bodyText2!.color,
               fontSize: 15.0));
     }
-    return Text(parent.song.title.replaceAll('_', ' ').toUpperCase(),
+    return Text(parent.song!.title.replaceAll('_', ' ').toUpperCase(),
         overflow: TextOverflow.ellipsis,
         maxLines: 2,
         textAlign: TextAlign.center,
         style: TextStyle(
-            color: Theme.of(context).textTheme.bodyText2.color,
-            fontSize: parent.song.artist == '<unknown>' ? 12.0 : 13.0,
+            color: Theme.of(context).textTheme.bodyText2!.color,
+            fontSize: parent.song!.artist == '<unknown>' ? 12.0 : 13.0,
             letterSpacing: 6.0,
             fontWeight: parent._orientation == Orientation.portrait
                 ? FontWeight.bold
@@ -1599,13 +1652,13 @@ Widget _title(_PlayerState parent) {
 Widget _artist(_PlayerState parent) {
   return Builder(builder: (BuildContext context) {
     if (_bad.contains(parent._queueComplete) ||
-        parent.song.artist == '<unknown>') return const SizedBox.shrink();
+        parent.song!.artist == '<unknown>') return const SizedBox.shrink();
 
-    return Text(parent.song.artist.toUpperCase(),
+    return Text(parent.song!.artist!.toUpperCase(),
         overflow: TextOverflow.ellipsis,
         maxLines: 1,
         style: TextStyle(
-            color: Theme.of(context).textTheme.bodyText2.color,
+            color: Theme.of(context).textTheme.bodyText2!.color,
             fontSize: 9.0,
             height: 2.0,
             letterSpacing: 6.0,
@@ -1662,15 +1715,17 @@ Widget _minorControl(_PlayerState parent) {
                                 fontSize: 15.0,
                                 fontWeight: FontWeight.bold))))),*/
             GestureDetector(
-                onDoubleTap: () => parent..onSet(context)..onSet(context),
+                onDoubleTap: () => parent
+                  ..onSet(context as StatelessElement)
+                  ..onSet(context),
                 child: IconButton(
-                    onPressed: () => parent.onSet(context),
+                    onPressed: () => parent.onSet(context as StatelessElement),
                     tooltip: 'Set (one, all, or random songs)',
                     icon: Icon(_status(parent._set), size: 20.0)))
           ]),
           Row(children: <Widget>[
             IconButton(
-                onPressed: () => parent.onMode(context),
+                onPressed: () => parent.onMode(context as StatelessElement),
                 tooltip: 'Mode (once or in a loop)',
                 icon: Icon(
                     parent._mode == 'loop' ? Icons.repeat : Icons.trending_flat,
@@ -1772,12 +1827,12 @@ Widget _songPicker(parent) {
                 children: <Widget>[
                   Expanded(
                       child: Text(
-                          _song.artist == '<unknown>' ? '' : _song.artist,
+                          _song.artist == '<unknown>' ? '' : _song.artist!,
                           style: const TextStyle(fontSize: 11.0),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1)),
                   Text(_timeInfo(parent._queueComplete,
-                      Duration(milliseconds: _song.duration)))
+                      Duration(milliseconds: _song.duration!)))
                 ]),
             trailing: Icon(
                 (parent.index == i && parent._state == PlayerState.PLAYING)
@@ -1789,7 +1844,7 @@ Widget _songPicker(parent) {
 
 /// Renders album artworks for queue list
 Widget _listCover(_PlayerState parent, SongModel _song) {
-  final Widget _cover = parent._getCover(_song);
+  final Widget? _cover = parent._getCover(_song);
   if (_cover != null) {
     return Material(
         clipBehavior: Clip.antiAlias,
@@ -1798,7 +1853,7 @@ Widget _listCover(_PlayerState parent, SongModel _song) {
             : const _CubistShapeC(),
         child: _cover);
   }
-  return const Icon(Icons.music_note, size: 24.0);
+  return const Icon(Icons.music_note);
 }
 
 /// Cubist shape for player slider.
@@ -1851,7 +1906,8 @@ class CubistWave extends CustomPainter {
         _indicatorPath.lineTo((size.width * index) / _len,
             size.height - _heightFactor(size.height, rate, value));
       } else if (index == ceil) {
-        final double previous = index == 0 ? size.height : _waveList[index - 1];
+        final double previous =
+            index == 0 ? size.height : _waveList[index - 1]!;
         final double diff = value - previous;
         final double advance = 1 - (ceil - pos);
         _indicatorPath.lineTo(
@@ -1905,11 +1961,11 @@ class _CubistShapeA extends ShapeBorder {
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
 
   @override
-  Path getInnerPath(Rect rect, {TextDirection textDirection}) =>
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
       getOuterPath(rect, textDirection: textDirection);
 
   @override
-  Path getOuterPath(Rect rect, {TextDirection textDirection}) {
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
     return Path()
       ..moveTo(rect.left, rect.top)
       ..lineTo(rect.right, rect.top)
@@ -1921,7 +1977,7 @@ class _CubistShapeA extends ShapeBorder {
   }
 
   @override
-  void paint(Canvas canvas, Rect rect, {TextDirection textDirection}) {}
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {}
 
   @override
   ShapeBorder scale(double t) => this;
@@ -1938,11 +1994,11 @@ class _CubistShapeB extends ShapeBorder {
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
 
   @override
-  Path getInnerPath(Rect rect, {TextDirection textDirection}) =>
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
       getOuterPath(rect, textDirection: textDirection);
 
   @override
-  Path getOuterPath(Rect rect, {TextDirection textDirection}) {
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
     return Path()
       ..moveTo(rect.left + rect.width / 5.0, rect.top + rect.height / 5.0)
       ..lineTo(rect.right - rect.width / 10.0, rect.top + rect.height / 10.0)
@@ -1952,7 +2008,7 @@ class _CubistShapeB extends ShapeBorder {
   }
 
   @override
-  void paint(Canvas canvas, Rect rect, {TextDirection textDirection}) {}
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {}
 
   @override
   ShapeBorder scale(double t) => this;
@@ -1970,11 +2026,11 @@ class _CubistShapeC extends ShapeBorder {
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
 
   @override
-  Path getInnerPath(Rect rect, {TextDirection textDirection}) =>
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
       getOuterPath(rect, textDirection: textDirection);
 
   @override
-  Path getOuterPath(Rect rect, {TextDirection textDirection}) {
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
     return Path()
       ..moveTo(rect.left + rect.width / 4, rect.top)
       ..lineTo(rect.right - rect.width / 2, rect.top)
@@ -1990,7 +2046,7 @@ class _CubistShapeC extends ShapeBorder {
   }
 
   @override
-  void paint(Canvas canvas, Rect rect, {TextDirection textDirection}) {}
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {}
 
   @override
   ShapeBorder scale(double t) => this;
@@ -2007,11 +2063,11 @@ class _CubistShapeD extends ShapeBorder {
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
 
   @override
-  Path getInnerPath(Rect rect, {TextDirection textDirection}) =>
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
       getOuterPath(rect, textDirection: textDirection);
 
   @override
-  Path getOuterPath(Rect rect, {TextDirection textDirection}) {
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
     return Path()
       ..moveTo(rect.left - rect.width / 20, rect.top + rect.height / 6)
       ..lineTo(rect.right + rect.width / 20, rect.top + rect.height / 6)
@@ -2020,7 +2076,7 @@ class _CubistShapeD extends ShapeBorder {
   }
 
   @override
-  void paint(Canvas canvas, Rect rect, {TextDirection textDirection}) {}
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {}
 
   @override
   ShapeBorder scale(double t) => this;

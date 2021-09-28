@@ -2,7 +2,7 @@ name: stepslow
 description: Simple music player for dancers
 
 # The following line prevents the package from being accidentally published to
-# pub.dev using `pub publish`. This is preferred for private packages.
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 # The following defines the version and build number for your application.
@@ -15,33 +15,47 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 0.1.0+1
-author: Pavel Dvořák <dvorapa~seznam~cz>
+version: 0.2.0+2
 homepage: https://www.dvorapa.cz
 
 environment:
-  sdk: ">=2.7.0 <3.0.0"
+  sdk: '>=2.12.0 <3.0.0'
   flutter: ">=1.13.8 <3.0.0"
 
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
 dependencies:
   flutter:
     sdk: flutter
 
 
-  audioplayers: ">=0.19.1 <0.20.0"
-  on_audio_query: ^2.2.0
+  audioplayers: ">=0.20.1 <1.0.0"
+  on_audio_query: ^2.3.1
   flutter_ffmpeg: ">=0.4.2 <1.0.0"
-  wakelock: ">=0.5.3 <1.0.0"
+  wakelock: ">=0.5.6 <1.0.0"
   easy_dialogs: ^2.0.0
   typicons_flutter: ">=0.5.0 <1.0.0"
   yaml: ^3.1.0
-  permission_handler: ^8.1.4
-  path_provider: ^2.0.2
+  permission_handler: ^8.1.6
+  path_provider: ^2.0.5
+  collection: ^1.15.0
+  shared_preferences: ^2.0.8
 
 dev_dependencies:
   flutter_launcher_icons: ">=0.9.2 <1.0.0"
   flutter_test:
     sdk: flutter
+
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  flutter_lints: ^1.0.4
 
 flutter_icons:
   image_path: "assets/icon.png"
