@@ -349,6 +349,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       setState(() => song = queue[index]);
       final String _songPath = song!.data;
       audioPlayer.play(_songPath, isLocal: true);
+      setState(() => lastSongPath = _songPath);
       _setValue('lastSongPath', _songPath);
     }
     onRate(_rate);
@@ -384,7 +385,11 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
         song = queue.isNotEmpty ? queue[index] : null;
         if (song != null) duration = Duration(milliseconds: song!.duration!);
       });
-      if (song != null) _setValue('lastSongPath', song!.data);
+      if (song != null) {
+        final String _songPath = song!.data;
+        setState(() => lastSongPath = _songPath);
+        _setValue('lastSongPath', _songPath);
+      }
     }
   }
 
