@@ -1377,24 +1377,26 @@ Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> entry) {
   final SplayTreeMap<Entry, SplayTreeMap> _children =
       entry.value as SplayTreeMap<Entry, SplayTreeMap>;
   final Entry _entry = entry.key;
+  final String _entryPath = _entry.path;
   if (_children.isNotEmpty) {
     return ExpansionTile(
-        key: PageStorageKey<MapEntry>(entry),
-        initiallyExpanded: parent.folder.contains(_entry.path),
+        /*key: PageStorageKey<MapEntry>(entry),*/
+        key: UniqueKey(),
+        initiallyExpanded: parent.folder.contains(_entryPath),
         onExpansionChanged: (bool value) {
-          if (value == true) parent.onFolder(_entry.path);
+          parent.onFolder(_entryPath);
         },
         childrenPadding: const EdgeInsets.only(left: 16.0),
         title: Text(_entry.name,
             style: TextStyle(
                 fontSize: 14.0,
-                color: parent.folder == _entry.path
+                color: parent.folder == _entryPath
                     ? Theme.of(parent.context).primaryColor
                     : Theme.of(parent.context).textTheme.bodyText2!.color)),
         subtitle: Text(_entry.songs == 1 ? '1 song' : '${_entry.songs} songs',
             style: TextStyle(
                 fontSize: 10.0,
-                color: parent.folder == _entry.path
+                color: parent.folder == _entryPath
                     ? Theme.of(parent.context).primaryColor
                     : Theme.of(parent.context)
                         .textTheme
@@ -1407,13 +1409,13 @@ Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> entry) {
             .toList());
   }
   return ListTile(
-      selected: parent.folder == _entry.path,
-      onTap: () => parent.onFolder(_entry.path),
+      selected: parent.folder == _entryPath,
+      onTap: () => parent.onFolder(_entryPath),
       title: _entry.name.isEmpty
           ? Align(
               alignment: Alignment.centerLeft,
               child: Icon(Icons.home,
-                  color: parent.folder == _entry.path
+                  color: parent.folder == _entryPath
                       ? Theme.of(parent.context).primaryColor
                       : unfocusedColor))
           : Text(_entry.name, style: const TextStyle(fontSize: 14.0)),
