@@ -1366,6 +1366,7 @@ Widget _folderPicker(_PlayerState parent) {
     return const Center(child: Text('Unable to retrieve folders!'));
   }
   return ListView.builder(
+      /*key: PageStorageKey<int>(browse.hashCode),*/
       padding: const EdgeInsets.all(16.0),
       itemCount: browse.length,
       itemBuilder: (BuildContext context, int i) =>
@@ -1808,6 +1809,7 @@ Widget _songPicker(parent) {
     return const Center(child: Text('Unable to retrieve songs!'));
   }
   return ListView.builder(
+      key: PageStorageKey<int>(parent.queue.hashCode),
       itemCount: parent.queue.length,
       itemBuilder: (BuildContext context, int i) {
         final SongModel _song = parent.queue[i];
