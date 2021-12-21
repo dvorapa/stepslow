@@ -15,6 +15,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:collection/collection.dart' show IterableExtension;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 /// Theme main color
 final Color interactiveColor = Colors.orange[300]!; // #FFB74D #FFA726
@@ -39,6 +40,9 @@ Duration _defaultDuration = const Duration(seconds: 5);
 
 /// Default duration for animations
 Duration _animationDuration = const Duration(milliseconds: 300);
+
+/// Default duration for animations
+final Curve _animationCurve = Curves.ease;
 
 /// Available sources
 final List<Source> _sources = [Source('/storage/emulated/0', 0)];
@@ -270,28 +274,37 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   late Orientation _orientation;
 
   /// False if [_rate] picker should be hidden
-  bool _ratePicker = false;
+  bool _showRatePicker = false;
 
-  /// False if [_ratePicker] was false at last redraw
+  /// False if [_showRatePicker] was false at last redraw
   bool _previousRatePicker = false;
 
-  /// Timer to release [_ratePicker]
-  Timer? _ratePickerTimer;
+  /// Timer to release [_showRatePicker]
+  Timer? _rateCoverTimer;
+
+  /// Text to speech for prelude
+  final FlutterTts _tts = FlutterTts();
+
+  /// Prelude length before playback
+  int _ttsLength = 0;
 
   /// Random generator to shuffle queue after startup
   final Random random = Random();
 
   /// History of page transitions
-  List<int> pageHistory = [1];
+  List<int> pageHistory = [2];
 
   /// [PageView] controller
-  final PageController _controller = PageController(initialPage: 1);
+  final PageController _controller = PageController(initialPage: 2);
 
   /// Current playback source
   Source source = _sources[0];
 
   /// Current playback folder
   String folder = '/storage/emulated/0/Music';
+
+  /// Chosen playback folder
+  String chosenFolder = '/storage/emulated/0/Music';
 
   /// Current playback song
   SongModel? song;
@@ -326,6 +339,9 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Queue completer
   int _queueComplete = 0;
 
+  /// Queue completer
+  int _tempQueueComplete = 0;
+
   /// Song stack completer
   int _songsComplete = 0;
 
@@ -336,10 +352,16 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   int _browseSongsComplete = 0;
 
   /// Current playback queue
-  List<SongModel> queue = [];
+  final List<SongModel> queue = [];
+
+  /// Current playback queue
+  final List<SongModel> _tempQueue = [];
 
   /// Stack of available songs
   final List<SongModel> _songs = [];
+
+  /// Text to speech timer
+  Timer? _ttsTimer;
 
   /// Initializes [song] playback
   void onPlay({bool quiet = false}) {
@@ -348,7 +370,22 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
     } else {
       setState(() => song = queue[index]);
       final String _songPath = song!.data;
-      audioPlayer.play(_songPath, isLocal: true);
+      if (_ttsLength != 0) {
+        onStop(quiet: true);
+        audioPlayer.setUrl(_songPath, isLocal: true);
+      }
+      final List<String> _range = [
+        for (int i = _ttsLength; i > 0; i--) i.toString()
+      ];
+      _ttsTimer?.cancel();
+      _ttsTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (_range.isEmpty) {
+          audioPlayer.play(_songPath, isLocal: true);
+          _ttsTimer?.cancel();
+        } else {
+          _tts.speak(_range.removeAt(0));
+        }
+      });
       setState(() => lastSongPath = _songPath);
       _setValue('lastSongPath', _songPath);
     }
@@ -395,19 +432,24 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   /// Pauses [song] playback
   void onPause({bool quiet = false}) {
-    audioPlayer.pause();
-    if (!quiet) setState(() => _state = PlayerState.PAUSED);
+    _ttsTimer?.cancel();
+    if (_ttsTimer != null && !_ttsTimer!.isActive) {
+      audioPlayer.pause();
+      if (!quiet) setState(() => _state = PlayerState.PAUSED);
+    }
   }
 
   /// Shuts player down and resets its state
-  void onStop() {
+  void onStop({bool quiet = false}) {
     audioPlayer.stop();
     setState(() {
-      duration = _emptyDuration;
-      _position = _emptyDuration;
+      if (!quiet) {
+        duration = _emptyDuration;
+        _position = _emptyDuration;
+      }
       _state = PlayerState.STOPPED;
-      Wakelock.disable();
     });
+    Wakelock.disable();
   }
 
   /// Changes [folder] according to given
@@ -442,7 +484,31 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
           if (_controller.page! > .1) _pickFolder();
         }
       }
-      setState(() => folder = _folder);
+      setState(() {
+        folder = _folder;
+        chosenFolder = _folder;
+        _ttsLength = 0;
+      });
+    }
+  }
+
+  /// Creates temporary queue list
+  void _getTempQueue(String _tempFolder) {
+    if (chosenFolder != _tempFolder) {
+      setState(() {
+        chosenFolder = _tempFolder;
+        _tempQueueComplete = 0;
+      });
+      _tempQueue.clear();
+      if (!_bad.contains(_songsComplete)) {
+        for (final SongModel _song in _songs) {
+          if (File(_song.data).parent.path == _tempFolder) {
+            _tempQueue.add(_song);
+            setState(() => ++_tempQueueComplete);
+          }
+        }
+      }
+      setState(() => _tempQueueComplete = -1);
     }
   }
 
@@ -622,6 +688,12 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
     });
   }
 
+  /// Switches playback [_prelude]
+  void onPrelude() {
+    setState(() => _ttsLength = _ttsLength == 0 ? 10 : 0);
+    if (_ttsLength == 10) onChange(index);
+  }
+
   /// Switches playback [_state]
   void _changeState() => _state == PlayerState.PLAYING ? onPause() : onPlay();
 
@@ -691,25 +763,29 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   /// Navigates to folder picker page
   void _pickFolder() => _controller.animateToPage(0,
-      duration: _animationDuration, curve: Curves.ease);
+      duration: _animationDuration, curve: _animationCurve);
 
   /// Navigates to song picker page
-  void _pickSong() => _controller.animateToPage(2,
-      duration: _animationDuration, curve: Curves.ease);
+  void _pickSong() => _controller.animateToPage(1,
+      duration: _animationDuration, curve: _animationCurve);
 
   /// Navigates to player main page
-  void _returnToPlayer() => _controller.animateToPage(1,
-      duration: _animationDuration, curve: Curves.ease);
+  void _returnToPlayer() => _controller.animateToPage(2,
+      duration: _animationDuration, curve: _animationCurve);
+
+  /// Navigates to dance features page
+  void _useFeatures() => _controller.animateToPage(3,
+      duration: _animationDuration, curve: _animationCurve);
 
   /// Goes back to the previous page
   bool onBack() {
-    if (.9 < _controller.page! && _controller.page! < 1.1) {
-      setState(() => pageHistory = [1]);
+    if (1.9 < _controller.page! && _controller.page! < 2.1) {
+      setState(() => pageHistory = [2]);
       return true;
     }
     _controller.animateToPage(pageHistory[0],
-        duration: _animationDuration, curve: Curves.ease);
-    setState(() => pageHistory = [1]);
+        duration: _animationDuration, curve: _animationCurve);
+    setState(() => pageHistory = [2]);
     return false;
   }
 
@@ -1113,31 +1189,32 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     if (_previousRate != _rate) {
-      _ratePicker = true;
+      _showRatePicker = true;
       _previousRate = _rate;
-      _ratePickerTimer?.cancel();
-      _ratePickerTimer = Timer(_defaultDuration, () {
-        setState(() => _ratePicker = false);
+      _rateCoverTimer?.cancel();
+      _rateCoverTimer = Timer(_defaultDuration, () {
+        setState(() => _showRatePicker = false);
       });
     }
     if (_previousSong != song) {
-      _ratePicker = false;
+      _showRatePicker = false;
       _previousSong = song;
-      _ratePickerTimer?.cancel();
+      _rateCoverTimer?.cancel();
     }
-    if (_previousRatePicker != _ratePicker) {
-      _ratePickerTimer?.cancel();
-      _ratePickerTimer = Timer(_defaultDuration, () {
-        setState(() => _ratePicker = false);
+    if (_previousRatePicker != _showRatePicker) {
+      _rateCoverTimer?.cancel();
+      _rateCoverTimer = Timer(_defaultDuration, () {
+        setState(() => _showRatePicker = false);
       });
     }
-    _previousRatePicker = _ratePicker;
+    _previousRatePicker = _showRatePicker;
     _orientation = MediaQuery.of(context).orientation;
     return Material(
         child: PageView(
             controller: _controller,
             physics: const BouncingScrollPhysics(),
             children: <Widget>[
+          // folders
           WillPopScope(
               onWillPop: () => Future<bool>.sync(onBack),
               child: Scaffold(
@@ -1155,30 +1232,76 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                       title: Tooltip(
                           message: 'Change source',
                           child: InkWell(
-                              onTap: _pickSource, child: Text(source.name))),
-                      actions: <Widget>[
-                        IconButton(
-                            onPressed: _returnToPlayer,
-                            tooltip: 'Back to player',
-                            icon: const Icon(Icons.navigate_next))
-                      ]),
-                  body: _folderPicker(this),
+                              onTap: _pickSource, child: Text(source.name)))),
+                  body: _folderPicker(this))),
+          // songs
+          WillPopScope(
+              onWillPop: () => Future<bool>.sync(onBack),
+              child: Scaffold(
+                  appBar: AppBar(
+                      leading: chosenFolder != folder
+                          ? IconButton(
+                              onPressed: _pickFolder,
+                              tooltip: 'Pick different folder',
+                              icon: const Icon(Icons.navigate_before))
+                          : IconButton(
+                              onPressed: _pickFolder,
+                              tooltip: 'Pick different folder',
+                              icon: queue.isNotEmpty
+                                  ? const Icon(Typicons.folder_open)
+                                  : Icon(Icons.create_new_folder_outlined,
+                                      color: Theme.of(context)
+                                          .textTheme
+                                          .bodyText2!
+                                          .color!
+                                          .withOpacity(.55))),
+                      title: _navigation(this)),
+                  body: _songPicker(this),
                   floatingActionButton: Align(
                       alignment: const Alignment(.8, .8),
                       child: Transform.scale(
                           scale: 1.1,
-                          child: _play(this, 6.0, 32.0, () {
-                            _changeState();
-                            if (_state == PlayerState.PLAYING)
-                              _returnToPlayer();
-                          }))))),
+                          child: chosenFolder != folder
+                              ? FloatingActionButton(
+                                  onPressed: () {
+                                    onFolder(chosenFolder);
+                                    if (queue.isNotEmpty) {
+                                      setState(() => index = 0);
+                                      onPlay();
+                                      _returnToPlayer();
+                                    }
+                                  },
+                                  tooltip: _tempQueueComplete == -1
+                                      ? 'Play chosen folder'
+                                      : 'Loading...',
+                                  shape: _orientation == Orientation.portrait
+                                      ? const _CubistShapeB()
+                                      : const _CubistShapeD(),
+                                  elevation: 6.0,
+                                  child: _tempQueueComplete == -1
+                                      ? const Icon(Icons.play_arrow, size: 32.0)
+                                      : SizedBox(
+                                          width: 22.0,
+                                          height: 22.0,
+                                          child: CircularProgressIndicator(
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                      Theme.of(context)
+                                                          .colorScheme
+                                                          .onSecondary))))
+                              : _play(this, 6.0, 32.0, () {
+                                  _changeState();
+                                  if (_state == PlayerState.PLAYING)
+                                    _returnToPlayer();
+                                }))))),
+          // player
           WillPopScope(
               onWillPop: () => Future<bool>.sync(onBack),
               child: Scaffold(
                   appBar: AppBar(
                       leading: IconButton(
                           onPressed: _pickFolder,
-                          tooltip: 'Pick folder',
+                          tooltip: 'Pick different folder',
                           icon: queue.isNotEmpty
                               ? const Icon(Typicons.folder_open)
                               : Icon(Icons.create_new_folder_outlined,
@@ -1186,14 +1309,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                       .textTheme
                                       .bodyText2!
                                       .color!
-                                      .withOpacity(.55))),
-                      actions: <Widget>[
-                        IconButton(
-                            onPressed: _pickSong,
-                            tooltip: 'Pick song',
-                            icon: const Icon(Icons.playlist_play_rounded,
-                                size: 28.0))
-                      ]),
+                                      .withOpacity(.55)))),
                   body: _orientation == Orientation.portrait
                       ? Column(
                           mainAxisAlignment: MainAxisAlignment.end,
@@ -1203,7 +1319,37 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                   child: FractionallySizedBox(
                                       widthFactor: .45,
                                       child: _playerSquared(this))),
-                              Flexible(flex: 11, child: _playerOblong(this)),
+                              Flexible(
+                                  flex: 11,
+                                  child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        _ttsLength == 0
+                                            ? const SizedBox.shrink()
+                                            : GestureDetector(
+                                                onDoubleTap: onPrelude,
+                                                child: FractionallySizedBox(
+                                                    heightFactor: _heightFactor(
+                                                        1,
+                                                        _rate,
+                                                        wave(song?.title ?? 'zapaz')
+                                                            .first),
+                                                    child: Container(
+                                                        alignment:
+                                                            Alignment.center,
+                                                        padding: const EdgeInsets
+                                                                .symmetric(
+                                                            horizontal: 12.0),
+                                                        color: youTubeColor,
+                                                        child: Text(
+                                                            '$_ttsLength s',
+                                                            style: TextStyle(
+                                                                color: Theme.of(
+                                                                        context)
+                                                                    .scaffoldBackgroundColor))))),
+                                        Expanded(child: _playerOblong(this))
+                                      ])),
                               Flexible(
                                   flex: 20,
                                   child: Container(
@@ -1276,6 +1422,27 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                         .scaffoldBackgroundColor,
                                                     fontWeight:
                                                         FontWeight.bold)))),
+                                    _ttsLength == 0
+                                        ? const SizedBox.shrink()
+                                        : GestureDetector(
+                                            onDoubleTap: onPrelude,
+                                            child: FractionallySizedBox(
+                                                heightFactor: _heightFactor(
+                                                    1,
+                                                    _rate,
+                                                    wave(song?.title ?? 'zapaz')
+                                                        .first),
+                                                child: Container(
+                                                    alignment: Alignment.center,
+                                                    padding: const EdgeInsets
+                                                            .symmetric(
+                                                        horizontal: 12.0),
+                                                    color: youTubeColor,
+                                                    child: Text('$_ttsLength s',
+                                                        style: TextStyle(
+                                                            color: Theme.of(
+                                                                    context)
+                                                                .scaffoldBackgroundColor))))),
                                     Expanded(child: _playerOblong(this)),
                                     FractionallySizedBox(
                                         heightFactor: _heightFactor(1, _rate,
@@ -1299,42 +1466,38 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                 ))))
                                   ]))
                         ]))),
+          // features
           WillPopScope(
               onWillPop: () => Future<bool>.sync(onBack),
               child: Scaffold(
-                  appBar: AppBar(
-                      leading: IconButton(
-                          onPressed: _returnToPlayer,
-                          tooltip: 'Back to player',
-                          icon: const Icon(Icons.navigate_before)),
-                      title: _navigation(this)),
-                  body: _songPicker(this),
-                  floatingActionButton: Align(
-                      alignment: const Alignment(.8, .8),
-                      child: Transform.scale(
-                          scale: 1.1,
-                          child: Builder(builder: (BuildContext context) {
-                            return FloatingActionButton(
-                                onPressed: () {
-                                  if (_set == 'random') {
-                                    setState(() {
-                                      queue.shuffle();
-                                      if (song != null)
-                                        index = queue.indexOf(song!);
-                                    });
-                                  } else {
-                                    setState(() => _set = 'all');
-                                    onSet(context as StatelessElement);
-                                  }
-                                },
-                                tooltip: 'Sort or shuffle',
-                                shape: _orientation == Orientation.portrait
-                                    ? const _CubistShapeB()
-                                    : const _CubistShapeD(),
-                                elevation: 6.0,
-                                backgroundColor: unfocusedColor,
-                                child: const Icon(Icons.shuffle, size: 26.0));
-                          })))))
+                  appBar: AppBar(),
+                  body: Container(
+                      color: Theme.of(context).primaryColor,
+                      padding: const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, .0),
+                      child: Theme(
+                          data: ThemeData.from(
+                              colorScheme: Theme.of(context)
+                                  .colorScheme
+                                  .copyWith(
+                                      secondary: Theme.of(context)
+                                          .scaffoldBackgroundColor,
+                                      onSecondary:
+                                          Theme.of(context).primaryColor,
+                                      brightness: Brightness.dark)),
+                          child: _orientation == Orientation.portrait
+                              ? Column(children: <Widget>[
+                                  _ratePicker(this),
+                                  _preludePicker(this)
+                                ])
+                              : Table(
+                                  defaultVerticalAlignment:
+                                      TableCellVerticalAlignment.middle,
+                                  children: <TableRow>[
+                                      TableRow(children: <Widget>[
+                                        _ratePicker(this),
+                                        _preludePicker(this)
+                                      ])
+                                    ])))))
         ]));
   }
 }
@@ -1354,7 +1517,7 @@ Widget _sourceButton(int sourceId, Color darkColor) {
 /// Renders folder list
 Widget _folderPicker(_PlayerState parent) {
   if (parent.source.id == -1)
-    return const Center(child: Text('Not yet supported'));
+    return const Center(child: Text('Not yet supported!'));
 
   final int _browseComplete = parent._browseComplete;
   final SplayTreeMap<Entry, SplayTreeMap> browse = parent.source.browse;
@@ -1383,10 +1546,8 @@ Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> entry) {
     return ExpansionTile(
         /*key: PageStorageKey<MapEntry>(entry),*/
         key: UniqueKey(),
-        initiallyExpanded: parent.folder.contains(_entryPath),
-        onExpansionChanged: (bool value) {
-          parent.onFolder(_entryPath);
-        },
+        initiallyExpanded: parent.chosenFolder.contains(_entryPath),
+        onExpansionChanged: (_) => parent._getTempQueue(_entryPath),
         childrenPadding: const EdgeInsets.only(left: 16.0),
         title: Text(_entry.name,
             style: TextStyle(
@@ -1411,7 +1572,11 @@ Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> entry) {
   }
   return ListTile(
       selected: parent.folder == _entryPath,
-      onTap: () => parent.onFolder(_entryPath),
+      onTap: () {
+        parent
+          .._getTempQueue(_entryPath)
+          .._pickSong();
+      },
       title: _entry.name.isEmpty
           ? Align(
               alignment: Alignment.centerLeft,
@@ -1480,15 +1645,50 @@ Widget _playerSquared(_PlayerState parent) {
               shape: parent._orientation == Orientation.portrait
                   ? const _CubistShapeA()
                   : const _CubistShapeC(),
-              child: _rangeCover(parent))));
+              child: _rateCover(parent))));
+}
+
+/// Renders rate selector
+Widget _ratePicker(parent) {
+  return Builder(builder: (BuildContext context) {
+    String _message = 'Set player speed';
+    GestureTapCallback _onTap = () {};
+    final Color? _textColor = Theme.of(context).textTheme.bodyText2!.color;
+    final TextStyle _textStyle = TextStyle(fontSize: 30, color: _textColor);
+    if (parent._rate != 100.0) {
+      _message = 'Reset player speed';
+      _onTap = () => parent.onRate(100.0);
+    }
+    return Center(
+        child:
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
+      Text('Speed', style: TextStyle(color: _textColor)),
+      Tooltip(
+          message: _message,
+          child: InkWell(
+              onTap: _onTap,
+              child: Text('${parent._rate.toInt()}', style: _textStyle))),
+      Column(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
+        IconButton(
+            onPressed: () => parent.onRate(parent._rate + 5.0),
+            tooltip: 'Speed up',
+            icon: const Icon(Icons.keyboard_arrow_up, size: 30)),
+        IconButton(
+            onPressed: () => parent.onRate(parent._rate - 5.0),
+            tooltip: 'Slow down',
+            icon: const Icon(Icons.keyboard_arrow_down, size: 30))
+      ]),
+      Text('%', style: _textStyle)
+    ]));
+  });
 }
 
 /// Renders album artwork or rate selector
-Widget _rangeCover(parent) {
-  if (parent._ratePicker == true) {
+Widget _rateCover(parent) {
+  if (parent._showRatePicker == true) {
     String _message = 'Hide speed selector';
     GestureTapCallback _onTap = () {
-      parent.setState(() => parent._ratePicker = false);
+      parent.setState(() => parent._showRatePicker = false);
     };
     const TextStyle _textStyle = TextStyle(fontSize: 30);
     if (parent._rate != 100.0) {
@@ -1523,13 +1723,52 @@ Widget _rangeCover(parent) {
       message: 'Show speed selector',
       child: InkWell(
           onTap: () {
-            parent.setState(() => parent._ratePicker = true);
+            parent.setState(() => parent._showRatePicker = true);
           },
           child: _cover));
 }
 
+/// Renders prelude length selector
+Widget _preludePicker(parent) {
+  return Builder(builder: (BuildContext context) {
+    String _message = 'Reset prelude length';
+    if (parent._ttsLength == 0) _message = 'Set prelude length';
+    final Color? _textColor = Theme.of(context).textTheme.bodyText2!.color;
+    final TextStyle _textStyle = TextStyle(fontSize: 30, color: _textColor);
+    return Center(
+        child:
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
+      Text('Prelude', style: TextStyle(color: _textColor)),
+      Tooltip(
+          message: _message,
+          child: InkWell(
+              onTap: () {
+                parent.setState(() => parent._ttsLength = 0);
+              },
+              child: Text('${parent._ttsLength}', style: _textStyle))),
+      Column(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
+        IconButton(
+            onPressed: () {
+              parent.setState(() => parent._ttsLength += 5);
+            },
+            tooltip: 'Add more',
+            icon: const Icon(Icons.keyboard_arrow_up, size: 30)),
+        IconButton(
+            onPressed: () {
+              if (parent._ttsLength >= 5) {
+                parent.setState(() => parent._ttsLength -= 5);
+              }
+            },
+            tooltip: 'Shorten',
+            icon: const Icon(Icons.keyboard_arrow_down, size: 30))
+      ]),
+      Text('s', style: _textStyle)
+    ]));
+  });
+}
+
 /// Handles oblong player section
-Widget _playerOblong(_PlayerState parent) {
+Widget _playerOblong(parent) {
   return Builder(builder: (BuildContext context) {
     /*return Tooltip(
         message: '''
@@ -1577,7 +1816,7 @@ Double tap to add prelude''',
             parent.onRateDragUpdate(context, details),
         onVerticalDragEnd: (DragEndDetails details) =>
             parent.onRateDragEnd(context, details),
-        /*onDoubleTap: () {},*/
+        onDoubleTap: parent.onPrelude,
         child: CustomPaint(
             size: Size.infinite,
             painter: CubistWave(
@@ -1704,8 +1943,8 @@ Widget _minorControl(_PlayerState parent) {
                 message: 'Select start',
                 child: InkWell(
                     onTap: () {},
-                    child: Padding(
-                        padding: const EdgeInsets.symmetric(
+                    child: const Padding(
+                        padding: EdgeInsets.symmetric(
                             horizontal: 20.0, vertical: 16.0),
                         child: Text('A',
                             style: TextStyle(
@@ -1715,17 +1954,19 @@ Widget _minorControl(_PlayerState parent) {
                 message: 'Select end',
                 child: InkWell(
                     onTap: () {},
-                    child: Padding(
-                        padding: const EdgeInsets.symmetric(
+                    child: const Padding(
+                        padding: EdgeInsets.symmetric(
                             horizontal: 20.0, vertical: 16.0),
                         child: Text('B',
                             style: TextStyle(
                                 fontSize: 15.0,
                                 fontWeight: FontWeight.bold))))),*/
             GestureDetector(
-                onDoubleTap: () => parent
-                  ..onSet(context as StatelessElement)
-                  ..onSet(context),
+                onDoubleTap: () {
+                  parent
+                    ..onSet(context as StatelessElement)
+                    ..onSet(context);
+                },
                 child: IconButton(
                     onPressed: () => parent.onSet(context as StatelessElement),
                     tooltip: 'Set (one, all, or random songs)',
@@ -1766,7 +2007,7 @@ Widget _navigation(_PlayerState parent) {
   final List<Widget> _row = [];
 
   final String _root = parent.source.root;
-  String _path = parent.folder;
+  String _path = parent.chosenFolder;
   if (_path == _root) _path += '/${parent.source.name} home';
   final Iterable<int> relatives = parent.getRelatives(_root, _path);
   int j = 0;
@@ -1799,30 +2040,50 @@ Widget _navigation(_PlayerState parent) {
 /// Renders queue list
 Widget _songPicker(parent) {
   if (parent.source.id == -1)
-    return const Center(child: Text('Not yet supported'));
+    return const Center(child: Text('Not yet supported!'));
 
-  if (parent._queueComplete == 0) {
-    return Center(
-        child: Text('No songs in folder',
-            style: TextStyle(color: unfocusedColor)));
-  } else if (parent._queueComplete == -2) {
-    return const Center(child: Text('Unable to retrieve songs!'));
+  late List<SongModel> _songList;
+  if (parent.chosenFolder != parent.folder) {
+    if (parent._tempQueueComplete == 0)
+      return Center(
+          child: Text('Loading...', style: TextStyle(color: unfocusedColor)));
+    if (parent._tempQueueComplete == -1 && parent._tempQueue.isEmpty)
+      return Center(
+          child: Text('No songs in folder',
+              style: TextStyle(color: unfocusedColor)));
+    _songList = parent._tempQueue;
+  } else {
+    if (parent._queueComplete == 0)
+      return Center(
+          child: Text('No songs in folder',
+              style: TextStyle(color: unfocusedColor)));
+    if (parent._queueComplete == -2)
+      return const Center(child: Text('Unable to retrieve songs!'));
+    _songList = parent.queue;
   }
   return ListView.builder(
-      key: PageStorageKey<int>(parent.queue.hashCode),
-      itemCount: parent.queue.length,
+      key: PageStorageKey<int>(_songList.hashCode),
+      itemCount: _songList.length,
       itemBuilder: (BuildContext context, int i) {
-        final SongModel _song = parent.queue[i];
+        final SongModel _song = _songList[i];
         return ListTile(
-            selected: parent.index == i,
+            selected: parent.song == _song,
             onTap: () {
-              if (parent.index == i) {
-                parent._changeState();
-              } else {
+              if (parent.chosenFolder != parent.folder) {
                 parent
-                  ..onStop()
-                  ..setState(() => parent.index = i)
-                  ..onPlay();
+                  ..onFolder(parent.chosenFolder)
+                  ..setState(() => parent.index = parent.queue.indexOf(_song))
+                  ..onPlay()
+                  .._returnToPlayer();
+              } else {
+                if (parent.index == i) {
+                  parent._changeState();
+                } else {
+                  parent
+                    ..onStop()
+                    ..setState(() => parent.index = i)
+                    ..onPlay();
+                }
               }
             },
             leading: SizedBox(
@@ -1840,11 +2101,14 @@ Widget _songPicker(parent) {
                           style: const TextStyle(fontSize: 11.0),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1)),
-                  Text(_timeInfo(parent._queueComplete,
+                  Text(_timeInfo(
+                      parent.chosenFolder != parent.folder
+                          ? parent._tempQueueComplete
+                          : parent._queueComplete,
                       Duration(milliseconds: _song.duration!)))
                 ]),
             trailing: Icon(
-                (parent.index == i && parent._state == PlayerState.PLAYING)
+                (parent.song == _song && parent._state == PlayerState.PLAYING)
                     ? Icons.pause
                     : Icons.play_arrow,
                 size: 30.0));

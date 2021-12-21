@@ -1,0 +1,75 @@
+IconButton(
+                            onPressed: _returnToPlayer,
+                            tooltip: 'Back to player',
+                            icon: const Icon(Icons.navigate_next))
+
+IconButton(
+                            onPressed: _pickSong,
+                            tooltip: 'Pick song',
+                            icon: const Icon(Icons.playlist_play_rounded,
+                                size: 28.0))
+
+IconButton(
+                          onPressed: _returnToPlayer,
+                          tooltip: 'Back to player',
+                          icon: const Icon(Icons.navigate_before))
+
+IconButton(
+                          onPressed: _pickFolder,
+                          tooltip: 'Pick folder',
+                          icon: queue.isNotEmpty
+                              ? const Icon(Typicons.folder_open)
+                              : Icon(Icons.create_new_folder_outlined,
+                                  color: Theme.of(context)
+                                      .textTheme
+                                      .bodyText2!
+                                      .color!
+                                      .withOpacity(.55)))
+
+IconButton(
+                          onPressed: _returnToPlayer,
+                          tooltip: 'Back to player',
+                          icon: const Icon(Icons.navigate_before))
+
+leading: ,
+,
+                  actions: <Widget>[]
+
+,
+                  floatingActionButton: Align(
+                      alignment: const Alignment(.8, .8),
+                      child: Transform.scale(
+                          scale: 1.1,
+                          child: _play(this, 6.0, 32.0, () {
+                            _changeState();
+                            if (_state == PlayerState.PLAYING)
+                              _returnToPlayer();
+                          })))
+
+,
+                  floatingActionButton: Align(
+                      alignment: const Alignment(.8, .8),
+                      child: Transform.scale(
+                          scale: 1.1,
+                          child: Builder(builder: (BuildContext context) {
+                            return FloatingActionButton(
+                                onPressed: () {
+                                  if (_set == 'random') {
+                                    setState(() {
+                                      queue.shuffle();
+                                      if (song != null)
+                                        index = queue.indexOf(song!);
+                                    });
+                                  } else {
+                                    setState(() => _set = 'all');
+                                    onSet(context as StatelessElement);
+                                  }
+                                },
+                                tooltip: 'Sort or shuffle',
+                                shape: _orientation == Orientation.portrait
+                                    ? const _CubistShapeB()
+                                    : const _CubistShapeD(),
+                                elevation: 6.0,
+                                backgroundColor: unfocusedColor,
+                                child: const Icon(Icons.shuffle, size: 26.0));
+                          })))
