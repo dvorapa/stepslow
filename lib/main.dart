@@ -24,7 +24,7 @@ final Color interactiveColor = Colors.orange[300]!; // #FFB74D #FFA726
 final Color backgroundColor = Colors.white;
 
 /// YouTube components color
-final Color youTubeColor = Colors.red; // #E4273A
+final Color youtubeColor = Colors.red; // #E4273A
 
 /// Text main color
 final Color unfocusedColor = Colors.grey[400]!;
@@ -262,6 +262,9 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Current playback position
   Duration _position = _emptyDuration;
 
+  /// Position to switch songs
+  Duration _fadePosition = _emptyDuration;
+
   /// Playback song from last run
   String? lastSongPath;
 
@@ -286,7 +289,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   final FlutterTts _tts = FlutterTts();
 
   /// Prelude length before playback
-  int _ttsLength = 0;
+  int _introLength = 0;
 
   /// Random generator to shuffle queue after startup
   final Random random = Random();
@@ -370,12 +373,12 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
     } else {
       setState(() => song = queue[index]);
       final String _songPath = song!.data;
-      if (_ttsLength != 0) {
+      if (_introLength != 0) {
         onStop(quiet: true);
         audioPlayer.setUrl(_songPath, isLocal: true);
       }
       final List<String> _range = [
-        for (int i = _ttsLength; i > 0; i--) i.toString()
+        for (int i = _introLength; i > 0; i--) i.toString()
       ];
       _ttsTimer?.cancel();
       _ttsTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -487,7 +490,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       setState(() {
         folder = _folder;
         chosenFolder = _folder;
-        _ttsLength = 0;
+        _introLength = 0;
       });
     }
   }
@@ -690,8 +693,8 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   /// Switches playback [_prelude]
   void onPrelude() {
-    setState(() => _ttsLength = _ttsLength == 0 ? 10 : 0);
-    if (_ttsLength == 10) onChange(index);
+    setState(() => _introLength = _introLength == 0 ? 10 : 0);
+    if (_introLength == 10) onChange(index);
   }
 
   /// Switches playback [_state]
@@ -723,7 +726,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                           Icon(Typicons.social_youtube,
                               color: source == _source
                                   ? Theme.of(context).primaryColor
-                                  : youTubeColor),
+                                  : youtubeColor),
                           _sourceText
                         ]);
                   case 0:
@@ -974,6 +977,11 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
     });
     audioPlayer.onAudioPositionChanged.listen((Duration p) {
       setState(() => _position = p * (100.0 / _rate));
+      if (_fadePosition > _emptyDuration && _position > _fadePosition) {
+        onPause(quiet: true);
+        onChange(index + 1);
+        onPlay();
+      }
     });
     audioPlayer.onPlayerCompletion.listen((_) {
       setState(() => _position = duration);
@@ -1336,7 +1344,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.end,
                                       children: [
-                                        _ttsLength == 0
+                                        _introLength == 0
                                             ? const SizedBox.shrink()
                                             : GestureDetector(
                                                 onDoubleTap: onPrelude,
@@ -1352,9 +1360,9 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                         padding: const EdgeInsets
                                                                 .symmetric(
                                                             horizontal: 12.0),
-                                                        color: youTubeColor,
+                                                        color: youtubeColor,
                                                         child: Text(
-                                                            '$_ttsLength s',
+                                                            '$_introLength s',
                                                             style: TextStyle(
                                                                 color: Theme.of(
                                                                         context)
@@ -1433,7 +1441,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                         .scaffoldBackgroundColor,
                                                     fontWeight:
                                                         FontWeight.bold)))),
-                                    _ttsLength == 0
+                                    _introLength == 0
                                         ? const SizedBox.shrink()
                                         : GestureDetector(
                                             onDoubleTap: onPrelude,
@@ -1448,8 +1456,9 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                     padding: const EdgeInsets
                                                             .symmetric(
                                                         horizontal: 12.0),
-                                                    color: youTubeColor,
-                                                    child: Text('$_ttsLength s',
+                                                    color: youtubeColor,
+                                                    child: Text(
+                                                        '$_introLength s',
                                                         style: TextStyle(
                                                             color: Theme.of(
                                                                     context)
@@ -1468,13 +1477,17 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                 : Theme.of(context)
                                                     .primaryColor
                                                     .withOpacity(.7),
-                                            child: Text(
-                                                _timeInfo(
-                                                    _queueComplete, duration),
+                                            child: Text(_timeInfo(_queueComplete, _fadePosition == _emptyDuration ? duration : _fadePosition),
                                                 style: TextStyle(
-                                                  color: Theme.of(context)
-                                                      .scaffoldBackgroundColor,
-                                                ))))
+                                                    color: _fadePosition ==
+                                                            _emptyDuration
+                                                        ? Theme.of(context)
+                                                            .scaffoldBackgroundColor
+                                                        : youtubeColor,
+                                                    fontWeight: _fadePosition ==
+                                                            _emptyDuration
+                                                        ? FontWeight.normal
+                                                        : FontWeight.bold))))
                                   ]))
                         ]))),
           // features
@@ -1553,9 +1566,21 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                               mainAxisAlignment:
                                                   MainAxisAlignment.spaceEvenly,
                                               children: <Widget>[
-                                                const Text('Prelude'),
+                                                const Text('Intro'),
                                                 _preludePicker(this)
-                                              ]))
+                                              ])),
+                                      Card(
+                                          elevation: 2.0,
+                                          shape: const _CubistShapeF(),
+                                          margin: const EdgeInsets.only(
+                                              bottom: 10.0),
+                                          child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceEvenly,
+                                              children: <Widget>[
+                                                const Text('Fade at'),
+                                                _fadePositionPicker(this)
+                                              ])),
                                     ]))))
                   ])))
         ]));
@@ -1566,7 +1591,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 Widget _sourceButton(int sourceId, Color darkColor) {
   switch (sourceId) {
     case -1:
-      return Icon(Typicons.social_youtube, color: youTubeColor);
+      return Icon(Typicons.social_youtube, color: youtubeColor);
     case 0:
       return Icon(Icons.phone_iphone, color: darkColor);
     default:
@@ -1790,8 +1815,8 @@ Widget _rateCover(parent) {
 /// Renders prelude length selector
 Widget _preludePicker(parent) {
   return Builder(builder: (BuildContext context) {
-    String _message = 'Reset prelude length';
-    if (parent._ttsLength == 0) _message = 'Set prelude length';
+    String _message = 'Reset intro length';
+    if (parent._introLength == 0) _message = 'Set intro length';
     final TextStyle _textStyle = TextStyle(
         fontSize: 30, color: Theme.of(context).textTheme.bodyText2!.color);
     return Center(
@@ -1801,26 +1826,69 @@ Widget _preludePicker(parent) {
           message: _message,
           child: InkWell(
               onTap: () {
-                parent.setState(() => parent._ttsLength = 0);
+                parent.setState(() =>
+                    parent._introLength = parent._introLength == 0 ? 10 : 0);
               },
-              child: Text('${parent._ttsLength}', style: _textStyle))),
+              child: Text('${parent._introLength}', style: _textStyle))),
       Column(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
         IconButton(
             onPressed: () {
-              parent.setState(() => parent._ttsLength += 5);
+              parent.setState(() => parent._introLength += 5);
             },
             tooltip: 'Add more',
             icon: const Icon(Icons.keyboard_arrow_up, size: 30)),
         IconButton(
             onPressed: () {
-              if (parent._ttsLength >= 5) {
-                parent.setState(() => parent._ttsLength -= 5);
+              if (parent._introLength >= 5) {
+                parent.setState(() => parent._introLength -= 5);
               }
             },
             tooltip: 'Shorten',
             icon: const Icon(Icons.keyboard_arrow_down, size: 30))
       ]),
       Text('s', style: _textStyle)
+    ]));
+  });
+}
+
+/// Renders fade position selector
+Widget _fadePositionPicker(parent) {
+  return Builder(builder: (BuildContext context) {
+    String _message = 'Reset fade position';
+    if (parent._fadePosition == _emptyDuration) _message = 'Set fade position';
+    final TextStyle _textStyle = TextStyle(
+        fontSize: 30, color: Theme.of(context).textTheme.bodyText2!.color);
+    return Center(
+        child:
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
+      Tooltip(
+          message: _message,
+          child: InkWell(
+              onTap: () {
+                parent.setState(() => parent._fadePosition =
+                    parent._fadePosition == _emptyDuration
+                        ? const Duration(seconds: 90)
+                        : _emptyDuration);
+              },
+              child: Text(
+                  '${parent._fadePosition.inMinutes}:${zero(parent._fadePosition.inSeconds % 60)}',
+                  style: _textStyle))),
+      Column(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
+        IconButton(
+            onPressed: () {
+              parent.setState(() => parent._fadePosition += _defaultDuration);
+            },
+            tooltip: 'Lengthen',
+            icon: const Icon(Icons.keyboard_arrow_up, size: 30)),
+        IconButton(
+            onPressed: () {
+              if (parent._fadePosition >= _defaultDuration) {
+                parent.setState(() => parent._fadePosition -= _defaultDuration);
+              }
+            },
+            tooltip: 'Shorten',
+            icon: const Icon(Icons.keyboard_arrow_down, size: 30))
+      ])
     ]));
   });
 }
@@ -1832,7 +1900,7 @@ Widget _playerOblong(parent) {
         message: '''
 Drag position horizontally to change it
 Drag curve vertically to change speed
-Double tap to add prelude''',
+Double tap to add intro''',
         showDuration: _defaultDuration,
         child: GestureDetector(*/
     return GestureDetector(
@@ -1904,9 +1972,19 @@ Widget _playerControl(_PlayerState parent) {
                       style: TextStyle(
                           color: Theme.of(context).textTheme.bodyText2!.color,
                           fontWeight: FontWeight.bold)),
-                  Text(_timeInfo(parent._queueComplete, parent.duration),
+                  Text(
+                      _timeInfo(
+                          parent._queueComplete,
+                          parent._fadePosition == _emptyDuration
+                              ? parent.duration
+                              : parent._fadePosition),
                       style: TextStyle(
-                          color: Theme.of(context).textTheme.bodyText2!.color))
+                          color: parent._fadePosition == _emptyDuration
+                              ? Theme.of(context).textTheme.bodyText2!.color
+                              : youtubeColor,
+                          fontWeight: parent._fadePosition == _emptyDuration
+                              ? FontWeight.normal
+                              : FontWeight.bold))
                 ]),
             _title(parent),
             _artist(parent),
