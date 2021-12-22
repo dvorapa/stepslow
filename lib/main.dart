@@ -1504,8 +1504,9 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                   Theme.of(context).colorScheme.onSecondary))),
                   body: Column(children: <Widget>[
                     Padding(
-                        padding:
-                            const EdgeInsets.fromLTRB(40.0, 20.0, 20.0, 40.0),
+                        padding: _orientation == Orientation.portrait
+                            ? const EdgeInsets.fromLTRB(40.0, 20.0, 20.0, 40.0)
+                            : const EdgeInsets.fromLTRB(40.0, .0, 20.0, 20.0),
                         child: Row(children: <Widget>[
                           Text('Special',
                               style: TextStyle(
@@ -1542,14 +1543,20 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                 .bodyText2!
                                                 .color!
                                                 .withOpacity(.55))),
-                                child: ListView(
-                                    padding: const EdgeInsets.all(40.0),
+                                child: GridView.count(
+                                    crossAxisCount:
+                                        _orientation == Orientation.portrait
+                                            ? 1
+                                            : 2,
+                                    mainAxisSpacing: 2.5,
+                                    crossAxisSpacing: 2.5,
+                                    childAspectRatio: 2.8,
+                                    padding: EdgeInsets.all(
+                                        _orientation == Orientation.portrait ? 40.0 : 20.0),
                                     children: <Widget>[
                                       Card(
                                           elevation: 2.0,
                                           shape: const _CubistShapeF(),
-                                          margin: const EdgeInsets.only(
-                                              bottom: 10.0),
                                           child: Row(
                                               mainAxisAlignment:
                                                   MainAxisAlignment.spaceEvenly,
@@ -1560,8 +1567,6 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                       Card(
                                           elevation: 2.0,
                                           shape: const _CubistShapeF(),
-                                          margin: const EdgeInsets.only(
-                                              bottom: 10.0),
                                           child: Row(
                                               mainAxisAlignment:
                                                   MainAxisAlignment.spaceEvenly,
@@ -1572,8 +1577,6 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                       Card(
                                           elevation: 2.0,
                                           shape: const _CubistShapeF(),
-                                          margin: const EdgeInsets.only(
-                                              bottom: 10.0),
                                           child: Row(
                                               mainAxisAlignment:
                                                   MainAxisAlignment.spaceEvenly,
