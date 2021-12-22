@@ -773,7 +773,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   void _returnToPlayer() => _controller.animateToPage(2,
       duration: _animationDuration, curve: _animationCurve);
 
-  /// Navigates to dance features page
+  /// Navigates to features page
   void _useFeatures() => _controller.animateToPage(3,
       duration: _animationDuration, curve: _animationCurve);
 
@@ -1309,7 +1309,18 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                       .textTheme
                                       .bodyText2!
                                       .color!
-                                      .withOpacity(.55)))),
+                                      .withOpacity(.55))),
+                      actions: <Widget>[
+                        IconButton(
+                            onPressed: _useFeatures,
+                            tooltip: 'Try special features',
+                            icon: Icon(Icons.auto_fix_normal,
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodyText2!
+                                    .color!
+                                    .withOpacity(.55)))
+                      ]),
                   body: _orientation == Orientation.portrait
                       ? Column(
                           mainAxisAlignment: MainAxisAlignment.end,
@@ -1470,34 +1481,83 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
           WillPopScope(
               onWillPop: () => Future<bool>.sync(onBack),
               child: Scaffold(
-                  appBar: AppBar(),
-                  body: Container(
-                      color: Theme.of(context).primaryColor,
-                      padding: const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, .0),
-                      child: Theme(
-                          data: ThemeData.from(
-                              colorScheme: Theme.of(context)
-                                  .colorScheme
-                                  .copyWith(
-                                      secondary: Theme.of(context)
-                                          .scaffoldBackgroundColor,
-                                      onSecondary:
-                                          Theme.of(context).primaryColor,
-                                      brightness: Brightness.dark)),
-                          child: _orientation == Orientation.portrait
-                              ? Column(children: <Widget>[
-                                  _ratePicker(this),
-                                  _preludePicker(this)
-                                ])
-                              : Table(
-                                  defaultVerticalAlignment:
-                                      TableCellVerticalAlignment.middle,
-                                  children: <TableRow>[
-                                      TableRow(children: <Widget>[
-                                        _ratePicker(this),
-                                        _preludePicker(this)
-                                      ])
-                                    ])))))
+                  backgroundColor: Theme.of(context).primaryColor,
+                  appBar: AppBar(
+                      leading: IconButton(
+                          onPressed: _returnToPlayer,
+                          tooltip: 'Back to player',
+                          icon: Icon(Icons.navigate_before,
+                              color:
+                                  Theme.of(context).colorScheme.onSecondary))),
+                  body: Column(children: <Widget>[
+                    Padding(
+                        padding:
+                            const EdgeInsets.fromLTRB(40.0, 20.0, 20.0, 40.0),
+                        child: Row(children: <Widget>[
+                          Text('Special',
+                              style: TextStyle(
+                                  color:
+                                      Theme.of(context).colorScheme.onSecondary,
+                                  fontSize: 25.0,
+                                  fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 10.0),
+                          Text('Features',
+                              style: TextStyle(
+                                  color:
+                                      Theme.of(context).colorScheme.onSecondary,
+                                  fontSize: 25.0))
+                        ])),
+                    Expanded(
+                        child: DecoratedBox(
+                            decoration: ShapeDecoration(
+                                color:
+                                    Theme.of(context).colorScheme.onSecondary,
+                                shape: const _CubistShapeE()),
+                            child: Theme(
+                                data: Theme.of(context).copyWith(
+                                    iconTheme: IconThemeData(
+                                        color: Theme.of(context)
+                                            .textTheme
+                                            .bodyText2!
+                                            .color!
+                                            .withOpacity(.55)),
+                                    textTheme: Theme.of(context)
+                                        .textTheme
+                                        .apply(
+                                            bodyColor: Theme.of(context)
+                                                .textTheme
+                                                .bodyText2!
+                                                .color!
+                                                .withOpacity(.55))),
+                                child: ListView(
+                                    padding: const EdgeInsets.all(40.0),
+                                    children: <Widget>[
+                                      Card(
+                                          elevation: 2.0,
+                                          shape: const _CubistShapeF(),
+                                          margin: const EdgeInsets.only(
+                                              bottom: 10.0),
+                                          child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceEvenly,
+                                              children: <Widget>[
+                                                const Text('Speed'),
+                                                _ratePicker(this)
+                                              ])),
+                                      Card(
+                                          elevation: 2.0,
+                                          shape: const _CubistShapeF(),
+                                          margin: const EdgeInsets.only(
+                                              bottom: 10.0),
+                                          child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceEvenly,
+                                              children: <Widget>[
+                                                const Text('Prelude'),
+                                                _preludePicker(this)
+                                              ]))
+                                    ]))))
+                  ])))
         ]));
   }
 }
@@ -1653,8 +1713,8 @@ Widget _ratePicker(parent) {
   return Builder(builder: (BuildContext context) {
     String _message = 'Set player speed';
     GestureTapCallback _onTap = () {};
-    final Color? _textColor = Theme.of(context).textTheme.bodyText2!.color;
-    final TextStyle _textStyle = TextStyle(fontSize: 30, color: _textColor);
+    final TextStyle _textStyle = TextStyle(
+        fontSize: 30, color: Theme.of(context).textTheme.bodyText2!.color);
     if (parent._rate != 100.0) {
       _message = 'Reset player speed';
       _onTap = () => parent.onRate(100.0);
@@ -1662,7 +1722,6 @@ Widget _ratePicker(parent) {
     return Center(
         child:
             Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-      Text('Speed', style: TextStyle(color: _textColor)),
       Tooltip(
           message: _message,
           child: InkWell(
@@ -1733,12 +1792,11 @@ Widget _preludePicker(parent) {
   return Builder(builder: (BuildContext context) {
     String _message = 'Reset prelude length';
     if (parent._ttsLength == 0) _message = 'Set prelude length';
-    final Color? _textColor = Theme.of(context).textTheme.bodyText2!.color;
-    final TextStyle _textStyle = TextStyle(fontSize: 30, color: _textColor);
+    final TextStyle _textStyle = TextStyle(
+        fontSize: 30, color: Theme.of(context).textTheme.bodyText2!.color);
     return Center(
         child:
             Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-      Text('Prelude', style: TextStyle(color: _textColor)),
       Tooltip(
           message: _message,
           child: InkWell(
@@ -2242,10 +2300,10 @@ class _CubistShapeA extends ShapeBorder {
     return Path()
       ..moveTo(rect.left, rect.top)
       ..lineTo(rect.right, rect.top)
-      ..lineTo(rect.right - rect.width / 20.0, rect.top + rect.height / 2.0)
+      ..lineTo(rect.right - rect.width / 20, rect.top + rect.height / 2)
       ..lineTo(rect.right, rect.bottom)
       ..lineTo(rect.left, rect.bottom)
-      ..lineTo(rect.left + rect.width / 20.0, rect.top + rect.height / 2.0)
+      ..lineTo(rect.left + rect.width / 20, rect.top + rect.height / 2)
       ..close();
   }
 
@@ -2273,10 +2331,10 @@ class _CubistShapeB extends ShapeBorder {
   @override
   Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
     return Path()
-      ..moveTo(rect.left + rect.width / 5.0, rect.top + rect.height / 5.0)
-      ..lineTo(rect.right - rect.width / 10.0, rect.top + rect.height / 10.0)
-      ..lineTo(rect.right - rect.width / 5.0, rect.bottom - rect.height / 5.0)
-      ..lineTo(rect.left + rect.width / 10.0, rect.bottom - rect.height / 10.0)
+      ..moveTo(rect.left + rect.width / 5, rect.top + rect.height / 5)
+      ..lineTo(rect.right - rect.width / 10, rect.top + rect.height / 10)
+      ..lineTo(rect.right - rect.width / 5, rect.bottom - rect.height / 5)
+      ..lineTo(rect.left + rect.width / 10, rect.bottom - rect.height / 10)
       ..close();
   }
 
@@ -2345,6 +2403,86 @@ class _CubistShapeD extends ShapeBorder {
       ..moveTo(rect.left - rect.width / 20, rect.top + rect.height / 6)
       ..lineTo(rect.right + rect.width / 20, rect.top + rect.height / 6)
       ..lineTo(rect.left + rect.width / 2, rect.bottom + rect.height / 20)
+      ..close();
+  }
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {}
+
+  @override
+  ShapeBorder scale(double t) => this;
+}
+
+/// Cubist shape for features page.
+///  -----
+/// /    |
+/// |____|
+class _CubistShapeE extends ShapeBorder {
+  const _CubistShapeE();
+
+  @override
+  EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
+      getOuterPath(rect, textDirection: textDirection);
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
+    return Path()
+      ..moveTo(rect.left + 2 * rect.width / 5, rect.top)
+      ..lineTo(rect.right, rect.top)
+      ..lineTo(rect.right, rect.bottom)
+      ..lineTo(rect.left, rect.bottom)
+      ..lineTo(rect.left, rect.top + rect.height / 10)
+      ..close();
+  }
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {}
+
+  @override
+  ShapeBorder scale(double t) => this;
+}
+
+/// Cubist shape for features page cards.
+/// --v--
+/// \   /
+/// /   \
+/// --^--
+class _CubistShapeF extends ShapeBorder {
+  const _CubistShapeF();
+
+  @override
+  EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
+      getOuterPath(rect, textDirection: textDirection);
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
+    return Path()
+      ..moveTo(rect.left, rect.top)
+      ..lineTo(rect.left + 4 * rect.width / 10, rect.top)
+      ..lineTo(rect.left + rect.width / 2, rect.top + rect.height / 10)
+      ..lineTo(rect.left + 6 * rect.width / 10, rect.top)
+      ..lineTo(rect.right, rect.top)
+      ..lineTo(rect.right - rect.width / 20, rect.top + rect.height / 2)
+      ..lineTo(rect.right, rect.bottom)
+      ..lineTo(rect.right - 4 * rect.width / 10, rect.bottom)
+      ..lineTo(rect.right - rect.width / 2, rect.bottom - rect.height / 10)
+      ..lineTo(rect.right - 6 * rect.width / 10, rect.bottom)
+      ..lineTo(rect.left, rect.bottom)
+      ..lineTo(rect.left + rect.width / 20, rect.top + rect.height / 2)
+      /*..moveTo(rect.left, rect.top + rect.height / 10)
+      ..lineTo(rect.left + rect.width / 2, rect.top)
+      ..lineTo(rect.right, rect.top + rect.height / 10)
+      ..lineTo(rect.right - rect.width / 20, rect.top + 11 * rect.height / 20)
+      ..lineTo(rect.right, rect.bottom + rect.height / 20)
+      ..lineTo(rect.right - rect.width / 2, rect.bottom - rect.height / 20)
+      ..lineTo(rect.left, rect.bottom + rect.height / 20)
+      ..lineTo(rect.left + rect.width / 20, rect.top + 11 * rect.height / 20)*/
       ..close();
   }
 
