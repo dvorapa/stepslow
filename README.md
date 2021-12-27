@@ -4,14 +4,14 @@ Simple music player for dancers
 
 ## Description
 
-This app allows dancers to play their dance music collection in a simple,
-yet feature-rich artistic environment also in Android. Currently it can handle
-just basic features like playing audio files from your phone/SD card storage,
-but already includes slow down/speed up option as well. In future releases
-you can look forward to a YouTube player containing improved slow down/speed up
-option inside the app, as well as creating playlists, or stripping a song
-of a prelude/extending a song by a prelude (not-only Paso Doble dancers should
-know what I'm talking about, right?).
+This app allows dancers to play their collection of dance music in a simple,
+yet feature-rich artistic environment also on Android. Currently, it not only
+handles basic functionality, such as playing audio files from a phone/SD card
+storage, but also includes the ability to slow down/speed up songs, as well as
+shorten songs to the same length or extend songs by prelude (not-only
+Paso Doble dancers should know what I'm talking about, right?). In future
+releases, you can look forward to creating playlists of your favourite songs,
+or a YouTube player with improved slow down/speed up option inside the app.
 
 ## Usage
 
