@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
 import 'dart:math';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -16,6 +17,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:collection/collection.dart' show IterableExtension;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:about/about.dart' show showMarkdownPage;
+import 'pubspec.dart';
 
 /// Theme main color
 final Color interactiveColor = Colors.orange[300]!; // #FFB74D #FFA726
@@ -1372,9 +1376,9 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                               Flexible(
                                   flex: 20,
                                   child: Container(
-                                      color: Theme.of(context).primaryColor,
                                       padding: const EdgeInsets.fromLTRB(
                                           16.0, 12.0, 16.0, .0),
+                                      color: Theme.of(context).primaryColor,
                                       child: Theme(
                                           data: ThemeData.from(
                                               colorScheme: Theme.of(context)
@@ -1501,7 +1505,170 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                           tooltip: 'Back to player',
                           icon: Icon(Icons.navigate_before,
                               color:
-                                  Theme.of(context).colorScheme.onSecondary))),
+                                  Theme.of(context).colorScheme.onSecondary)),
+                      actions: <Widget>[
+                        IconButton(
+                            onPressed: () => showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialog(
+                                      content: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: <Widget>[
+                                            const Center(
+                                                child: Text(Pubspec.name,
+                                                    style: TextStyle(
+                                                        fontSize: 32.0))),
+                                            Center(
+                                                child: Text(
+                                                    '${Pubspec.description}\nversion ${Pubspec.version}, build ${Pubspec.versionBuild}\nby @dvorapa',
+                                                    textAlign: TextAlign.center,
+                                                    style: TextStyle(
+                                                        color: unfocusedColor,
+                                                        fontSize: 13.0))),
+                                            InkWell(
+                                                onTap: () => showMarkdownPage(
+                                                    context: context,
+                                                    applicationName:
+                                                        'Changelog',
+                                                    selectable: true,
+                                                    filename: 'CHANGELOG.md'),
+                                                child: Wrap(
+                                                    spacing: 12.0,
+                                                    crossAxisAlignment:
+                                                        WrapCrossAlignment.end,
+                                                    children: const <Widget>[
+                                                      Icon(Icons.rule),
+                                                      Text('Changelog',
+                                                          style: TextStyle(
+                                                              fontSize: 18.0))
+                                                    ])),
+                                            InkWell(
+                                                onTap: () => launch(
+                                                    'https://github.com/dvorapa/stepslow/issues/new/choose'),
+                                                child: Wrap(
+                                                    spacing: 12.0,
+                                                    crossAxisAlignment:
+                                                        WrapCrossAlignment.end,
+                                                    children: const <Widget>[
+                                                      Icon(Icons
+                                                          .report_outlined),
+                                                      Text('Report issue',
+                                                          style: TextStyle(
+                                                              fontSize: 18.0))
+                                                    ])),
+                                            InkWell(
+                                                onTap: () => showDialog(
+                                                    context: context,
+                                                    builder:
+                                                        (BuildContext context) {
+                                                      return SingleChoiceDialog<
+                                                              String>(
+                                                          isDividerEnabled:
+                                                              true,
+                                                          items: const <String>[
+                                                            'Paypal',
+                                                            'Revolut'
+                                                          ],
+                                                          onSelected: (String
+                                                                  _method) =>
+                                                              launch(
+                                                                  'https://${_method.toLowerCase()}.me/dvorapa'),
+                                                          itemBuilder:
+                                                              (String _method) {
+                                                            return Wrap(
+                                                                spacing: 12.0,
+                                                                crossAxisAlignment:
+                                                                    WrapCrossAlignment
+                                                                        .end,
+                                                                children: <
+                                                                    Widget>[
+                                                                  Icon(_method ==
+                                                                          'Paypal'
+                                                                      ? CupertinoIcons
+                                                                          .money_pound_circle
+                                                                      : CupertinoIcons
+                                                                          .bitcoin_circle),
+                                                                  Text(_method)
+                                                                ]);
+                                                          });
+                                                    }),
+                                                child: Wrap(
+                                                    spacing: 12.0,
+                                                    crossAxisAlignment:
+                                                        WrapCrossAlignment.end,
+                                                    children: const <Widget>[
+                                                      Icon(Icons
+                                                          .favorite_outline),
+                                                      Text('Sponsor',
+                                                          style: TextStyle(
+                                                              fontSize: 18.0))
+                                                    ])),
+                                            InkWell(
+                                                onTap: () => launch(
+                                                    'https://www.dvorapa.cz#kontakt'),
+                                                child: Wrap(
+                                                    spacing: 12.0,
+                                                    crossAxisAlignment:
+                                                        WrapCrossAlignment.end,
+                                                    children: const <Widget>[
+                                                      Icon(Icons
+                                                          .alternate_email),
+                                                      Text('Contact',
+                                                          style: TextStyle(
+                                                              fontSize: 18.0))
+                                                    ])),
+                                            InkWell(
+                                                onTap: () => showLicensePage(
+                                                    context: context,
+                                                    applicationName:
+                                                        'GNU General Public License v3.0'),
+                                                child: Wrap(
+                                                    spacing: 12.0,
+                                                    crossAxisAlignment:
+                                                        WrapCrossAlignment.end,
+                                                    children: const <Widget>[
+                                                      Icon(Icons
+                                                          .description_outlined),
+                                                      Text('Licenses',
+                                                          style: TextStyle(
+                                                              fontSize: 18.0))
+                                                    ])),
+                                            InkWell(
+                                                onTap: () => launch(
+                                                    'https://github.com/dvorapa/stepslow'),
+                                                child: Wrap(
+                                                    spacing: 12.0,
+                                                    crossAxisAlignment:
+                                                        WrapCrossAlignment.end,
+                                                    children: const <Widget>[
+                                                      Icon(Icons.code),
+                                                      Text('Source code',
+                                                          style: TextStyle(
+                                                              fontSize: 18.0))
+                                                    ]))
+                                          ]
+                                              .map((Widget _widget) => Padding(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(vertical: 5.0),
+                                                  child: _widget))
+                                              .toList()),
+                                      actions: <Widget>[
+                                        TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                            child: const Text('Close',
+                                                style:
+                                                    TextStyle(fontSize: 16.0)))
+                                      ],
+                                      scrollable: true);
+                                }),
+                            tooltip: 'Open app info',
+                            icon: Icon(Icons.info_outline_rounded,
+                                color:
+                                    Theme.of(context).colorScheme.onSecondary))
+                      ]),
                   body: Column(children: <Widget>[
                     Padding(
                         padding: _orientation == Orientation.portrait
@@ -1550,7 +1717,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                             : 2,
                                     mainAxisSpacing: 2.5,
                                     crossAxisSpacing: 2.5,
-                                    childAspectRatio: 2.8,
+                                    childAspectRatio: 2.69,
                                     padding: EdgeInsets.all(
                                         _orientation == Orientation.portrait ? 40.0 : 20.0),
                                     children: <Widget>[
@@ -1583,7 +1750,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                               children: <Widget>[
                                                 const Text('Fade at'),
                                                 _fadePositionPicker(this)
-                                              ])),
+                                              ]))
                                     ]))))
                   ])))
         ]));
