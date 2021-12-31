@@ -48,6 +48,7 @@ dependencies:
   url_launcher: ^6.0.17
   about: ^2.1.0
   cupertino_icons: ^1.0.4
+  volume_regulator: ^1.0.0
 
 dev_dependencies:
   flutter_launcher_icons: ">=0.9.2 <1.0.0"

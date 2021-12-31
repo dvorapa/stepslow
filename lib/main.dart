@@ -19,6 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:about/about.dart' show showMarkdownPage;
+import 'package:volume_regulator/volume_regulator.dart';
 import 'pubspec.dart';
 
 /// Theme main color
@@ -75,8 +76,8 @@ String zero(int n) {
 }
 
 /// Calculates height factor for wave
-double _heightFactor(double _height, double _rate, double _value) =>
-    (_height / 400.0) * (3.0 * _rate / 2.0 + _value);
+double _heightFactor(double _height, int _volume, double _value) =>
+    (_height / 300.0) * (3.0 * _volume / 2.0 + _value);
 
 /// Filesystem entity representing a song or a folder.
 class Entry implements Comparable<Entry> {
@@ -260,8 +261,17 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Current playback rate
   double _rate = 100.0;
 
-  /// Previous playback rate
-  double _previousRate = 100.0;
+  /// Device volume
+  int volume = 50;
+
+  /// Device volume before change
+  int _preCoverVolume = 50;
+
+  /// Device volume before mute
+  int _preMuteVolume = 50;
+
+  /// Device volume before fade
+  int _preFadeVolume = 0;
 
   /// Current playback position
   Duration _position = _emptyDuration;
@@ -280,14 +290,14 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   late Orientation _orientation;
 
-  /// False if [_rate] picker should be hidden
-  bool _showRatePicker = false;
+  /// False if [volume] picker should be hidden
+  bool _showVolumePicker = false;
 
-  /// False if [_showRatePicker] was false at last redraw
-  bool _previousRatePicker = false;
+  /// False if [_showVolumePicker] was false at last redraw
+  bool _preCoverVolumePicker = false;
 
-  /// Timer to release [_showRatePicker]
-  Timer? _rateCoverTimer;
+  /// Timer to release [_showVolumePicker]
+  Timer? _volumeCoverTimer;
 
   /// Text to speech for prelude
   final FlutterTts _tts = FlutterTts();
@@ -316,7 +326,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Current playback song
   SongModel? song;
 
-  /// Previous playback song
+  /// Playback song before change
   SongModel? _previousSong;
 
   /// Current song index in queue
@@ -370,6 +380,9 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Text to speech timer
   Timer? _ttsTimer;
 
+  /// Fade timer
+  Timer? _fadeTimer;
+
   /// Initializes [song] playback
   void onPlay({bool quiet = false}) {
     if (_state == PlayerState.PAUSED || quiet) {
@@ -385,14 +398,18 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
         for (int i = _introLength; i > 0; i--) i.toString()
       ];
       _ttsTimer?.cancel();
-      _ttsTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (_range.isEmpty) {
-          audioPlayer.play(_songPath, isLocal: true);
-          _ttsTimer?.cancel();
-        } else {
-          _tts.speak(_range.removeAt(0));
-        }
-      });
+      if (_range.isEmpty) {
+        audioPlayer.play(_songPath, isLocal: true);
+      } else {
+        _ttsTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+          if (_range.isEmpty) {
+            audioPlayer.play(_songPath, isLocal: true);
+            _ttsTimer!.cancel();
+          } else {
+            _tts.speak(_range.removeAt(0));
+          }
+        });
+      }
       setState(() => lastSongPath = _songPath);
       _setValue('lastSongPath', _songPath);
     }
@@ -440,9 +457,13 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Pauses [song] playback
   void onPause({bool quiet = false}) {
     _ttsTimer?.cancel();
-    if (_ttsTimer != null && !_ttsTimer!.isActive) {
-      audioPlayer.pause();
-      if (!quiet) setState(() => _state = PlayerState.PAUSED);
+    audioPlayer.pause();
+    if (!quiet) setState(() => _state = PlayerState.PAUSED);
+    if (_preFadeVolume != 0) {
+      _fadeTimer!.cancel();
+      onChange(index + 1);
+      onVolume(_preFadeVolume);
+      setState(() => _preFadeVolume = 0);
     }
   }
 
@@ -642,42 +663,47 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
     audioPlayer.seek(_position * (_rate / 100.0));
   }
 
-  /// Starts to listen [_rate] drag actions
-  void onRateDragStart(BuildContext context, DragStartDetails details) {
+  /// Starts to listen [volume] drag actions
+  void onVolumeDragStart(BuildContext context, DragStartDetails details) {
     final RenderBox slider = context.findRenderObject() as RenderBox;
-    final Offset rate = slider.globalToLocal(details.globalPosition);
-    if (_state == PlayerState.PLAYING) onPause(quiet: true);
-    updateRate(rate, slider.constraints.biggest.height);
+    final Offset _volume = slider.globalToLocal(details.globalPosition);
+    updateVolume(_volume, slider.constraints.biggest.height);
   }
 
-  /// Listens [_rate] drag actions
-  void onRateDragUpdate(BuildContext context, DragUpdateDetails details) {
+  /// Listens [volume] drag actions
+  void onVolumeDragUpdate(BuildContext context, DragUpdateDetails details) {
     final RenderBox slider = context.findRenderObject() as RenderBox;
-    final Offset rate = slider.globalToLocal(details.globalPosition);
-    updateRate(rate, slider.constraints.biggest.height);
+    final Offset _volume = slider.globalToLocal(details.globalPosition);
+    updateVolume(_volume, slider.constraints.biggest.height);
   }
 
-  /// Ends to listen [_rate] drag actions
-  void onRateDragEnd(BuildContext context, DragEndDetails details) {
-    if (_state == PlayerState.PLAYING) onPlay(quiet: true);
-  }
+  /// Changes playback [volume] according to given offset
+  void updateVolume(Offset _volume, double height) {
+    double newVolume = 50.0;
 
-  /// Changes playback [_rate] according to given offset
-  void updateRate(Offset rate, double height) {
-    double newRate = 100.0;
-
-    if (rate.dy <= .0) {
-      newRate = .0;
-    } else if (rate.dy >= height) {
-      newRate = height;
+    if (_volume.dy <= .0) {
+      newVolume = .0;
+    } else if (_volume.dy >= height) {
+      newVolume = height;
     } else {
-      newRate = rate.dy;
+      newVolume = _volume.dy;
     }
 
-    newRate = 200.0 * (1 - (newRate / height));
-    newRate = newRate - newRate % 5;
-    if (newRate < 5) newRate = 5;
-    onRate(newRate);
+    newVolume = 100.0 * (1 - (newVolume / height));
+    newVolume = newVolume - newVolume % 1;
+    onVolume(newVolume.toInt());
+  }
+
+  /// Changes playback [volume] by given
+  void onVolume(int _volume) async {
+    if (_volume > 100) {
+      _volume = 100;
+    } else if (_volume < 0) {
+      _volume = 0;
+    }
+    VolumeRegulator.setVolume(_volume);
+    setState(() => volume = _volume);
+    _setValue('volume', _volume);
   }
 
   /// Changes playback [_rate] by given
@@ -799,10 +825,12 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Get cached or preferred value
   void _getSavedValues() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    int _volume = await VolumeRegulator.getVolume();
     setState(() {
       lastSongPath = prefs.getString('lastSongPath');
       _mode = prefs.getString('_mode') ?? 'loop';
       _set = prefs.getString('_set') ?? 'random';
+      volume = prefs.getInt('volume') ?? _volume;
     });
     await prefs.setString('_mode', _mode);
     await prefs.setString('_set', _set);
@@ -813,6 +841,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     if (value is String) await prefs.setString(variable, value);
     if (value is double) await prefs.setDouble(variable, value);
+    if (value is int) await prefs.setInt(variable, value);
   }
 
   /// Queries album artworks to app cache
@@ -981,10 +1010,21 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
     });
     audioPlayer.onAudioPositionChanged.listen((Duration p) {
       setState(() => _position = p * (100.0 / _rate));
-      if (_fadePosition > _emptyDuration && _position > _fadePosition) {
-        onPause(quiet: true);
-        onChange(index + 1);
-        onPlay();
+      if (_fadePosition > _emptyDuration &&
+          _position > _fadePosition &&
+          _preFadeVolume == 0 &&
+          _state == PlayerState.PLAYING) {
+        setState(() => _preFadeVolume = volume);
+        _fadeTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+          if (volume > 0) {
+            onVolume(volume - 1);
+          } else {
+            _fadeTimer!.cancel();
+            onChange(index + 1);
+            onVolume(_preFadeVolume);
+            setState(() => _preFadeVolume = 0);
+          }
+        });
       }
     });
     audioPlayer.onPlayerCompletion.listen((_) {
@@ -1000,6 +1040,11 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
     audioPlayer.onPlayerError.listen((String error) {
       onStop();
       print(error);
+    });
+
+    VolumeRegulator.volumeStream.listen((int v) {
+      setState(() => volume = v);
+      _setValue('volume', v);
     });
 
     _controller.addListener(() {
@@ -1200,26 +1245,26 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    if (_previousRate != _rate) {
-      _showRatePicker = true;
-      _previousRate = _rate;
-      _rateCoverTimer?.cancel();
-      _rateCoverTimer = Timer(_defaultDuration, () {
-        setState(() => _showRatePicker = false);
+    if (_preCoverVolume != volume) {
+      _showVolumePicker = true;
+      _preCoverVolume = volume;
+      _volumeCoverTimer?.cancel();
+      _volumeCoverTimer = Timer(_defaultDuration, () {
+        setState(() => _showVolumePicker = false);
       });
     }
     if (_previousSong != song) {
-      _showRatePicker = false;
+      _showVolumePicker = false;
       _previousSong = song;
-      _rateCoverTimer?.cancel();
+      _volumeCoverTimer?.cancel();
     }
-    if (_previousRatePicker != _showRatePicker) {
-      _rateCoverTimer?.cancel();
-      _rateCoverTimer = Timer(_defaultDuration, () {
-        setState(() => _showRatePicker = false);
+    if (_preCoverVolumePicker != _showVolumePicker) {
+      _volumeCoverTimer?.cancel();
+      _volumeCoverTimer = Timer(_defaultDuration, () {
+        setState(() => _showVolumePicker = false);
       });
     }
-    _previousRatePicker = _showRatePicker;
+    _preCoverVolumePicker = _showVolumePicker;
     _orientation = MediaQuery.of(context).orientation;
     return Material(
         child: PageView(
@@ -1355,7 +1400,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                 child: FractionallySizedBox(
                                                     heightFactor: _heightFactor(
                                                         1,
-                                                        _rate,
+                                                        volume,
                                                         wave(song?.title ?? 'zapaz')
                                                             .first),
                                                     child: Container(
@@ -1425,7 +1470,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: <Widget>[
                                     FractionallySizedBox(
-                                        heightFactor: _heightFactor(1, _rate,
+                                        heightFactor: _heightFactor(1, volume,
                                             wave(song?.title ?? 'zapaz').first),
                                         child: Container(
                                             alignment: Alignment.center,
@@ -1452,7 +1497,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                             child: FractionallySizedBox(
                                                 heightFactor: _heightFactor(
                                                     1,
-                                                    _rate,
+                                                    volume,
                                                     wave(song?.title ?? 'zapaz')
                                                         .first),
                                                 child: Container(
@@ -1469,7 +1514,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                                 .scaffoldBackgroundColor))))),
                                     Expanded(child: _playerOblong(this)),
                                     FractionallySizedBox(
-                                        heightFactor: _heightFactor(1, _rate,
+                                        heightFactor: _heightFactor(1, volume,
                                             wave(song?.title ?? 'zapaz').last),
                                         child: Container(
                                             alignment: Alignment.center,
@@ -1806,7 +1851,6 @@ Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> entry) {
         childrenPadding: const EdgeInsets.only(left: 16.0),
         title: Text(_entry.name,
             style: TextStyle(
-                fontSize: 14.0,
                 color: parent.folder == _entryPath
                     ? Theme.of(parent.context).primaryColor
                     : Theme.of(parent.context).textTheme.bodyText2!.color)),
@@ -1839,7 +1883,7 @@ Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> entry) {
                   color: parent.folder == _entryPath
                       ? Theme.of(parent.context).primaryColor
                       : unfocusedColor))
-          : Text(_entry.name, style: const TextStyle(fontSize: 14.0)),
+          : Text(_entry.name),
       subtitle: Text(_entry.songs == 1 ? '1 song' : '${_entry.songs} songs',
           style: const TextStyle(fontSize: 10.0)));
 }
@@ -1900,7 +1944,7 @@ Widget _playerSquared(_PlayerState parent) {
               shape: parent._orientation == Orientation.portrait
                   ? const _CubistShapeA()
                   : const _CubistShapeC(),
-              child: _rateCover(parent))));
+              child: _volumeCover(parent))));
 }
 
 /// Renders rate selector
@@ -1937,17 +1981,21 @@ Widget _ratePicker(parent) {
   });
 }
 
-/// Renders album artwork or rate selector
-Widget _rateCover(parent) {
-  if (parent._showRatePicker == true) {
-    String _message = 'Hide speed selector';
+/// Renders album artwork or volume selector
+Widget _volumeCover(parent) {
+  if (parent._showVolumePicker == true) {
+    String _message = 'Hide volume selector';
     GestureTapCallback _onTap = () {
-      parent.setState(() => parent._showRatePicker = false);
+      parent.setState(() => parent._showVolumePicker = false);
     };
     const TextStyle _textStyle = TextStyle(fontSize: 30);
-    if (parent._rate != 100.0) {
-      _message = 'Reset player speed';
-      _onTap = () => parent.onRate(100.0);
+    if (parent.volume != 0) {
+      _message = 'Mute';
+      parent.setState(() => parent._preMuteVolume = parent.volume);
+      _onTap = () => parent.onVolume(0);
+    } else {
+      _message = 'Unmute';
+      _onTap = () => parent.onVolume(parent._preMuteVolume);
     }
     return Center(
         child:
@@ -1956,15 +2004,15 @@ Widget _rateCover(parent) {
           message: _message,
           child: InkWell(
               onTap: _onTap,
-              child: Text('${parent._rate.toInt()}', style: _textStyle))),
+              child: Text('${parent.volume}', style: _textStyle))),
       Column(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
         IconButton(
-            onPressed: () => parent.onRate(parent._rate + 5.0),
-            tooltip: 'Speed up',
+            onPressed: () => parent.onVolume(parent.volume + 3),
+            tooltip: 'Louder',
             icon: const Icon(Icons.keyboard_arrow_up, size: 30)),
         IconButton(
-            onPressed: () => parent.onRate(parent._rate - 5.0),
-            tooltip: 'Slow down',
+            onPressed: () => parent.onVolume(parent.volume - 3),
+            tooltip: 'Quieter',
             icon: const Icon(Icons.keyboard_arrow_down, size: 30))
       ]),
       const Text('%', style: _textStyle)
@@ -1974,10 +2022,10 @@ Widget _rateCover(parent) {
   if (parent.song != null) _cover = parent._getCover(parent.song);
   _cover ??= const Icon(Icons.music_note, size: 48.0);
   return Tooltip(
-      message: 'Show speed selector',
+      message: 'Show volume selector',
       child: InkWell(
           onTap: () {
-            parent.setState(() => parent._showRatePicker = true);
+            parent.setState(() => parent._showVolumePicker = true);
           },
           child: _cover));
 }
@@ -2107,11 +2155,9 @@ Double tap to add intro''',
                   : parent.duration);
         },
         onVerticalDragStart: (DragStartDetails details) =>
-            parent.onRateDragStart(context, details),
+            parent.onVolumeDragStart(context, details),
         onVerticalDragUpdate: (DragUpdateDetails details) =>
-            parent.onRateDragUpdate(context, details),
-        onVerticalDragEnd: (DragEndDetails details) =>
-            parent.onRateDragEnd(context, details),
+            parent.onVolumeDragUpdate(context, details),
         onDoubleTap: parent.onPrelude,
         child: CustomPaint(
             size: Size.infinite,
@@ -2123,7 +2169,7 @@ Double tap to add intro''',
                     ? _defaultDuration
                     : parent.duration,
                 parent._position,
-                parent._rate,
+                parent.volume,
                 Theme.of(context).primaryColor)));
   });
 }
@@ -2438,7 +2484,7 @@ Widget _listCover(_PlayerState parent, SongModel _song) {
 /// Cubist shape for player slider.
 class CubistWave extends CustomPainter {
   /// Player slider constructor
-  CubistWave(this.title, this.duration, this.position, this.rate, this.color);
+  CubistWave(this.title, this.duration, this.position, this.volume, this.color);
 
   /// Song title to parse
   String title;
@@ -2449,8 +2495,8 @@ class CubistWave extends CustomPainter {
   /// Current playback position
   Duration position;
 
-  /// Playback rate to adjust duration
-  double rate;
+  /// Playback volume to adjust duration
+  int volume;
 
   /// Rendering color
   Color color;
@@ -2469,7 +2515,7 @@ class CubistWave extends CustomPainter {
     final Path _songPath = Path()..moveTo(.0, size.height);
     _waveList.forEach((int index, double value) {
       _songPath.lineTo((size.width * index) / _len,
-          size.height - _heightFactor(size.height, rate, value));
+          size.height - _heightFactor(size.height, volume, value));
     });
     _songPath
       ..lineTo(size.width, size.height)
@@ -2483,7 +2529,7 @@ class CubistWave extends CustomPainter {
     _waveList.forEach((int index, double value) {
       if (index < ceil) {
         _indicatorPath.lineTo((size.width * index) / _len,
-            size.height - _heightFactor(size.height, rate, value));
+            size.height - _heightFactor(size.height, volume, value));
       } else if (index == ceil) {
         final double previous =
             index == 0 ? size.height : _waveList[index - 1]!;
@@ -2492,7 +2538,8 @@ class CubistWave extends CustomPainter {
         _indicatorPath.lineTo(
             size.width * percentage,
             size.height -
-                _heightFactor(size.height, rate, previous + (diff * advance)));
+                _heightFactor(
+                    size.height, volume, previous + (diff * advance)));
       }
     });
     _indicatorPath
@@ -2723,14 +2770,6 @@ class _CubistShapeF extends ShapeBorder {
       ..lineTo(rect.right - 6 * rect.width / 10, rect.bottom)
       ..lineTo(rect.left, rect.bottom)
       ..lineTo(rect.left + rect.width / 20, rect.top + rect.height / 2)
-      /*..moveTo(rect.left, rect.top + rect.height / 10)
-      ..lineTo(rect.left + rect.width / 2, rect.top)
-      ..lineTo(rect.right, rect.top + rect.height / 10)
-      ..lineTo(rect.right - rect.width / 20, rect.top + 11 * rect.height / 20)
-      ..lineTo(rect.right, rect.bottom + rect.height / 20)
-      ..lineTo(rect.right - rect.width / 2, rect.bottom - rect.height / 20)
-      ..lineTo(rect.left, rect.bottom + rect.height / 20)
-      ..lineTo(rect.left + rect.width / 20, rect.top + 11 * rect.height / 20)*/
       ..close();
   }
 
