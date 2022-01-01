@@ -3,7 +3,7 @@
 // ignore_for_file: public_member_api_docs, constant_identifier_names, avoid_classes_with_only_static_members
 
 class Pubspec {
-  static final buildDate = DateTime.utc(2021, 12, 28, 17, 40, 26);
+  static final buildDate = DateTime.utc(2022, 1, 1, 15, 43, 42);
 
   static const name = 'stepslow';
 
@@ -55,6 +55,7 @@ class Pubspec {
     'url_launcher': '^6.0.17',
     'about': '^2.1.0',
     'cupertino_icons': '^1.0.4',
+    'volume_regulator': '^1.0.0',
   };
 
   static const dev_dependencies = <dynamic, dynamic>{
