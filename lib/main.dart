@@ -28,8 +28,8 @@ final Color interactiveColor = Colors.orange[300]!; // #FFB74D #FFA726
 /// Light theme color
 final Color backgroundColor = Colors.white;
 
-/// YouTube components color
-final Color youtubeColor = Colors.red; // #E4273A
+/// Special and YouTube components color
+final Color redColor = Colors.red; // #E4273A
 
 /// Text main color
 final Color unfocusedColor = Colors.grey[400]!;
@@ -756,7 +756,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                           Icon(Typicons.social_youtube,
                               color: source == _source
                                   ? Theme.of(context).primaryColor
-                                  : youtubeColor),
+                                  : redColor),
                           _sourceText
                         ]);
                   case 0:
@@ -1289,7 +1289,8 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                       title: Tooltip(
                           message: 'Change source',
                           child: InkWell(
-                              onTap: _pickSource, child: Text(source.name)))),
+                              onTap: _pickSource, child: Text(source.name))),
+                      actions: _showContents(this)),
                   body: _folderPicker(this))),
           // songs
           WillPopScope(
@@ -1409,7 +1410,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                         padding: const EdgeInsets
                                                                 .symmetric(
                                                             horizontal: 12.0),
-                                                        color: youtubeColor,
+                                                        color: redColor,
                                                         child: Text(
                                                             '$_introLength s',
                                                             style: TextStyle(
@@ -1505,7 +1506,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                     padding: const EdgeInsets
                                                             .symmetric(
                                                         horizontal: 12.0),
-                                                    color: youtubeColor,
+                                                    color: redColor,
                                                     child: Text(
                                                         '$_introLength s',
                                                         style: TextStyle(
@@ -1532,7 +1533,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                             _emptyDuration
                                                         ? Theme.of(context)
                                                             .scaffoldBackgroundColor
-                                                        : youtubeColor,
+                                                        : redColor,
                                                     fontWeight: _fadePosition ==
                                                             _emptyDuration
                                                         ? FontWeight.normal
@@ -1806,12 +1807,30 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 Widget _sourceButton(int sourceId, Color darkColor) {
   switch (sourceId) {
     case -1:
-      return Icon(Typicons.social_youtube, color: youtubeColor);
+      return Icon(Typicons.social_youtube, color: redColor);
     case 0:
       return Icon(Icons.phone_iphone, color: darkColor);
     default:
       return Icon(Icons.sd_card, color: darkColor);
   }
+}
+
+/// Shows icon according to current [chosenFolder]
+List<Widget> _showContents(_PlayerState parent) {
+  List<Widget> _actionsList = [];
+  if (parent._tempQueueComplete == -1 && parent._tempQueue.isNotEmpty) {
+    _actionsList.add(IconButton(
+        onPressed: parent._pickSong,
+        tooltip: 'Pick song',
+        icon: Icon(Icons.playlist_play_rounded,
+            size: 30.0,
+            color: Theme.of(parent.context)
+                .textTheme
+                .bodyText2!
+                .color!
+                .withOpacity(.55))));
+  }
+  return _actionsList;
 }
 
 /// Renders folder list
@@ -2170,7 +2189,8 @@ Double tap to add intro''',
                     : parent.duration,
                 parent._position,
                 parent.volume,
-                Theme.of(context).primaryColor)));
+                Theme.of(context).primaryColor,
+                parent._fadePosition)));
   });
 }
 
@@ -2197,7 +2217,7 @@ Widget _playerControl(_PlayerState parent) {
                       style: TextStyle(
                           color: parent._fadePosition == _emptyDuration
                               ? Theme.of(context).textTheme.bodyText2!.color
-                              : youtubeColor,
+                              : redColor,
                           fontWeight: parent._fadePosition == _emptyDuration
                               ? FontWeight.normal
                               : FontWeight.bold))
@@ -2484,7 +2504,8 @@ Widget _listCover(_PlayerState parent, SongModel _song) {
 /// Cubist shape for player slider.
 class CubistWave extends CustomPainter {
   /// Player slider constructor
-  CubistWave(this.title, this.duration, this.position, this.volume, this.color);
+  CubistWave(this.title, this.duration, this.position, this.volume, this.color,
+      this.fadePosition);
 
   /// Song title to parse
   String title;
@@ -2501,6 +2522,9 @@ class CubistWave extends CustomPainter {
   /// Rendering color
   Color color;
 
+  /// Position to switch songs
+  Duration fadePosition;
+
   @override
   void paint(Canvas canvas, Size size) {
     final Map<int, double> _waveList = wave(title).asMap();
@@ -2510,7 +2534,6 @@ class CubistWave extends CustomPainter {
     } else if (duration.inSeconds == 0) {
       duration = const Duration(seconds: 1);
     }
-    final double percentage = position.inSeconds / duration.inSeconds;
 
     final Path _songPath = Path()..moveTo(.0, size.height);
     _waveList.forEach((int index, double value) {
@@ -2523,6 +2546,7 @@ class CubistWave extends CustomPainter {
     canvas.drawPath(_songPath, Paint()..color = color.withOpacity(.7));
 
     final Path _indicatorPath = Path();
+    final double percentage = position.inSeconds / duration.inSeconds;
     final double pos = _len * percentage;
     final int ceil = pos.ceil();
     _indicatorPath.moveTo(.0, size.height);
@@ -2546,6 +2570,34 @@ class CubistWave extends CustomPainter {
       ..lineTo(size.width * percentage, size.height)
       ..close();
     canvas.drawPath(_indicatorPath, Paint()..color = color);
+
+    if (fadePosition != _emptyDuration && fadePosition < duration) {
+      final Path _fadePath = Path();
+      final double fadePercentage = fadePosition.inSeconds / duration.inSeconds;
+      final double fade = _len * fadePercentage;
+      final int floor = fade.floor();
+      _fadePath.moveTo(size.width * fadePercentage, size.height);
+      _waveList.forEach((int index, double value) {
+        if (index == floor) {
+          final double next = index == (_waveList.length - 1)
+              ? size.height
+              : _waveList[index + 1]!;
+          final double diff = next - value;
+          final double advance = 1 - (fade - floor);
+          _fadePath.lineTo(
+              size.width * fadePercentage,
+              size.height -
+                  _heightFactor(size.height, volume, next - (diff * advance)));
+        } else if (index > floor) {
+          _fadePath.lineTo((size.width * index) / _len,
+              size.height - _heightFactor(size.height, volume, value));
+        }
+      });
+      _fadePath
+        ..lineTo(size.width, size.height)
+        ..close();
+      canvas.drawPath(_fadePath, Paint()..color = redColor.withOpacity(.7));
+    }
   }
 
   @override
