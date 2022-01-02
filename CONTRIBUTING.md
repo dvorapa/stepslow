@@ -4,7 +4,7 @@ We love pull requests from everyone. Don't hesitate to create one if you want
 to contribute code to the project.
 
 Start by forking and cloning the repo:
-```shell
+```shellsession
 $ git clone git@github.com:~your-username~/stepslow.git
 ```
 
@@ -15,11 +15,11 @@ https://docs.flutter.dev/get-started/install).
 Please always make sure you meet [Dart style guide](
 https://dart.dev/guides/language/effective-dart/style). You can check
 everything is in order running the following commands in project's root folder:
-```shell
+```shellsession
 $ flutter format . && flutter analyze
 ```
 or
-```shell
+```shellsession
 $ dart format . && dart analyze
 ```
 
@@ -42,7 +42,7 @@ and iOS possible. Also you should use the latest version of Android Studio,
 its plugins and SDKs, Flutter and its packages available. Before any work
 you might want to update your Android Studio setup and then Flutter setup using
 the following commands in project's root folder:
-```shell
+```shellsession
 $ flutter upgrade && flutter precache && flutter pub upgrade
 ```
 If you changed launcher icons, you should run
@@ -52,7 +52,7 @@ you should also run `flutter pub run pubspec_extract`.
 Once you've made your modifications, you might want to make sure they work
 properly. You can run them on a device or device simulator using the following
 commands:
-```shell
+```shellsession
 $ flutter clean  # always clean before building
 $ flutter pub get
 $ flutter run
@@ -61,7 +61,7 @@ Don't forget to test your changes in portrait as well as landscape mode.
 
 Once you've made and might've tested your modifications, please double-check
 them. You can use the following commands:
-```shell
+```shellsession
 $ git status
 $ git diff
 ```

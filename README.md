@@ -38,7 +38,7 @@ https://paypal.me/dvorapa) or [Revolut](https://revolut.me/dvorapa).
 ## Contributing
 
 Please fill in an issue or a pull request on project's [GitHub page](
-https://github.com/dvorapa/stepslow). See [CONTRIBUTING.md](
+https://github.com/dvorapa/stepslow). See [contributing guide](
 https://github.com/dvorapa/stepslow/blob/master/CONTRIBUTING.md)
 for more information.
 
