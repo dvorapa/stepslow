@@ -15,8 +15,8 @@ or a YouTube player with improved slow down/speed up option inside the app.
 
 ## Usage
 
-Soon enough this app will be available in Google Play store and others. Anyway,
-you can always compile the app for yourself using steps
+Soon enough this app will be available in Google Play store and others.
+Until then you can always compile the app for yourself using steps
 in [Flutter compile guide](https://flutter.dev/docs/deployment/android).
 
 ## Example
@@ -29,15 +29,18 @@ in [Flutter compile guide](https://flutter.dev/docs/deployment/android).
 
 ## Author
 
-[Pavel Dvořák](https://www.dvorapa.cz)
-([@dvorapa](https://twitter.com/dvorapa))
+[Pavel Dvořák](https://www.dvorapa.cz) ([@dvorapa](
+https://twitter.com/dvorapa))
 
-You might want to buy me a [hot chocolate ☕](https://paypal.me/dvorapa).
+You might want to buy me a hot chocolate ☕ using [Paypal](
+https://paypal.me/dvorapa) or [Revolut](https://revolut.me/dvorapa).
 
 ## Contributing
 
-Please fill in an issue or a pull request on project's
-[GitHub page](https://github.com/dvorapa/stepslow).
+Please fill in an issue or a pull request on project's [GitHub page](
+https://github.com/dvorapa/stepslow). See [CONTRIBUTING.md](
+https://github.com/dvorapa/stepslow/blob/master/CONTRIBUTING.md)
+for more information.
 
 ## License
 

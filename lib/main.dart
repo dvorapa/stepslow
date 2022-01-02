@@ -749,46 +749,37 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                     : Text(_source.name);
                 switch (_source.id) {
                   case -1:
-                    return Wrap(
-                        spacing: 12.0,
-                        crossAxisAlignment: WrapCrossAlignment.end,
-                        children: <Widget>[
-                          Icon(Typicons.social_youtube,
-                              color: source == _source
-                                  ? Theme.of(context).primaryColor
-                                  : redColor),
-                          _sourceText
-                        ]);
+                    return _iconListItem(children: <Widget>[
+                      Icon(Typicons.social_youtube,
+                          color: source == _source
+                              ? Theme.of(context).primaryColor
+                              : redColor),
+                      _sourceText
+                    ]);
                   case 0:
-                    return Wrap(
-                        spacing: 12.0,
-                        crossAxisAlignment: WrapCrossAlignment.end,
-                        children: <Widget>[
-                          Icon(Icons.phone_iphone,
-                              color: source == _source
-                                  ? Theme.of(context).primaryColor
-                                  : Theme.of(context)
-                                      .textTheme
-                                      .bodyText2!
-                                      .color!
-                                      .withOpacity(.55)),
-                          _sourceText
-                        ]);
+                    return _iconListItem(children: <Widget>[
+                      Icon(Icons.phone_iphone,
+                          color: source == _source
+                              ? Theme.of(context).primaryColor
+                              : Theme.of(context)
+                                  .textTheme
+                                  .bodyText2!
+                                  .color!
+                                  .withOpacity(.55)),
+                      _sourceText
+                    ]);
                   default:
-                    return Wrap(
-                        spacing: 12.0,
-                        crossAxisAlignment: WrapCrossAlignment.end,
-                        children: <Widget>[
-                          Icon(Icons.sd_card,
-                              color: source == _source
-                                  ? Theme.of(context).primaryColor
-                                  : Theme.of(context)
-                                      .textTheme
-                                      .bodyText2!
-                                      .color!
-                                      .withOpacity(.55)),
-                          _sourceText
-                        ]);
+                    return _iconListItem(children: <Widget>[
+                      Icon(Icons.sd_card,
+                          color: source == _source
+                              ? Theme.of(context).primaryColor
+                              : Theme.of(context)
+                                  .textTheme
+                                  .bodyText2!
+                                  .color!
+                                  .withOpacity(.55)),
+                      _sourceText
+                    ]);
                 }
               });
         });
@@ -1558,148 +1549,42 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                 context: context,
                                 builder: (BuildContext context) {
                                   return AlertDialog(
-                                      content: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: <Widget>[
-                                            const Center(
-                                                child: Text(Pubspec.name,
-                                                    style: TextStyle(
-                                                        fontSize: 32.0))),
-                                            Center(
-                                                child: Text(
-                                                    '${Pubspec.description}\nversion ${Pubspec.version}, build ${Pubspec.versionBuild}\nby @dvorapa',
-                                                    textAlign: TextAlign.center,
-                                                    style: TextStyle(
-                                                        color: unfocusedColor,
-                                                        fontSize: 13.0))),
-                                            InkWell(
-                                                onTap: () => showMarkdownPage(
-                                                    context: context,
-                                                    applicationName:
-                                                        'Changelog',
-                                                    selectable: true,
-                                                    filename: 'CHANGELOG.md'),
-                                                child: Wrap(
-                                                    spacing: 12.0,
-                                                    crossAxisAlignment:
-                                                        WrapCrossAlignment.end,
-                                                    children: const <Widget>[
-                                                      Icon(Icons.rule),
-                                                      Text('Changelog',
-                                                          style: TextStyle(
-                                                              fontSize: 18.0))
-                                                    ])),
-                                            InkWell(
-                                                onTap: () => launch(
-                                                    'https://github.com/dvorapa/stepslow/issues/new/choose'),
-                                                child: Wrap(
-                                                    spacing: 12.0,
-                                                    crossAxisAlignment:
-                                                        WrapCrossAlignment.end,
-                                                    children: const <Widget>[
-                                                      Icon(Icons
-                                                          .report_outlined),
-                                                      Text('Report issue',
-                                                          style: TextStyle(
-                                                              fontSize: 18.0))
-                                                    ])),
-                                            InkWell(
-                                                onTap: () => showDialog(
-                                                    context: context,
-                                                    builder:
-                                                        (BuildContext context) {
-                                                      return SingleChoiceDialog<
-                                                              String>(
-                                                          isDividerEnabled:
-                                                              true,
-                                                          items: const <String>[
-                                                            'Paypal',
-                                                            'Revolut'
-                                                          ],
-                                                          onSelected: (String
-                                                                  _method) =>
-                                                              launch(
-                                                                  'https://${_method.toLowerCase()}.me/dvorapa'),
-                                                          itemBuilder:
-                                                              (String _method) {
-                                                            return Wrap(
-                                                                spacing: 12.0,
-                                                                crossAxisAlignment:
-                                                                    WrapCrossAlignment
-                                                                        .end,
-                                                                children: <
-                                                                    Widget>[
-                                                                  Icon(_method ==
-                                                                          'Paypal'
-                                                                      ? CupertinoIcons
-                                                                          .money_pound_circle
-                                                                      : CupertinoIcons
-                                                                          .bitcoin_circle),
-                                                                  Text(_method)
-                                                                ]);
-                                                          });
-                                                    }),
-                                                child: Wrap(
-                                                    spacing: 12.0,
-                                                    crossAxisAlignment:
-                                                        WrapCrossAlignment.end,
-                                                    children: const <Widget>[
-                                                      Icon(Icons
-                                                          .favorite_outline),
-                                                      Text('Sponsor',
-                                                          style: TextStyle(
-                                                              fontSize: 18.0))
-                                                    ])),
-                                            InkWell(
-                                                onTap: () => launch(
-                                                    'https://www.dvorapa.cz#kontakt'),
-                                                child: Wrap(
-                                                    spacing: 12.0,
-                                                    crossAxisAlignment:
-                                                        WrapCrossAlignment.end,
-                                                    children: const <Widget>[
-                                                      Icon(Icons
-                                                          .alternate_email),
-                                                      Text('Contact',
-                                                          style: TextStyle(
-                                                              fontSize: 18.0))
-                                                    ])),
-                                            InkWell(
-                                                onTap: () => showLicensePage(
-                                                    context: context,
-                                                    applicationName:
-                                                        'GNU General Public License v3.0'),
-                                                child: Wrap(
-                                                    spacing: 12.0,
-                                                    crossAxisAlignment:
-                                                        WrapCrossAlignment.end,
-                                                    children: const <Widget>[
-                                                      Icon(Icons
-                                                          .description_outlined),
-                                                      Text('Licenses',
-                                                          style: TextStyle(
-                                                              fontSize: 18.0))
-                                                    ])),
-                                            InkWell(
-                                                onTap: () => launch(
-                                                    'https://github.com/dvorapa/stepslow'),
-                                                child: Wrap(
-                                                    spacing: 12.0,
-                                                    crossAxisAlignment:
-                                                        WrapCrossAlignment.end,
-                                                    children: const <Widget>[
-                                                      Icon(Icons.code),
-                                                      Text('Source code',
-                                                          style: TextStyle(
-                                                              fontSize: 18.0))
-                                                    ]))
-                                          ]
-                                              .map((Widget _widget) => Padding(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(vertical: 5.0),
-                                                  child: _widget))
-                                              .toList()),
+                                      contentPadding: const EdgeInsets.fromLTRB(
+                                          24.0, 20.0, 24.0, .0),
+                                      content: SizedBox(
+                                          width: MediaQuery.of(context)
+                                                  .size
+                                                  .width *
+                                              .5,
+                                          child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: <Widget>[
+                                                const Center(
+                                                    child: Text(Pubspec.name,
+                                                        style: TextStyle(
+                                                            fontSize: 32.0))),
+                                                Center(
+                                                    child: Text(
+                                                        '${Pubspec.description}\nversion ${Pubspec.version}, build ${Pubspec.versionBuild}\nby @dvorapa',
+                                                        textAlign:
+                                                            TextAlign.center,
+                                                        style: TextStyle(
+                                                            color:
+                                                                unfocusedColor,
+                                                            fontSize: 13.0))),
+                                                ..._appInfoLinks(this)
+                                              ]
+                                                  .map((Widget _widget) =>
+                                                      Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                      .symmetric(
+                                                                  vertical:
+                                                                      5.0),
+                                                          child: _widget))
+                                                  .toList())),
                                       actions: <Widget>[
                                         TextButton(
                                             onPressed: () =>
@@ -1707,8 +1592,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                             child: const Text('Close',
                                                 style:
                                                     TextStyle(fontSize: 16.0)))
-                                      ],
-                                      scrollable: true);
+                                      ]);
                                 }),
                             tooltip: 'Open app info',
                             icon: Icon(Icons.info_outline_rounded,
@@ -1756,48 +1640,10 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                 .bodyText2!
                                                 .color!
                                                 .withOpacity(.55))),
-                                child: GridView.count(
-                                    crossAxisCount:
-                                        _orientation == Orientation.portrait
-                                            ? 1
-                                            : 2,
-                                    mainAxisSpacing: 2.5,
-                                    crossAxisSpacing: 2.5,
-                                    childAspectRatio: 2.69,
+                                child: Padding(
                                     padding: EdgeInsets.all(
                                         _orientation == Orientation.portrait ? 40.0 : 20.0),
-                                    children: <Widget>[
-                                      Card(
-                                          elevation: 2.0,
-                                          shape: const _CubistShapeF(),
-                                          child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.spaceEvenly,
-                                              children: <Widget>[
-                                                const Text('Speed'),
-                                                _ratePicker(this)
-                                              ])),
-                                      Card(
-                                          elevation: 2.0,
-                                          shape: const _CubistShapeF(),
-                                          child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.spaceEvenly,
-                                              children: <Widget>[
-                                                const Text('Intro'),
-                                                _preludePicker(this)
-                                              ])),
-                                      Card(
-                                          elevation: 2.0,
-                                          shape: const _CubistShapeF(),
-                                          child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.spaceEvenly,
-                                              children: <Widget>[
-                                                const Text('Fade at'),
-                                                _fadePositionPicker(this)
-                                              ]))
-                                    ]))))
+                                    child: _specialFeaturesList(this)))))
                   ])))
         ]));
   }
@@ -1813,6 +1659,14 @@ Widget _sourceButton(int sourceId, Color darkColor) {
     default:
       return Icon(Icons.sd_card, color: darkColor);
   }
+}
+
+/// Shows standardized icon list item
+Widget _iconListItem({required List<Widget> children}) {
+  return Wrap(
+      spacing: 12.0,
+      crossAxisAlignment: WrapCrossAlignment.end,
+      children: children);
 }
 
 /// Shows icon according to current [chosenFolder]
@@ -2406,7 +2260,7 @@ Widget _navigation(_PlayerState parent) {
   }
   return Tooltip(
       message: 'Change folder',
-      child: Wrap(runSpacing: 8.0, spacing: 8.0, children: _row));
+      child: Wrap(spacing: 8.0, runSpacing: 6.0, children: _row));
 }
 
 /// Renders queue list
@@ -2499,6 +2353,131 @@ Widget _listCover(_PlayerState parent, SongModel _song) {
         child: _cover);
   }
   return const Icon(Icons.music_note);
+}
+
+/// List links in app info dialog
+List<Widget> _appInfoLinks(_PlayerState parent) {
+  final List<Widget> _firstTwo = [
+    InkWell(
+        onTap: () => showMarkdownPage(
+            context: parent.context,
+            applicationName: 'Changelog',
+            selectable: true,
+            filename: 'CHANGELOG.md'),
+        child: _iconListItem(children: const <Widget>[
+          Icon(Icons.rule),
+          Text('Changelog', style: TextStyle(fontSize: 18.0))
+        ])),
+    InkWell(
+        onTap: () =>
+            launch('https://github.com/dvorapa/stepslow/issues/new/choose'),
+        child: _iconListItem(children: const <Widget>[
+          Icon(Icons.report_outlined),
+          Text('Report issue', style: TextStyle(fontSize: 18.0))
+        ]))
+  ];
+  final List<Widget> _middleTwo = [
+    InkWell(
+        onTap: () => showDialog(
+            context: parent.context,
+            builder: (BuildContext context) {
+              return SingleChoiceDialog<String>(
+                  isDividerEnabled: true,
+                  items: const <String>['Paypal', 'Revolut'],
+                  onSelected: (String _method) =>
+                      launch('https://${_method.toLowerCase()}.me/dvorapa'),
+                  itemBuilder: (String _method) {
+                    return _iconListItem(children: <Widget>[
+                      Icon(_method == 'Paypal'
+                          ? CupertinoIcons.money_pound_circle
+                          : CupertinoIcons.bitcoin_circle),
+                      Text(_method)
+                    ]);
+                  });
+            }),
+        child: _iconListItem(children: const <Widget>[
+          Icon(Icons.favorite_outline),
+          Text('Sponsor', style: TextStyle(fontSize: 18.0))
+        ])),
+    InkWell(
+        onTap: () => launch('https://www.dvorapa.cz#kontakt'),
+        child: _iconListItem(children: const <Widget>[
+          Icon(Icons.alternate_email),
+          Text('Contact', style: TextStyle(fontSize: 18.0))
+        ]))
+  ];
+  final List<Widget> _lastTwo = [
+    InkWell(
+        onTap: () => showLicensePage(
+            context: parent.context,
+            applicationName: 'GNU General Public License v3.0'),
+        child: _iconListItem(children: const <Widget>[
+          Icon(Icons.description_outlined),
+          Text('Licenses', style: TextStyle(fontSize: 18.0))
+        ])),
+    InkWell(
+        onTap: () => launch('https://github.com/dvorapa/stepslow'),
+        child: _iconListItem(children: const <Widget>[
+          Icon(Icons.code),
+          Text('Source code', style: TextStyle(fontSize: 18.0))
+        ]))
+  ];
+  if (parent._orientation == Orientation.portrait) {
+    return <Widget>[..._firstTwo, ..._middleTwo, ..._lastTwo];
+  }
+  return <Widget>[
+    Table(children: <TableRow>[
+      TableRow(
+          children: _firstTwo
+              .map((Widget _widget) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2.5),
+                  child: _widget))
+              .toList()),
+      TableRow(
+          children: _middleTwo
+              .map((Widget _widget) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2.5),
+                  child: _widget))
+              .toList()),
+      TableRow(
+          children: _lastTwo
+              .map((Widget _widget) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2.5),
+                  child: _widget))
+              .toList())
+    ])
+  ];
+}
+
+/// List special features
+Widget _specialFeaturesList(parent) {
+  Widget _cardRow({required List<Widget> children}) {
+    return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 1.25),
+        child: Card(
+            elevation: 2.0,
+            shape: const _CubistShapeF(),
+            child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: children)));
+  }
+
+  final List<Widget> _firstTwo = [
+    _cardRow(children: <Widget>[const Text('Speed'), _ratePicker(parent)]),
+    _cardRow(children: <Widget>[const Text('Intro'), _preludePicker(parent)])
+  ];
+  final List<Widget> _lastTwo = [
+    _cardRow(
+        children: <Widget>[const Text('Fade at'), _fadePositionPicker(parent)]),
+    const SizedBox.shrink()
+  ];
+  if (parent._orientation == Orientation.portrait) {
+    return Column(children: <Widget>[..._firstTwo, ..._lastTwo]);
+  }
+  return Table(children: <TableRow>[
+    TableRow(children: _firstTwo),
+    TableRow(children: _lastTwo)
+  ]);
 }
 
 /// Cubist shape for player slider.
