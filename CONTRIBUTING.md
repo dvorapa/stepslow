@@ -66,7 +66,7 @@ $ git status
 $ git diff
 ```
 
-Now you can commit your changes (`git commit --all`). Please describe shortly
+Now you can commit your changes (`git add -A && git commit`). Please describe shortly
 the commit in the first line and add a more detailed description underneath.
 Any issue linked to the changes should be listed after the corresponding change
 description.
