@@ -749,37 +749,34 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                     : Text(_source.name);
                 switch (_source.id) {
                   case -1:
-                    return _iconListItem(children: <Widget>[
-                      Icon(Typicons.social_youtube,
-                          color: source == _source
-                              ? Theme.of(context).primaryColor
-                              : redColor),
-                      _sourceText
-                    ]);
+                    return _textButtonLink(
+                        icon: Icon(Typicons.social_youtube,
+                            color: source == _source
+                                ? Theme.of(context).primaryColor
+                                : redColor),
+                        label: _sourceText);
                   case 0:
-                    return _iconListItem(children: <Widget>[
-                      Icon(Icons.phone_iphone,
-                          color: source == _source
-                              ? Theme.of(context).primaryColor
-                              : Theme.of(context)
-                                  .textTheme
-                                  .bodyText2!
-                                  .color!
-                                  .withOpacity(.55)),
-                      _sourceText
-                    ]);
+                    return _textButtonLink(
+                        icon: Icon(Icons.phone_iphone,
+                            color: source == _source
+                                ? Theme.of(context).primaryColor
+                                : Theme.of(context)
+                                    .textTheme
+                                    .bodyText2!
+                                    .color!
+                                    .withOpacity(.55)),
+                        label: _sourceText);
                   default:
-                    return _iconListItem(children: <Widget>[
-                      Icon(Icons.sd_card,
-                          color: source == _source
-                              ? Theme.of(context).primaryColor
-                              : Theme.of(context)
-                                  .textTheme
-                                  .bodyText2!
-                                  .color!
-                                  .withOpacity(.55)),
-                      _sourceText
-                    ]);
+                    return _textButtonLink(
+                        icon: Icon(Icons.sd_card,
+                            color: source == _source
+                                ? Theme.of(context).primaryColor
+                                : Theme.of(context)
+                                    .textTheme
+                                    .bodyText2!
+                                    .color!
+                                    .withOpacity(.55)),
+                        label: _sourceText);
                 }
               });
         });
@@ -901,7 +898,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   }
 
   /// Gets album artwork from cache
-  Widget? _getCover(SongModel _song) {
+  Image? _getCover(SongModel _song) {
     if (_coversComplete == -1) {
       final String _songPath = _song.data;
       if (_coversMap.containsKey(_songPath)) {
@@ -1261,7 +1258,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
         child: PageView(
             controller: _controller,
             physics: const BouncingScrollPhysics(),
-            children: <Widget>[
+            children: <WillPopScope>[
           // folders
           WillPopScope(
               onWillPop: () => Future<bool>.sync(onBack),
@@ -1359,7 +1356,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                       .bodyText2!
                                       .color!
                                       .withOpacity(.55))),
-                      actions: <Widget>[
+                      actions: <IconButton>[
                         IconButton(
                             onPressed: _useFeatures,
                             tooltip: 'Try special features',
@@ -1373,7 +1370,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                   body: _orientation == Orientation.portrait
                       ? Column(
                           mainAxisAlignment: MainAxisAlignment.end,
-                          children: <Widget>[
+                          children: <Flexible>[
                               Flexible(
                                   flex: 17,
                                   child: FractionallySizedBox(
@@ -1431,7 +1428,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                           Brightness.dark)),
                                           child: _playerControl(this))))
                             ])
-                      : Column(children: <Widget>[
+                      : Column(children: <Flexible>[
                           Flexible(
                               flex: 3,
                               child: Row(
@@ -1543,49 +1540,40 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                           icon: Icon(Icons.navigate_before,
                               color:
                                   Theme.of(context).colorScheme.onSecondary)),
-                      actions: <Widget>[
+                      actions: <IconButton>[
                         IconButton(
                             onPressed: () => showDialog(
                                 context: context,
                                 builder: (BuildContext context) {
                                   return AlertDialog(
-                                      contentPadding: const EdgeInsets.fromLTRB(
-                                          24.0, 20.0, 24.0, .0),
-                                      content: SizedBox(
-                                          width: MediaQuery.of(context)
-                                                  .size
-                                                  .width *
-                                              .5,
-                                          child: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: <Widget>[
-                                                const Center(
-                                                    child: Text(Pubspec.name,
-                                                        style: TextStyle(
-                                                            fontSize: 32.0))),
-                                                Center(
-                                                    child: Text(
-                                                        '${Pubspec.description}\nversion ${Pubspec.version}, build ${Pubspec.versionBuild}\nby @dvorapa',
-                                                        textAlign:
-                                                            TextAlign.center,
-                                                        style: TextStyle(
-                                                            color:
-                                                                unfocusedColor,
-                                                            fontSize: 13.0))),
-                                                ..._appInfoLinks(this)
-                                              ]
-                                                  .map((Widget _widget) =>
-                                                      Padding(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                      .symmetric(
-                                                                  vertical:
-                                                                      5.0),
-                                                          child: _widget))
-                                                  .toList())),
-                                      actions: <Widget>[
+                                      titlePadding: const EdgeInsets.fromLTRB(
+                                          24.0, 12.0, 24.0, .0),
+                                      titleTextStyle:
+                                          Theme.of(context).textTheme.subtitle1,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 24.0, vertical: .0),
+                                      title: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: <Text>[
+                                            const Text(Pubspec.name,
+                                                style:
+                                                    TextStyle(fontSize: 32.0)),
+                                            Text(
+                                                '${Pubspec.description}\nversion ${Pubspec.version}, build ${Pubspec.versionBuild}\nby @dvorapa',
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                    color: unfocusedColor,
+                                                    fontSize: 13.0))
+                                          ]
+                                              .map((Text _widget) => Padding(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(vertical: 5.0),
+                                                  child: _widget))
+                                              .toList()),
+                                      content: _appInfoLinks(this),
+                                      actions: <TextButton>[
                                         TextButton(
                                             onPressed: () =>
                                                 Navigator.pop(context),
@@ -1650,7 +1638,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 }
 
 /// Picks appropriate icon according to [sourceId] given
-Widget _sourceButton(int sourceId, Color darkColor) {
+Icon _sourceButton(int sourceId, Color darkColor) {
   switch (sourceId) {
     case -1:
       return Icon(Typicons.social_youtube, color: redColor);
@@ -1662,16 +1650,16 @@ Widget _sourceButton(int sourceId, Color darkColor) {
 }
 
 /// Shows standardized icon list item
-Widget _iconListItem({required List<Widget> children}) {
-  return Wrap(
-      spacing: 12.0,
-      crossAxisAlignment: WrapCrossAlignment.end,
-      children: children);
+Row _textButtonLink({required Icon icon, required Text label}) {
+  return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: <Widget>[icon, const SizedBox(width: 12.0), label]);
 }
 
 /// Shows icon according to current [chosenFolder]
-List<Widget> _showContents(_PlayerState parent) {
-  List<Widget> _actionsList = [];
+List<IconButton> _showContents(_PlayerState parent) {
+  List<IconButton> _actionsList = [];
   if (parent._tempQueueComplete == -1 && parent._tempQueue.isNotEmpty) {
     _actionsList.add(IconButton(
         onPressed: parent._pickSong,
@@ -1802,7 +1790,7 @@ Widget _play(_PlayerState parent, double elevation, double iconSize,
 }
 
 /// Handles squared player section
-Widget _playerSquared(_PlayerState parent) {
+AspectRatio _playerSquared(_PlayerState parent) {
   return AspectRatio(
       aspectRatio: 8 / 7,
       child: Theme(
@@ -1839,16 +1827,18 @@ Widget _ratePicker(parent) {
           child: InkWell(
               onTap: _onTap,
               child: Text('${parent._rate.toInt()}', style: _textStyle))),
-      Column(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-        IconButton(
-            onPressed: () => parent.onRate(parent._rate + 5.0),
-            tooltip: 'Speed up',
-            icon: const Icon(Icons.keyboard_arrow_up, size: 30)),
-        IconButton(
-            onPressed: () => parent.onRate(parent._rate - 5.0),
-            tooltip: 'Slow down',
-            icon: const Icon(Icons.keyboard_arrow_down, size: 30))
-      ]),
+      Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <IconButton>[
+            IconButton(
+                onPressed: () => parent.onRate(parent._rate + 5.0),
+                tooltip: 'Speed up',
+                icon: const Icon(Icons.keyboard_arrow_up, size: 30)),
+            IconButton(
+                onPressed: () => parent.onRate(parent._rate - 5.0),
+                tooltip: 'Slow down',
+                icon: const Icon(Icons.keyboard_arrow_down, size: 30))
+          ]),
       Text('%', style: _textStyle)
     ]));
   });
@@ -1878,16 +1868,18 @@ Widget _volumeCover(parent) {
           child: InkWell(
               onTap: _onTap,
               child: Text('${parent.volume}', style: _textStyle))),
-      Column(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-        IconButton(
-            onPressed: () => parent.onVolume(parent.volume + 3),
-            tooltip: 'Louder',
-            icon: const Icon(Icons.keyboard_arrow_up, size: 30)),
-        IconButton(
-            onPressed: () => parent.onVolume(parent.volume - 3),
-            tooltip: 'Quieter',
-            icon: const Icon(Icons.keyboard_arrow_down, size: 30))
-      ]),
+      Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <IconButton>[
+            IconButton(
+                onPressed: () => parent.onVolume(parent.volume + 3),
+                tooltip: 'Louder',
+                icon: const Icon(Icons.keyboard_arrow_up, size: 30)),
+            IconButton(
+                onPressed: () => parent.onVolume(parent.volume - 3),
+                tooltip: 'Quieter',
+                icon: const Icon(Icons.keyboard_arrow_down, size: 30))
+          ]),
       const Text('%', style: _textStyle)
     ]));
   }
@@ -1921,22 +1913,24 @@ Widget _preludePicker(parent) {
                     parent._introLength = parent._introLength == 0 ? 10 : 0);
               },
               child: Text('${parent._introLength}', style: _textStyle))),
-      Column(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-        IconButton(
-            onPressed: () {
-              parent.setState(() => parent._introLength += 5);
-            },
-            tooltip: 'Add more',
-            icon: const Icon(Icons.keyboard_arrow_up, size: 30)),
-        IconButton(
-            onPressed: () {
-              if (parent._introLength >= 5) {
-                parent.setState(() => parent._introLength -= 5);
-              }
-            },
-            tooltip: 'Shorten',
-            icon: const Icon(Icons.keyboard_arrow_down, size: 30))
-      ]),
+      Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <IconButton>[
+            IconButton(
+                onPressed: () {
+                  parent.setState(() => parent._introLength += 5);
+                },
+                tooltip: 'Add more',
+                icon: const Icon(Icons.keyboard_arrow_up, size: 30)),
+            IconButton(
+                onPressed: () {
+                  if (parent._introLength >= 5) {
+                    parent.setState(() => parent._introLength -= 5);
+                  }
+                },
+                tooltip: 'Shorten',
+                icon: const Icon(Icons.keyboard_arrow_down, size: 30))
+          ]),
       Text('s', style: _textStyle)
     ]));
   });
@@ -1964,7 +1958,8 @@ Widget _fadePositionPicker(parent) {
               child: Text(
                   '${parent._fadePosition.inMinutes}:${zero(parent._fadePosition.inSeconds % 60)}',
                   style: _textStyle))),
-      Column(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
+      Column(mainAxisAlignment: MainAxisAlignment.center, children: <
+          IconButton>[
         IconButton(
             onPressed: () {
               parent.setState(() => parent._fadePosition += _defaultDuration);
@@ -2057,7 +2052,7 @@ Widget _playerControl(_PlayerState parent) {
           children: <Widget>[
             Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: <Widget>[
+                children: <Text>[
                   Text(_timeInfo(parent._queueComplete, parent._position),
                       style: TextStyle(
                           color: Theme.of(context).textTheme.bodyText2!.color,
@@ -2142,7 +2137,7 @@ Widget _artist(_PlayerState parent) {
 }
 
 /// Renders main player control buttons
-Widget _mainControl(_PlayerState parent) {
+Row _mainControl(_PlayerState parent) {
   return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: <Widget>[
@@ -2163,8 +2158,8 @@ Widget _minorControl(_PlayerState parent) {
   return Builder(builder: (BuildContext context) {
     return Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: <Widget>[
-          Row(children: <Widget>[
+        children: <Row>[
+          Row(children: <GestureDetector>[
             /*Tooltip(
                 message: 'Select start',
                 child: InkWell(
@@ -2198,7 +2193,7 @@ Widget _minorControl(_PlayerState parent) {
                     tooltip: 'Set (one, all, or random songs)',
                     icon: Icon(_status(parent._set), size: 20.0)))
           ]),
-          Row(children: <Widget>[
+          Row(children: <IconButton>[
             IconButton(
                 onPressed: () => parent.onMode(context as StatelessElement),
                 tooltip: 'Mode (once or in a loop)',
@@ -2229,7 +2224,7 @@ String _timeInfo(int _queueComplete, Duration _time) {
 }
 
 /// Renders current folder's ancestors
-Widget _navigation(_PlayerState parent) {
+Tooltip _navigation(_PlayerState parent) {
   final List<Widget> _row = [];
 
   final String _root = parent.source.root;
@@ -2343,7 +2338,7 @@ Widget _songPicker(parent) {
 
 /// Renders album artworks for queue list
 Widget _listCover(_PlayerState parent, SongModel _song) {
-  final Widget? _cover = parent._getCover(_song);
+  final Image? _cover = parent._getCover(_song);
   if (_cover != null) {
     return Material(
         clipBehavior: Clip.antiAlias,
@@ -2356,127 +2351,95 @@ Widget _listCover(_PlayerState parent, SongModel _song) {
 }
 
 /// List links in app info dialog
-List<Widget> _appInfoLinks(_PlayerState parent) {
-  final List<Widget> _firstTwo = [
-    InkWell(
-        onTap: () => showMarkdownPage(
-            context: parent.context,
-            applicationName: 'Changelog',
-            selectable: true,
-            filename: 'CHANGELOG.md'),
-        child: _iconListItem(children: const <Widget>[
-          Icon(Icons.rule),
-          Text('Changelog', style: TextStyle(fontSize: 18.0))
-        ])),
-    InkWell(
-        onTap: () =>
-            launch('https://github.com/dvorapa/stepslow/issues/new/choose'),
-        child: _iconListItem(children: const <Widget>[
-          Icon(Icons.report_outlined),
-          Text('Report issue', style: TextStyle(fontSize: 18.0))
-        ]))
-  ];
-  final List<Widget> _middleTwo = [
-    InkWell(
-        onTap: () => showDialog(
-            context: parent.context,
-            builder: (BuildContext context) {
-              return SingleChoiceDialog<String>(
-                  isDividerEnabled: true,
-                  items: const <String>['Paypal', 'Revolut'],
-                  onSelected: (String _method) =>
-                      launch('https://${_method.toLowerCase()}.me/dvorapa'),
-                  itemBuilder: (String _method) {
-                    return _iconListItem(children: <Widget>[
-                      Icon(_method == 'Paypal'
-                          ? CupertinoIcons.money_pound_circle
-                          : CupertinoIcons.bitcoin_circle),
-                      Text(_method)
-                    ]);
-                  });
-            }),
-        child: _iconListItem(children: const <Widget>[
-          Icon(Icons.favorite_outline),
-          Text('Sponsor', style: TextStyle(fontSize: 18.0))
-        ])),
-    InkWell(
-        onTap: () => launch('https://www.dvorapa.cz#kontakt'),
-        child: _iconListItem(children: const <Widget>[
-          Icon(Icons.alternate_email),
-          Text('Contact', style: TextStyle(fontSize: 18.0))
-        ]))
-  ];
-  final List<Widget> _lastTwo = [
-    InkWell(
-        onTap: () => showLicensePage(
-            context: parent.context,
-            applicationName: 'GNU General Public License v3.0'),
-        child: _iconListItem(children: const <Widget>[
-          Icon(Icons.description_outlined),
-          Text('Licenses', style: TextStyle(fontSize: 18.0))
-        ])),
-    InkWell(
-        onTap: () => launch('https://github.com/dvorapa/stepslow'),
-        child: _iconListItem(children: const <Widget>[
-          Icon(Icons.code),
-          Text('Source code', style: TextStyle(fontSize: 18.0))
-        ]))
-  ];
-  if (parent._orientation == Orientation.portrait) {
-    return <Widget>[..._firstTwo, ..._middleTwo, ..._lastTwo];
+Wrap _appInfoLinks(_PlayerState parent) {
+  TextButton _wrapTile(
+      {required VoidCallback onPressed,
+      required IconData icon,
+      required String label}) {
+    return TextButton.icon(
+        icon: Icon(icon),
+        label: Text(label),
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+            primary: Colors.black,
+            textStyle: const TextStyle(fontSize: 18.0),
+            padding: EdgeInsets.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap));
   }
-  return <Widget>[
-    Table(children: <TableRow>[
-      TableRow(
-          children: _firstTwo
-              .map((Widget _widget) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2.5),
-                  child: _widget))
-              .toList()),
-      TableRow(
-          children: _middleTwo
-              .map((Widget _widget) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2.5),
-                  child: _widget))
-              .toList()),
-      TableRow(
-          children: _lastTwo
-              .map((Widget _widget) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2.5),
-                  child: _widget))
-              .toList())
-    ])
-  ];
+
+  return Wrap(
+      direction: Axis.vertical,
+      runSpacing: 10.0,
+      children: <TextButton>[
+        _wrapTile(
+            onPressed: () => showMarkdownPage(
+                context: parent.context,
+                applicationName: 'Changelog',
+                selectable: true,
+                filename: 'CHANGELOG.md'),
+            icon: Icons.rule,
+            label: 'Changelog'),
+        _wrapTile(
+            onPressed: () =>
+                launch('https://github.com/dvorapa/stepslow/issues/new/choose'),
+            icon: Icons.report_outlined,
+            label: 'Report issue'),
+        _wrapTile(
+            onPressed: () => showDialog(
+                context: parent.context,
+                builder: (BuildContext context) {
+                  return SingleChoiceDialog<String>(
+                      isDividerEnabled: true,
+                      items: const <String>['Paypal', 'Revolut'],
+                      onSelected: (String _method) =>
+                          launch('https://${_method.toLowerCase()}.me/dvorapa'),
+                      itemBuilder: (String _method) {
+                        return _textButtonLink(
+                            icon: Icon(_method == 'Paypal'
+                                ? CupertinoIcons.money_pound_circle
+                                : CupertinoIcons.bitcoin_circle),
+                            label: Text(_method));
+                      });
+                }),
+            icon: Icons.favorite_outline,
+            label: 'Sponsor'),
+        _wrapTile(
+            onPressed: () => launch('https://www.dvorapa.cz#kontakt'),
+            icon: Icons.alternate_email,
+            label: 'Contact'),
+        _wrapTile(
+            onPressed: () => showLicensePage(
+                context: parent.context,
+                applicationName: 'GNU General Public License v3.0'),
+            icon: Icons.description_outlined,
+            label: 'Licenses'),
+        _wrapTile(
+            onPressed: () => launch('https://github.com/dvorapa/stepslow'),
+            icon: Icons.code,
+            label: 'Source code')
+      ]);
 }
 
 /// List special features
-Widget _specialFeaturesList(parent) {
-  Widget _cardRow({required List<Widget> children}) {
-    return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 1.25),
-        child: Card(
-            elevation: 2.0,
-            shape: const _CubistShapeF(),
-            child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: children)));
+Wrap _specialFeaturesList(parent) {
+  FractionallySizedBox _cardRow({required List<Widget> children}) {
+    return FractionallySizedBox(
+        widthFactor: parent._orientation == Orientation.portrait ? 1.0 : .5,
+        child: Padding(
+            padding: const EdgeInsets.all(1.0),
+            child: Card(
+                elevation: 2.0,
+                shape: const _CubistShapeF(),
+                child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: children))));
   }
 
-  final List<Widget> _firstTwo = [
+  return Wrap(children: <FractionallySizedBox>[
     _cardRow(children: <Widget>[const Text('Speed'), _ratePicker(parent)]),
-    _cardRow(children: <Widget>[const Text('Intro'), _preludePicker(parent)])
-  ];
-  final List<Widget> _lastTwo = [
+    _cardRow(children: <Widget>[const Text('Intro'), _preludePicker(parent)]),
     _cardRow(
-        children: <Widget>[const Text('Fade at'), _fadePositionPicker(parent)]),
-    const SizedBox.shrink()
-  ];
-  if (parent._orientation == Orientation.portrait) {
-    return Column(children: <Widget>[..._firstTwo, ..._lastTwo]);
-  }
-  return Table(children: <TableRow>[
-    TableRow(children: _firstTwo),
-    TableRow(children: _lastTwo)
+        children: <Widget>[const Text('Fade at'), _fadePositionPicker(parent)])
   ]);
 }
 
