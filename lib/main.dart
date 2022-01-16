@@ -77,7 +77,7 @@ String zero(int n) {
 
 /// Calculates height factor for wave
 double _heightFactor(double _height, int _volume, double _value) =>
-    (_height / 300.0) * (3.0 * _volume / 2.0 + _value);
+    (_height / 400.0) * (4.5 * _volume / 2.0 + _value);
 
 /// Filesystem entity representing a song or a folder.
 class Entry implements Comparable<Entry> {
