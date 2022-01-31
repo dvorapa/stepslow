@@ -1,3 +1,3 @@
 ## 0.2.0
 
-- First public release
+- First ever public release 🥳

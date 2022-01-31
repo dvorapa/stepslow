@@ -3,7 +3,7 @@
 // ignore_for_file: public_member_api_docs, constant_identifier_names, avoid_classes_with_only_static_members
 
 class Pubspec {
-  static final buildDate = DateTime.utc(2022, 1, 1, 15, 43, 42);
+  static final buildDate = DateTime.utc(2022, 1, 30, 20, 13, 5);
 
   static const name = 'stepslow';
 
@@ -25,7 +25,7 @@ class Pubspec {
 
   static const versionBuild = 1;
 
-  static const String? versionPreRelease = '';
+  static const versionPreRelease = '';
 
   static const versionIsPreRelease = false;
 
@@ -43,7 +43,7 @@ class Pubspec {
     'audioplayers': '>=0.20.1 <1.0.0',
     'on_audio_query': '^2.5.3',
     'flutter_ffmpeg': '>=0.4.2 <1.0.0',
-    'wakelock': '>=0.5.6 <1.0.0',
+    'wakelock': '>=0.6.1 <1.0.0',
     'easy_dialogs': '^2.0.0',
     'typicons_flutter': '>=0.5.0 <1.0.0',
     'yaml': '^3.1.0',
@@ -53,14 +53,14 @@ class Pubspec {
     'shared_preferences': '^2.0.11',
     'flutter_tts': '^3.3.3',
     'url_launcher': '^6.0.17',
-    'about': '^2.1.0',
+    'about': '^2.1.1',
     'cupertino_icons': '^1.0.4',
     'volume_regulator': '^1.0.0',
   };
 
   static const dev_dependencies = <dynamic, dynamic>{
     'flutter_launcher_icons': '>=0.9.2 <1.0.0',
-    'pubspec_extract': '^2.0.2',
+    'pubspec_extract': '^2.0.4',
     'flutter_test': <dynamic, dynamic>{
       'sdk': 'flutter',
     },
