@@ -3,7 +3,7 @@
 // ignore_for_file: public_member_api_docs, constant_identifier_names, avoid_classes_with_only_static_members
 
 class Pubspec {
-  static final buildDate = DateTime.utc(2022, 1, 30, 20, 13, 5);
+  static final buildDate = DateTime.utc(2022, 4, 15, 15, 29, 55);
 
   static const name = 'stepslow';
 
@@ -41,21 +41,21 @@ class Pubspec {
       'sdk': 'flutter',
     },
     'audioplayers': '>=0.20.1 <1.0.0',
-    'on_audio_query': '^2.5.3',
+    'flutter_beep': '^1.0.0',
+    'on_audio_query': '^2.6.0',
     'flutter_ffmpeg': '>=0.4.2 <1.0.0',
     'wakelock': '>=0.6.1 <1.0.0',
+    'collection': '^1.15.0',
+    'volume_regulator': '^1.1.0',
     'easy_dialogs': '^2.0.0',
     'typicons_flutter': '>=0.5.0 <1.0.0',
+    'shared_preferences': '^2.0.13',
     'yaml': '^3.1.0',
-    'permission_handler': '^8.3.0',
-    'path_provider': '^2.0.8',
-    'collection': '^1.15.0',
-    'shared_preferences': '^2.0.11',
-    'flutter_tts': '^3.3.3',
-    'url_launcher': '^6.0.17',
+    'permission_handler': '^9.2.0',
+    'path_provider': '^2.0.9',
     'about': '^2.1.1',
+    'url_launcher': '^6.0.20',
     'cupertino_icons': '^1.0.4',
-    'volume_regulator': '^1.0.0',
   };
 
   static const dev_dependencies = <dynamic, dynamic>{

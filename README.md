@@ -15,9 +15,11 @@ or a YouTube player with improved slow down/speed up option inside the app.
 
 ## Usage
 
-Soon enough this app will be available in Google Play store and others.
-Until then you can always compile the app for yourself using steps
-in [Flutter compile guide](https://flutter.dev/docs/deployment/android).
+Currently you can obtain this app from [Google Play](
+https://play.google.com/store/apps/details?id=cz.dvorapa.stepslow). You
+might want to subscribe to its beta channel there. Nevertheless still you can
+compile the app for yourself using steps in [Flutter compile guide](
+https://flutter.dev/docs/deployment/android) if you wish.
 
 ## Example
 

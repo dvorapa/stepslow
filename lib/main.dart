@@ -1,41 +1,41 @@
-import 'dart:async';
+import 'package:flutter/material.dart';
 import 'dart:collection';
 import 'dart:io';
-import 'dart:math';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/services.dart';
+import 'dart:async';
+import 'dart:math';
+import 'package:flutter_beep/flutter_beep.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:flutter_ffmpeg/flutter_ffmpeg.dart';
 import 'package:wakelock/wakelock.dart';
+import 'package:collection/collection.dart' show IterableExtension;
+import 'package:volume_regulator/volume_regulator.dart';
 import 'package:easy_dialogs/easy_dialogs.dart';
 import 'package:typicons_flutter/typicons_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yaml/yaml.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:collection/collection.dart' show IterableExtension;
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_tts/flutter_tts.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:about/about.dart' show showMarkdownPage;
-import 'package:volume_regulator/volume_regulator.dart';
 import 'pubspec.dart';
+import 'package:about/about.dart' show showMarkdownPage;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/cupertino.dart';
 
 /// Theme main color
 final Color interactiveColor = Colors.orange[300]!; // #FFB74D #FFA726
 
 /// Light theme color
-final Color backgroundColor = Colors.white;
+const Color backgroundColor = Colors.white;
 
 /// Special and YouTube components color
-final Color redColor = Colors.red; // #E4273A
+const Color redColor = Colors.red; // #E4273A
 
 /// Text main color
 final Color unfocusedColor = Colors.grey[400]!;
 
 /// Dark theme color
-final Color blackColor = Colors.black;
+const Color blackColor = Colors.black;
 
 /// Duration initializer
 Duration _emptyDuration = Duration.zero;
@@ -47,7 +47,7 @@ Duration _defaultDuration = const Duration(seconds: 5);
 Duration _animationDuration = const Duration(milliseconds: 300);
 
 /// Default duration for animations
-final Curve _animationCurve = Curves.ease;
+const Curve _animationCurve = Curves.ease;
 
 /// Available sources
 final List<Source> _sources = [Source('/storage/emulated/0', 0)];
@@ -77,7 +77,8 @@ String zero(int n) {
 
 /// Calculates height factor for wave
 double _heightFactor(double _height, int _volume, double _value) =>
-    (_height / 400.0) * (4.5 * _volume / 2.0 + _value);
+    _height *
+    (.81 - .56 * (1.0 - _volume / 100.0) - .25 * (1.0 - _value / 100.0));
 
 /// Filesystem entity representing a song or a folder.
 class Entry implements Comparable<Entry> {
@@ -221,10 +222,10 @@ class Stepslow extends StatelessWidget {
             primaryColor: interactiveColor,
             appBarTheme: AppBarTheme(
                 color: Colors.transparent,
-                elevation: .0,
+                elevation: 0,
                 iconTheme: IconThemeData(color: unfocusedColor),
-                titleTextStyle: TextStyle(color: blackColor),
-                toolbarTextStyle: TextStyle(color: blackColor)),
+                titleTextStyle: const TextStyle(color: blackColor),
+                toolbarTextStyle: const TextStyle(color: blackColor)),
             colorScheme: ColorScheme.light(
                 primary: interactiveColor,
                 secondary: interactiveColor,
@@ -298,9 +299,6 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   /// Timer to release [_showVolumePicker]
   Timer? _volumeCoverTimer;
-
-  /// Text to speech for prelude
-  final FlutterTts _tts = FlutterTts();
 
   /// Prelude length before playback
   int _introLength = 0;
@@ -394,19 +392,20 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
         onStop(quiet: true);
         audioPlayer.setUrl(_songPath, isLocal: true);
       }
-      final List<String> _range = [
-        for (int i = _introLength; i > 0; i--) i.toString()
-      ];
+      final List<int> _range = [for (int i = _introLength; i > 0; i--) i];
       _ttsTimer?.cancel();
       if (_range.isEmpty) {
         audioPlayer.play(_songPath, isLocal: true);
       } else {
         _ttsTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-          if (_range.isEmpty) {
+          if (_range.length > 1) {
+            FlutterBeep.playSysSound(Platform.isAndroid ? 24 : 1052);
+            _range.removeAt(0);
+          } else if (_range.length == 1) {
+            _range.removeAt(0);
+          } else {
             audioPlayer.play(_songPath, isLocal: true);
             _ttsTimer!.cancel();
-          } else {
-            _tts.speak(_range.removeAt(0));
           }
         });
       }
@@ -444,6 +443,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       onStop();
       setState(() {
         song = queue.isNotEmpty ? queue[index] : null;
+        _position = _emptyDuration;
         if (song != null) duration = Duration(milliseconds: song!.duration!);
       });
       if (song != null) {
@@ -564,7 +564,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: Theme.of(context).colorScheme.secondary,
-        elevation: .0,
+        elevation: 0,
         duration: const Duration(seconds: 2),
         content:
             Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
@@ -603,7 +603,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: Theme.of(context).colorScheme.secondary,
-        elevation: .0,
+        elevation: 0,
         duration: const Duration(seconds: 2),
         content:
             Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
@@ -648,10 +648,10 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   /// Changes [_position] according to seek actions
   void onSeek(Offset position, Duration duration, double width) {
-    double newPosition = .0;
+    double newPosition = 0;
 
     if (position.dx <= 0) {
-      newPosition = .0;
+      newPosition = 0;
     } else if (position.dx >= width) {
       newPosition = width;
     } else {
@@ -681,17 +681,16 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   void updateVolume(Offset _volume, double height) {
     double newVolume = 50.0;
 
-    if (_volume.dy <= .0) {
-      newVolume = .0;
+    if (_volume.dy <= .19 * height) {
+      newVolume = 0;
     } else if (_volume.dy >= height) {
-      newVolume = height;
+      newVolume = .81 * height;
     } else {
-      newVolume = _volume.dy;
+      newVolume = _volume.dy - .19 * height;
     }
 
-    newVolume = 100.0 * (1 - (newVolume / height));
-    newVolume = newVolume - newVolume % 1;
-    onVolume(newVolume.toInt());
+    newVolume = 100.0 * (1 - (newVolume / (.81 * height)));
+    onVolume(newVolume.floor());
   }
 
   /// Changes playback [volume] by given
@@ -1411,7 +1410,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                   flex: 20,
                                   child: Container(
                                       padding: const EdgeInsets.fromLTRB(
-                                          16.0, 12.0, 16.0, .0),
+                                          16.0, 12.0, 16.0, 0),
                                       color: Theme.of(context).primaryColor,
                                       child: Theme(
                                           data: ThemeData.from(
@@ -1517,15 +1516,15 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                     .withOpacity(.7),
                                             child: Text(_timeInfo(_queueComplete, _fadePosition == _emptyDuration ? duration : _fadePosition),
                                                 style: TextStyle(
-                                                    color: _fadePosition ==
-                                                            _emptyDuration
+                                                    color: (_fadePosition == _emptyDuration) && (_rate == 100.0)
                                                         ? Theme.of(context)
                                                             .scaffoldBackgroundColor
                                                         : redColor,
-                                                    fontWeight: _fadePosition ==
-                                                            _emptyDuration
-                                                        ? FontWeight.normal
-                                                        : FontWeight.bold))))
+                                                    fontWeight:
+                                                        (_fadePosition == _emptyDuration) &&
+                                                                (_rate == 100.0)
+                                                            ? FontWeight.normal
+                                                            : FontWeight.bold))))
                                   ]))
                         ]))),
           // features
@@ -1547,12 +1546,12 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                 builder: (BuildContext context) {
                                   return AlertDialog(
                                       titlePadding: const EdgeInsets.fromLTRB(
-                                          24.0, 12.0, 24.0, .0),
+                                          24.0, 12.0, 24.0, 0),
                                       titleTextStyle:
                                           Theme.of(context).textTheme.subtitle1,
                                       contentPadding:
                                           const EdgeInsets.symmetric(
-                                              horizontal: 24.0, vertical: .0),
+                                              horizontal: 24.0, vertical: 0),
                                       title: Column(
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
@@ -1591,7 +1590,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                     Padding(
                         padding: _orientation == Orientation.portrait
                             ? const EdgeInsets.fromLTRB(40.0, 20.0, 20.0, 40.0)
-                            : const EdgeInsets.fromLTRB(40.0, .0, 20.0, 20.0),
+                            : const EdgeInsets.fromLTRB(40.0, 0, 20.0, 20.0),
                         child: Row(children: <Widget>[
                           Text('Special',
                               style: TextStyle(
@@ -1641,7 +1640,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 Icon _sourceButton(int sourceId, Color darkColor) {
   switch (sourceId) {
     case -1:
-      return Icon(Typicons.social_youtube, color: redColor);
+      return const Icon(Typicons.social_youtube, color: redColor);
     case 0:
       return Icon(Icons.phone_iphone, color: darkColor);
     default:
@@ -1826,7 +1825,7 @@ Widget _ratePicker(parent) {
           message: _message,
           child: InkWell(
               onTap: _onTap,
-              child: Text('${parent._rate.toInt()}', style: _textStyle))),
+              child: Text('${parent._rate.truncate()}', style: _textStyle))),
       Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <IconButton>[
@@ -2064,12 +2063,15 @@ Widget _playerControl(_PlayerState parent) {
                               ? parent.duration
                               : parent._fadePosition),
                       style: TextStyle(
-                          color: parent._fadePosition == _emptyDuration
+                          color: (parent._fadePosition == _emptyDuration) &&
+                                  (parent._rate == 100.0)
                               ? Theme.of(context).textTheme.bodyText2!.color
                               : redColor,
-                          fontWeight: parent._fadePosition == _emptyDuration
-                              ? FontWeight.normal
-                              : FontWeight.bold))
+                          fontWeight:
+                              (parent._fadePosition == _emptyDuration) &&
+                                      (parent._rate == 100.0)
+                                  ? FontWeight.normal
+                                  : FontWeight.bold))
                 ]),
             _title(parent),
             _artist(parent),
@@ -2477,7 +2479,7 @@ class CubistWave extends CustomPainter {
       duration = const Duration(seconds: 1);
     }
 
-    final Path _songPath = Path()..moveTo(.0, size.height);
+    final Path _songPath = Path()..moveTo(0, size.height);
     _waveList.forEach((int index, double value) {
       _songPath.lineTo((size.width * index) / _len,
           size.height - _heightFactor(size.height, volume, value));
@@ -2491,7 +2493,7 @@ class CubistWave extends CustomPainter {
     final double percentage = position.inSeconds / duration.inSeconds;
     final double pos = _len * percentage;
     final int ceil = pos.ceil();
-    _indicatorPath.moveTo(.0, size.height);
+    _indicatorPath.moveTo(0, size.height);
     _waveList.forEach((int index, double value) {
       if (index < ceil) {
         _indicatorPath.lineTo((size.width * index) / _len,
