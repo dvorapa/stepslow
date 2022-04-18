@@ -7,7 +7,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter_beep/flutter_beep.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import 'package:flutter_ffmpeg/flutter_ffmpeg.dart';
+import 'package:ffmpeg_kit_flutter/ffmpeg_kit.dart';
 import 'package:wakelock/wakelock.dart';
 import 'package:collection/collection.dart' show IterableExtension;
 import 'package:volume_regulator/volume_regulator.dart';
@@ -344,12 +344,6 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   /// Map representation of album artwork paths YAML map
   Map<String, int> _coversMap = {};
-
-  /// FFmpeg entity to query album artworks
-  final FlutterFFmpeg _flutterFFmpeg = FlutterFFmpeg();
-
-  /// FFmpeg config
-  final FlutterFFmpegConfig _flutterFFmpegConfig = FlutterFFmpegConfig();
 
   /// Queue completer
   int _queueComplete = 0;
@@ -874,10 +868,15 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       if (!File(_coverPath).existsSync()) {
         final int _height =
             (MediaQuery.of(context).size.shortestSide * 7 / 10).ceil();
-        _status = await _flutterFFmpeg
-            .execute(
+        FFmpegKit.execute(
                 '-i "$_songPath" -vf scale="-2:\'min($_height,ih)\'":flags=lanczos -an "$_coverPath"')
-            .catchError((error) {
+            .then((session) async {
+          final returnCode = await session.getReturnCode();
+          _status = returnCode!.getValue();
+          final String? failStackTrace = await session.getFailStackTrace();
+          if (failStackTrace != null && failStackTrace.isNotEmpty)
+            print(failStackTrace);
+        }, onError: (error) {
           print(error.stackTrace);
           setState(() => _coversComplete = -2);
           return 1;
@@ -932,10 +931,15 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       int _status = 0;
       final int _height =
           (MediaQuery.of(context).size.shortestSide * 7 / 10).ceil();
-      _status = await _flutterFFmpeg
-          .execute(
+      FFmpegKit.execute(
               '-i "$_songPath" -vf scale="-2:\'min($_height,ih)\'":flags=lanczos -an "$_coverPath"')
-          .catchError((error) {
+          .then((session) async {
+        final returnCode = await session.getReturnCode();
+        _status = returnCode!.getValue();
+        final String? failStackTrace = await session.getFailStackTrace();
+        if (failStackTrace != null && failStackTrace.isNotEmpty)
+          print(failStackTrace);
+      }, onError: (error) {
         print(error.stackTrace);
         setState(() => _coversComplete = -2);
         return 1;
@@ -988,8 +992,6 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   @override
   void initState() {
-    _flutterFFmpegConfig.disableRedirection();
-
     _getSavedValues();
 
     audioPlayer.onDurationChanged.listen((Duration d) {
@@ -1221,6 +1223,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   @override
   void dispose() {
     audioPlayer.release();
+    FFmpegKit.cancel();
     WidgetsBinding.instance!.removeObserver(this);
     super.dispose();
   }

@@ -3,7 +3,7 @@
 // ignore_for_file: public_member_api_docs, constant_identifier_names, avoid_classes_with_only_static_members
 
 class Pubspec {
-  static final buildDate = DateTime.utc(2022, 4, 15, 15, 29, 55);
+  static final buildDate = DateTime.utc(2022, 4, 18, 13, 39, 2);
 
   static const name = 'stepslow';
 
@@ -11,9 +11,9 @@ class Pubspec {
 
   static const publish_to = 'none';
 
-  static const versionFull = '0.2.0+1';
+  static const versionFull = '0.2.1+3';
 
-  static const version = '0.2.0';
+  static const version = '0.2.1';
 
   static const versionSmall = '0.2';
 
@@ -21,9 +21,9 @@ class Pubspec {
 
   static const versionMinor = 2;
 
-  static const versionPatch = 0;
+  static const versionPatch = 1;
 
-  static const versionBuild = 1;
+  static const versionBuild = 3;
 
   static const versionPreRelease = '';
 
@@ -43,7 +43,7 @@ class Pubspec {
     'audioplayers': '>=0.20.1 <1.0.0',
     'flutter_beep': '^1.0.0',
     'on_audio_query': '^2.6.0',
-    'flutter_ffmpeg': '>=0.4.2 <1.0.0',
+    'ffmpeg_kit_flutter': '4.5.1-LTS',
     'wakelock': '>=0.6.1 <1.0.0',
     'collection': '^1.15.0',
     'volume_regulator': '^1.1.0',
