@@ -2638,10 +2638,10 @@ class ACubistShapeB extends ShapeBorder {
 }
 
 /// Cubist shape for landscape album artworks.
-///  a_a_a_
+///  ______
 /// /      \
 /// \       \
-///  \a_a_a_/
+///  \______/
 class ACubistShapeC extends ShapeBorder {
   const ACubistShapeC();
 
@@ -2676,7 +2676,7 @@ class ACubistShapeC extends ShapeBorder {
 }
 
 /// Cubist shape for landscape floating buttons.
-/// a_a_
+/// ____
 /// \  /
 ///  \/
 class ACubistShapeD extends ShapeBorder {
@@ -2708,7 +2708,7 @@ class ACubistShapeD extends ShapeBorder {
 /// Cubist shape for features page.
 ///  -----
 /// /    |
-/// |a_a_|
+/// |____|
 class ACubistShapeE extends ShapeBorder {
   const ACubistShapeE();
 
