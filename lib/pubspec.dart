@@ -3,7 +3,7 @@
 // ignore_for_file: public_member_api_docs, constant_identifier_names, avoid_classes_with_only_static_members
 
 class Pubspec {
-  static final buildDate = DateTime.utc(2022, 4, 18, 13, 39, 2);
+  static final buildDate = DateTime.utc(2022, 5, 31, 22, 3, 13);
 
   static const name = 'stepslow';
 
@@ -11,9 +11,9 @@ class Pubspec {
 
   static const publish_to = 'none';
 
-  static const versionFull = '0.2.1+3';
+  static const versionFull = '0.2.2+4';
 
-  static const version = '0.2.1';
+  static const version = '0.2.2';
 
   static const versionSmall = '0.2';
 
@@ -21,9 +21,9 @@ class Pubspec {
 
   static const versionMinor = 2;
 
-  static const versionPatch = 1;
+  static const versionPatch = 2;
 
-  static const versionBuild = 3;
+  static const versionBuild = 4;
 
   static const versionPreRelease = '';
 
@@ -33,7 +33,7 @@ class Pubspec {
 
   static const environment = <dynamic, dynamic>{
     'sdk': '>=2.12.0 <3.0.0',
-    'flutter': '^2.0.0',
+    'flutter': '^3.0.0',
   };
 
   static const dependencies = <dynamic, dynamic>{
@@ -41,20 +41,20 @@ class Pubspec {
       'sdk': 'flutter',
     },
     'audioplayers': '>=0.20.1 <1.0.0',
+    'on_audio_query': '^2.6.1',
     'flutter_beep': '^1.0.0',
-    'on_audio_query': '^2.6.0',
-    'ffmpeg_kit_flutter': '4.5.1-LTS',
     'wakelock': '>=0.6.1 <1.0.0',
-    'collection': '^1.15.0',
-    'volume_regulator': '^1.1.0',
+    'collection': '^1.16.0',
+    'volume_regulator': '^1.2.0',
     'easy_dialogs': '^2.0.0',
     'typicons_flutter': '>=0.5.0 <1.0.0',
-    'shared_preferences': '^2.0.13',
-    'yaml': '^3.1.0',
+    'shared_preferences': '^2.0.15',
+    'yaml': '^3.1.1',
+    'ffmpeg_kit_flutter': '4.5.1-LTS',
     'permission_handler': '^9.2.0',
-    'path_provider': '^2.0.9',
+    'path_provider': '^2.0.10',
     'about': '^2.1.1',
-    'url_launcher': '^6.0.20',
+    'url_launcher': '^6.1.2',
     'cupertino_icons': '^1.0.4',
   };
 
@@ -64,7 +64,7 @@ class Pubspec {
     'flutter_test': <dynamic, dynamic>{
       'sdk': 'flutter',
     },
-    'flutter_lints': '^1.0.4',
+    'flutter_lints': '^2.0.1',
   };
 
   static const flutter_icons = <dynamic, dynamic>{
