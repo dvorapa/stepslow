@@ -39,23 +39,23 @@ final Color unfocusedColor = Colors.grey[400]!;
 const Color blackColor = Colors.black;
 
 /// Duration initializer
-Duration aemptyDuration = Duration.zero;
+Duration _emptyDuration = Duration.zero;
 
 /// Default duration for empty queue
-Duration adefaultDuration = const Duration(seconds: 5);
+Duration _defaultDuration = const Duration(seconds: 5);
 
 /// Default duration for animations
-Duration aanimationDuration = const Duration(milliseconds: 300);
+Duration _animationDuration = const Duration(milliseconds: 300);
 
 /// Default duration for animations
-const Curve aanimationCurve = Curves.ease;
+const Curve _animationCurve = Curves.ease;
 
 /// Available sources
-final List<Source> asources = [Source('/storage/emulated/0', 0)];
+final List<Source> _sources = [Source('/storage/emulated/0', 0)];
 
 /// List of completer bad states
 // -1 for complete, -2 for error, natural for count
-final List<int> abad = [0, -2];
+final List<int> _bad = [0, -2];
 
 /// Prints long messages, e.g. maps
 void printLong(Object text) {
@@ -68,7 +68,7 @@ void printLong(Object text) {
 }
 
 /// Changes app data folders
-bool adebug = false;
+bool _debug = false;
 
 /// Pads seconds
 String zero(int n) {
@@ -77,9 +77,9 @@ String zero(int n) {
 }
 
 /// Calculates height factor for wave
-double aheightFactor(double aheight, int avolume, double avalue) =>
-    aheight *
-    (.81 - .56 * (1.0 - avolume / 100.0) - .25 * (1.0 - avalue / 100.0));
+double _heightFactor(double _height, int _volume, double _value) =>
+    _height *
+    (.81 - .56 * (1.0 - _volume / 100.0) - .25 * (1.0 - _value / 100.0));
 
 /// Filesystem entity representing a song or a folder.
 class Entry implements Comparable<Entry> {
@@ -110,7 +110,7 @@ class Entry implements Comparable<Entry> {
 
   /// Entry name
   String get name {
-    if (asources.any((Source asource) => asource.root == path)) return '';
+    if (_sources.any((Source _source) => _source.root == path)) return '';
 
     return path.split('/').lastWhere((String e) => e != '');
   }
@@ -245,11 +245,11 @@ class Player extends StatefulWidget {
   final String title;
 
   @override
-  APlayerState createState() => APlayerState();
+  _PlayerState createState() => _PlayerState();
 }
 
 /// State handler.
-class APlayerState extends State<Player> with WidgetsBindingObserver {
+class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Audio player entity
   final AudioPlayer audioPlayer = AudioPlayer();
 
@@ -258,51 +258,51 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
       const MethodChannel('cz.dvorapa.stepslow/sharedPath');
 
   /// Current playback state
-  PlayerState astate = PlayerState.STOPPED;
+  PlayerState _state = PlayerState.STOPPED;
 
   /// Current playback rate
-  double arate = 100.0;
+  double _rate = 100.0;
 
   /// Device volume
   int volume = 50;
 
   /// Device volume before change
-  int apreCoverVolume = 50;
+  int _preCoverVolume = 50;
 
   /// Device volume before mute
-  int apreMuteVolume = 50;
+  int _preMuteVolume = 50;
 
   /// Device volume before fade
-  int apreFadeVolume = 0;
+  int _preFadeVolume = 0;
 
   /// Current playback position
-  Duration aposition = aemptyDuration;
+  Duration _position = _emptyDuration;
 
   /// Position to switch songs
-  Duration afadePosition = aemptyDuration;
+  Duration _fadePosition = _emptyDuration;
 
   /// Playback song from last run
   String? lastSongPath;
 
   /// Current playback mode
-  String amode = 'loop';
+  String _mode = 'loop';
 
   /// Current playback set
-  String aset = 'random';
+  String _set = 'random';
 
-  late Orientation aorientation;
+  late Orientation _orientation;
 
   /// False if [volume] picker should be hidden
-  bool ashowVolumePicker = false;
+  bool _showVolumePicker = false;
 
-  /// False if [ashowVolumePicker] was false at last redraw
-  bool apreCoverVolumePicker = false;
+  /// False if [_showVolumePicker] was false at last redraw
+  bool _preCoverVolumePicker = false;
 
-  /// Timer to release [ashowVolumePicker]
-  Timer? avolumeCoverTimer;
+  /// Timer to release [_showVolumePicker]
+  Timer? _volumeCoverTimer;
 
   /// Prelude length before playback
-  int aintroLength = 0;
+  int _introLength = 0;
 
   /// Random generator to shuffle queue after startup
   final Random random = Random();
@@ -311,10 +311,10 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
   List<int> pageHistory = [2];
 
   /// [PageView] controller
-  final PageController acontroller = PageController(initialPage: 2);
+  final PageController _controller = PageController(initialPage: 2);
 
   /// Current playback source
-  Source source = asources[0];
+  Source source = _sources[0];
 
   /// Current playback folder
   String folder = '/storage/emulated/0/Music';
@@ -326,139 +326,139 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
   SongModel? song;
 
   /// Playback song before change
-  SongModel? apreviousSong;
+  SongModel? _previousSong;
 
   /// Current song index in queue
   int index = 0;
 
   /// Current song duration
-  Duration duration = aemptyDuration;
+  Duration duration = _emptyDuration;
 
   /// Source cover stack completer
-  int acoversComplete = 0;
+  int _coversComplete = 0;
 
   /// File containing album artwork paths YAML map
-  File? acoversFile;
+  File? _coversFile;
 
   /// YAML map of album artwork paths
-  List<String> acoversYaml = ['---'];
+  List<String> _coversYaml = ['---'];
 
   /// Map representation of album artwork paths YAML map
-  Map<String, int> acoversMap = {};
+  Map<String, int> _coversMap = {};
 
   /// Queue completer
-  int aqueueComplete = 0;
+  int _queueComplete = 0;
 
   /// Queue completer
-  int atempQueueComplete = 0;
+  int _tempQueueComplete = 0;
 
   /// Song stack completer
-  int asongsComplete = 0;
+  int _songsComplete = 0;
 
   /// Source stack completer
-  int abrowseComplete = 0;
+  int _browseComplete = 0;
 
   /// Source song stack completer
-  int abrowseSongsComplete = 0;
+  int _browseSongsComplete = 0;
 
   /// Current playback queue
   final List<SongModel> queue = [];
 
   /// Current playback queue
-  final List<SongModel> atempQueue = [];
+  final List<SongModel> _tempQueue = [];
 
   /// Stack of available songs
-  final List<SongModel> asongs = [];
+  final List<SongModel> _songs = [];
 
   /// Text to speech timer
-  Timer? attsTimer;
+  Timer? _ttsTimer;
 
   /// Fade timer
-  Timer? afadeTimer;
+  Timer? _fadeTimer;
 
   /// Initializes [song] playback
   void onPlay({bool quiet = false}) {
-    if (astate == PlayerState.PAUSED || quiet) {
+    if (_state == PlayerState.PAUSED || quiet) {
       audioPlayer.resume();
     } else {
       setState(() => song = queue[index]);
-      final String asongPath = song!.data;
-      if (aintroLength != 0) {
+      final String _songPath = song!.data;
+      if (_introLength != 0) {
         onStop(quiet: true);
-        audioPlayer.setUrl(asongPath, isLocal: true);
+        audioPlayer.setUrl(_songPath, isLocal: true);
       }
-      final List<int> arange = [for (int i = aintroLength; i > 0; i--) i];
-      attsTimer?.cancel();
-      if (arange.isEmpty) {
-        audioPlayer.play(asongPath, isLocal: true);
+      final List<int> _range = [for (int i = _introLength + 1; i > 0; i--) i];
+      _ttsTimer?.cancel();
+      if (_range.isEmpty) {
+        audioPlayer.play(_songPath, isLocal: true);
       } else {
-        attsTimer = Timer.periodic(const Duration(seconds: 1), (a) {
-          if (arange.length > 1) {
+        _ttsTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+          if (_range.length > 1) {
             FlutterBeep.playSysSound(Platform.isAndroid ? 24 : 1052);
-            arange.removeAt(0);
-          } else if (arange.length == 1) {
-            arange.removeAt(0);
+            _range.removeAt(0);
+          } else if (_range.length == 1) {
+            _range.removeAt(0);
           } else {
-            audioPlayer.play(asongPath, isLocal: true);
-            attsTimer!.cancel();
+            audioPlayer.play(_songPath, isLocal: true);
+            _ttsTimer!.cancel();
           }
         });
       }
-      setState(() => lastSongPath = asongPath);
-      asetValue('lastSongPath', asongPath);
+      setState(() => lastSongPath = _songPath);
+      _setValue('lastSongPath', _songPath);
     }
-    onRate(arate);
-    if (!quiet) setState(() => astate = PlayerState.PLAYING);
+    onRate(_rate);
+    if (!quiet) setState(() => _state = PlayerState.PLAYING);
     Wakelock.enable();
   }
 
-  /// Changes [song] according to given [aindex]
-  void onChange(int aindex) {
+  /// Changes [song] according to given [_index]
+  void onChange(int _index) {
     final int available = queue.length;
     setState(() {
-      if (aindex < 0) {
-        index = aindex + available;
-        if (aset == 'random' && queue.length > 2) {
+      if (_index < 0) {
+        index = _index + available;
+        if (_set == 'random' && queue.length > 2) {
           queue.shuffle();
           while (song == queue[index]) queue.shuffle();
         }
-      } else if (aindex >= available) {
-        index = aindex - available;
-        if (aset == 'random' && queue.length > 2) {
+      } else if (_index >= available) {
+        index = _index - available;
+        if (_set == 'random' && queue.length > 2) {
           queue.shuffle();
           while (song == queue[index]) queue.shuffle();
         }
       } else {
-        index = aindex;
+        index = _index;
       }
     });
-    if (astate == PlayerState.PLAYING) {
+    if (_state == PlayerState.PLAYING) {
       onPlay();
     } else {
       onStop();
       setState(() {
         song = queue.isNotEmpty ? queue[index] : null;
-        aposition = aemptyDuration;
+        _position = _emptyDuration;
         if (song != null) duration = Duration(milliseconds: song!.duration!);
       });
       if (song != null) {
-        final String asongPath = song!.data;
-        setState(() => lastSongPath = asongPath);
-        asetValue('lastSongPath', asongPath);
+        final String _songPath = song!.data;
+        setState(() => lastSongPath = _songPath);
+        _setValue('lastSongPath', _songPath);
       }
     }
   }
 
   /// Pauses [song] playback
   void onPause({bool quiet = false}) {
-    attsTimer?.cancel();
+    _ttsTimer?.cancel();
     audioPlayer.pause();
-    if (!quiet) setState(() => astate = PlayerState.PAUSED);
-    if (apreFadeVolume != 0) {
-      afadeTimer!.cancel();
+    if (!quiet) setState(() => _state = PlayerState.PAUSED);
+    if (_preFadeVolume != 0) {
+      _fadeTimer!.cancel();
       onChange(index + 1);
-      onVolume(apreFadeVolume);
-      setState(() => apreFadeVolume = 0);
+      onVolume(_preFadeVolume);
+      setState(() => _preFadeVolume = 0);
     }
   }
 
@@ -467,95 +467,95 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
     audioPlayer.stop();
     setState(() {
       if (!quiet) {
-        duration = aemptyDuration;
-        aposition = aemptyDuration;
+        duration = _emptyDuration;
+        _position = _emptyDuration;
       }
-      astate = PlayerState.STOPPED;
+      _state = PlayerState.STOPPED;
     });
     Wakelock.disable();
   }
 
   /// Changes [folder] according to given
-  void onFolder(String afolder) {
-    if (folder != afolder) {
+  void onFolder(String _folder) {
+    if (folder != _folder) {
       queue.clear();
       setState(() {
         index = 0;
-        aqueueComplete = 0;
+        _queueComplete = 0;
       });
-      if (!abad.contains(asongsComplete)) {
-        for (final SongModel asong in asongs) {
-          if (File(asong.data).parent.path == afolder) {
-            if (aset != 'random' || [0, 1].contains(aqueueComplete)) {
-              queue.add(asong);
+      if (!_bad.contains(_songsComplete)) {
+        for (final SongModel _song in _songs) {
+          if (File(_song.data).parent.path == _folder) {
+            if (_set != 'random' || [0, 1].contains(_queueComplete)) {
+              queue.add(_song);
             } else {
-              queue.insert(1 + random.nextInt(aqueueComplete), asong);
+              queue.insert(1 + random.nextInt(_queueComplete), _song);
             }
-            setState(() => ++aqueueComplete);
+            setState(() => ++_queueComplete);
 
-            if (aqueueComplete == 1) {
+            if (_queueComplete == 1) {
               onRate(100.0);
               onChange(index);
             }
           }
         }
-        if (aqueueComplete > 0) {
-          setState(() => aqueueComplete = -1);
+        if (_queueComplete > 0) {
+          setState(() => _queueComplete = -1);
         } else {
           onStop();
           setState(() => song = null);
-          if (acontroller.page! > .1) apickFolder();
+          if (_controller.page! > .1) _pickFolder();
         }
       }
       setState(() {
-        folder = afolder;
-        chosenFolder = afolder;
-        aintroLength = 0;
+        folder = _folder;
+        chosenFolder = _folder;
+        _introLength = 0;
       });
     }
   }
 
   /// Creates temporary queue list
-  void agetTempQueue(String atempFolder) {
-    if (chosenFolder != atempFolder) {
+  void _getTempQueue(String _tempFolder) {
+    if (chosenFolder != _tempFolder) {
       setState(() {
-        chosenFolder = atempFolder;
-        atempQueueComplete = 0;
+        chosenFolder = _tempFolder;
+        _tempQueueComplete = 0;
       });
-      atempQueue.clear();
-      if (!abad.contains(asongsComplete)) {
-        for (final SongModel asong in asongs) {
-          if (File(asong.data).parent.path == atempFolder) {
-            atempQueue.add(asong);
-            setState(() => ++atempQueueComplete);
+      _tempQueue.clear();
+      if (!_bad.contains(_songsComplete)) {
+        for (final SongModel _song in _songs) {
+          if (File(_song.data).parent.path == _tempFolder) {
+            _tempQueue.add(_song);
+            setState(() => ++_tempQueueComplete);
           }
         }
       }
-      setState(() => atempQueueComplete = -1);
+      setState(() => _tempQueueComplete = -1);
     }
   }
 
   /// Initializes shared or saved [song] playback
   Future<void> loadSpecificSong() async {
-    final String? asharedPath = await bridge.invokeMethod('openSharedPath');
-    final String? apath = asharedPath ?? lastSongPath;
-    if (apath != null && apath != song?.data) {
-      final String anewFolder = File(apath).parent.path;
-      final Source anewSource =
-          asources.firstWhereOrNull(anewFolder.startsWith) ?? source;
-      if (source != anewSource) setState(() => source = anewSource);
-      onFolder(anewFolder);
-      final int aindex =
-          queue.indexWhere((SongModel asong) => asong.data == apath);
-      onChange(aindex);
-      if (asharedPath != null) onPlay();
+    final String? _sharedPath = await bridge.invokeMethod('openSharedPath');
+    final String? _path = _sharedPath ?? lastSongPath;
+    if (_path != null && _path != song?.data) {
+      final String _newFolder = File(_path).parent.path;
+      final Source _newSource =
+          _sources.firstWhereOrNull(_newFolder.startsWith) ?? source;
+      if (source != _newSource) setState(() => source = _newSource);
+      onFolder(_newFolder);
+      final int _index =
+          queue.indexWhere((SongModel _song) => _song.data == _path);
+      onChange(_index);
+      if (_sharedPath != null) onPlay();
     }
   }
 
-  /// Changes playback [amode] and informs user using given [context]
+  /// Changes playback [_mode] and informs user using given [context]
   void onMode(StatelessElement context) {
-    setState(() => amode = amode == 'loop' ? 'once' : 'loop');
-    asetValue('amode', amode);
+    setState(() => _mode = _mode == 'loop' ? 'once' : 'loop');
+    _setValue('_mode', _mode);
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: Theme.of(context).colorScheme.secondary,
@@ -563,38 +563,38 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
         duration: const Duration(seconds: 2),
         content:
             Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-          Text(amode == 'loop' ? 'playing in a loop ' : 'playing once ',
+          Text(_mode == 'loop' ? 'playing in a loop ' : 'playing once ',
               style:
                   TextStyle(color: Theme.of(context).colorScheme.onSecondary)),
-          Icon(amode == 'loop' ? Icons.repeat : Icons.trending_flat,
+          Icon(_mode == 'loop' ? Icons.repeat : Icons.trending_flat,
               color: Theme.of(context).colorScheme.onSecondary, size: 20.0)
         ])));
   }
 
-  /// Changes playback [aset] and informs user using given [context]
+  /// Changes playback [_set] and informs user using given [context]
   void onSet(StatelessElement context) {
     setState(() {
-      switch (aset) {
+      switch (_set) {
         case '1':
-          aset = 'all';
+          _set = 'all';
           break;
         case 'all':
           queue.shuffle();
 
           if (song != null) index = queue.indexOf(song!);
-          aset = 'random';
+          _set = 'random';
 
           break;
         default:
           queue.sort((SongModel a, SongModel b) => a.data.compareTo(b.data));
 
           if (song != null) index = queue.indexOf(song!);
-          aset = '1';
+          _set = '1';
 
           break;
       }
     });
-    asetValue('aset', aset);
+    _setValue('_set', _set);
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: Theme.of(context).colorScheme.secondary,
@@ -602,9 +602,9 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
         duration: const Duration(seconds: 2),
         content:
             Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-          Icon(astatus(aset),
+          Icon(_status(_set),
               color: Theme.of(context).colorScheme.onSecondary, size: 20.0),
-          Text(aset == '1' ? ' playing 1 song' : ' playing $aset songs',
+          Text(_set == '1' ? ' playing 1 song' : ' playing $_set songs',
               style:
                   TextStyle(color: Theme.of(context).colorScheme.onSecondary))
         ])));
@@ -615,7 +615,7 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
       BuildContext context, DragStartDetails details, Duration duration) {
     final RenderBox slider = context.findRenderObject() as RenderBox;
     final Offset position = slider.globalToLocal(details.globalPosition);
-    if (astate == PlayerState.PLAYING) onPause(quiet: true);
+    if (_state == PlayerState.PLAYING) onPause(quiet: true);
     onSeek(position, duration, slider.constraints.biggest.width);
   }
 
@@ -630,7 +630,7 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
   /// Ends to listen seek drag actions
   void onPositionDragEnd(
       BuildContext context, DragEndDetails details, Duration duration) {
-    if (astate == PlayerState.PLAYING) onPlay(quiet: true);
+    if (_state == PlayerState.PLAYING) onPlay(quiet: true);
   }
 
   /// Listens seek tap actions
@@ -641,7 +641,7 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
     onSeek(position, duration, slider.constraints.biggest.width);
   }
 
-  /// Changes [aposition] according to seek actions
+  /// Changes [_position] according to seek actions
   void onSeek(Offset position, Duration duration, double width) {
     double newPosition = 0;
 
@@ -653,35 +653,35 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
       newPosition = position.dx;
     }
 
-    setState(() => aposition = duration * (newPosition / width));
+    setState(() => _position = duration * (newPosition / width));
 
-    audioPlayer.seek(aposition * (arate / 100.0));
+    audioPlayer.seek(_position * (_rate / 100.0));
   }
 
   /// Starts to listen [volume] drag actions
   void onVolumeDragStart(BuildContext context, DragStartDetails details) {
     final RenderBox slider = context.findRenderObject() as RenderBox;
-    final Offset avolume = slider.globalToLocal(details.globalPosition);
-    updateVolume(avolume, slider.constraints.biggest.height);
+    final Offset _volume = slider.globalToLocal(details.globalPosition);
+    updateVolume(_volume, slider.constraints.biggest.height);
   }
 
   /// Listens [volume] drag actions
   void onVolumeDragUpdate(BuildContext context, DragUpdateDetails details) {
     final RenderBox slider = context.findRenderObject() as RenderBox;
-    final Offset avolume = slider.globalToLocal(details.globalPosition);
-    updateVolume(avolume, slider.constraints.biggest.height);
+    final Offset _volume = slider.globalToLocal(details.globalPosition);
+    updateVolume(_volume, slider.constraints.biggest.height);
   }
 
   /// Changes playback [volume] according to given offset
-  void updateVolume(Offset avolume, double height) {
+  void updateVolume(Offset _volume, double height) {
     double newVolume = 50.0;
 
-    if (avolume.dy <= .19 * height) {
+    if (_volume.dy <= .19 * height) {
       newVolume = 0;
-    } else if (avolume.dy >= height) {
+    } else if (_volume.dy >= height) {
       newVolume = .81 * height;
     } else {
-      newVolume = avolume.dy - .19 * height;
+      newVolume = _volume.dy - .19 * height;
     }
 
     newVolume = 100.0 * (1 - (newVolume / (.81 * height)));
@@ -689,18 +689,18 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
   }
 
   /// Changes playback [volume] by given
-  void onVolume(int avolume) async {
-    if (avolume > 100) {
-      avolume = 100;
-    } else if (avolume < 0) {
-      avolume = 0;
+  void onVolume(int _volume) async {
+    if (_volume > 100) {
+      _volume = 100;
+    } else if (_volume < 0) {
+      _volume = 0;
     }
-    VolumeRegulator.setVolume(avolume);
-    setState(() => volume = avolume);
-    asetValue('volume', avolume);
+    VolumeRegulator.setVolume(_volume);
+    setState(() => volume = _volume);
+    _setValue('volume', _volume);
   }
 
-  /// Changes playback [arate] by given
+  /// Changes playback [_rate] by given
   void onRate(double rate) {
     if (rate > 200.0) {
       rate = 200.0;
@@ -709,117 +709,117 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
     }
     audioPlayer.setPlaybackRate(rate / 100.0);
     setState(() {
-      aposition = aposition * (arate / rate);
-      duration = duration * (arate / rate);
-      arate = rate;
+      _position = _position * (_rate / rate);
+      duration = duration * (_rate / rate);
+      _rate = rate;
     });
   }
 
-  /// Switches playback [aprelude]
+  /// Switches playback [_prelude]
   void onPrelude() {
-    setState(() => aintroLength = aintroLength == 0 ? 10 : 0);
-    if (aintroLength == 10) onChange(index);
+    setState(() => _introLength = _introLength == 0 ? 10 : 0);
+    if (_introLength == 10) onChange(index);
   }
 
-  /// Switches playback [astate]
-  void achangeState() => astate == PlayerState.PLAYING ? onPause() : onPlay();
+  /// Switches playback [_state]
+  void _changeState() => _state == PlayerState.PLAYING ? onPause() : onPlay();
 
   /// Shows dialog to pick [source]
-  void apickSource() {
+  void _pickSource() {
     showDialog(
         context: context,
         builder: (BuildContext context) {
           return SingleChoiceDialog<Source>(
               isDividerEnabled: true,
-              items: asources,
-              onSelected: (Source asource) {
-                setState(() => source = asource);
-                onFolder(asource.root);
+              items: _sources,
+              onSelected: (Source _source) {
+                setState(() => source = _source);
+                onFolder(_source.root);
               },
-              itemBuilder: (Source asource) {
-                final Text asourceText = source == asource
-                    ? Text(asource.name,
+              itemBuilder: (Source _source) {
+                final Text _sourceText = source == _source
+                    ? Text(_source.name,
                         style: TextStyle(color: Theme.of(context).primaryColor))
-                    : Text(asource.name);
-                switch (asource.id) {
+                    : Text(_source.name);
+                switch (_source.id) {
                   case -1:
-                    return atextButtonLink(
+                    return _textButtonLink(
                         icon: Icon(Typicons.social_youtube,
-                            color: source == asource
+                            color: source == _source
                                 ? Theme.of(context).primaryColor
                                 : redColor),
-                        label: asourceText);
+                        label: _sourceText);
                   case 0:
-                    return atextButtonLink(
+                    return _textButtonLink(
                         icon: Icon(Icons.phone_iphone,
-                            color: source == asource
+                            color: source == _source
                                 ? Theme.of(context).primaryColor
                                 : Theme.of(context)
                                     .textTheme
                                     .bodyText2!
                                     .color!
                                     .withOpacity(.55)),
-                        label: asourceText);
+                        label: _sourceText);
                   default:
-                    return atextButtonLink(
+                    return _textButtonLink(
                         icon: Icon(Icons.sd_card,
-                            color: source == asource
+                            color: source == _source
                                 ? Theme.of(context).primaryColor
                                 : Theme.of(context)
                                     .textTheme
                                     .bodyText2!
                                     .color!
                                     .withOpacity(.55)),
-                        label: asourceText);
+                        label: _sourceText);
                 }
               });
         });
   }
 
   /// Navigates to folder picker page
-  void apickFolder() => acontroller.animateToPage(0,
-      duration: aanimationDuration, curve: aanimationCurve);
+  void _pickFolder() => _controller.animateToPage(0,
+      duration: _animationDuration, curve: _animationCurve);
 
   /// Navigates to song picker page
-  void apickSong() => acontroller.animateToPage(1,
-      duration: aanimationDuration, curve: aanimationCurve);
+  void _pickSong() => _controller.animateToPage(1,
+      duration: _animationDuration, curve: _animationCurve);
 
   /// Navigates to player main page
-  void areturnToPlayer() => acontroller.animateToPage(2,
-      duration: aanimationDuration, curve: aanimationCurve);
+  void _returnToPlayer() => _controller.animateToPage(2,
+      duration: _animationDuration, curve: _animationCurve);
 
   /// Navigates to features page
-  void auseFeatures() => acontroller.animateToPage(3,
-      duration: aanimationDuration, curve: aanimationCurve);
+  void _useFeatures() => _controller.animateToPage(3,
+      duration: _animationDuration, curve: _animationCurve);
 
   /// Goes back to the previous page
   bool onBack() {
-    if (1.9 < acontroller.page! && acontroller.page! < 2.1) {
+    if (1.9 < _controller.page! && _controller.page! < 2.1) {
       setState(() => pageHistory = [2]);
       return true;
     }
-    acontroller.animateToPage(pageHistory[0],
-        duration: aanimationDuration, curve: aanimationCurve);
+    _controller.animateToPage(pageHistory[0],
+        duration: _animationDuration, curve: _animationCurve);
     setState(() => pageHistory = [2]);
     return false;
   }
 
   /// Get cached or preferred value
-  void agetSavedValues() async {
+  void _getSavedValues() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    int avolume = await VolumeRegulator.getVolume();
+    int _volume = await VolumeRegulator.getVolume();
     setState(() {
       lastSongPath = prefs.getString('lastSongPath');
-      amode = prefs.getString('amode') ?? 'loop';
-      aset = prefs.getString('aset') ?? 'random';
-      volume = prefs.getInt('volume') ?? avolume;
+      _mode = prefs.getString('_mode') ?? 'loop';
+      _set = prefs.getString('_set') ?? 'random';
+      volume = prefs.getInt('volume') ?? _volume;
     });
-    await prefs.setString('amode', amode);
-    await prefs.setString('aset', aset);
+    await prefs.setString('_mode', _mode);
+    await prefs.setString('_set', _set);
   }
 
   /// Save cached or preferred value
-  Future<void> asetValue(String variable, dynamic value) async {
+  Future<void> _setValue(String variable, dynamic value) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     if (value is String) await prefs.setString(variable, value);
     if (value is double) await prefs.setDouble(variable, value);
@@ -827,155 +827,157 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
   }
 
   /// Queries album artworks to app cache
-  Future<void> aloadCoversMap() async {
-    if (acoversComplete == 0) {
-      if (!acoversFile!.existsSync()) {
-        await acreateCoversMap();
+  Future<void> _loadCoversMap() async {
+    if (_coversComplete == 0) {
+      if (!_coversFile!.existsSync()) {
+        await _createCoversMap();
       } else {
         try {
-          acoversYaml = await acoversFile!.readAsLines();
-          acoversMap = Map<String, int>.from(
-              loadYaml(acoversYaml.join('\n')) ?? const {});
-          setState(() => acoversComplete = -1);
+          _coversYaml = await _coversFile!.readAsLines();
+          _coversMap = Map<String, int>.from(loadYaml(_coversYaml.join('\n')));
+          setState(() => _coversComplete = -1);
         } on FileSystemException catch (error) {
           print(error);
-          await acreateCoversMap();
+          await _createCoversMap();
         } on YamlException catch (error) {
           print(error);
-          await acreateCoversMap();
+          await _createCoversMap();
         }
       }
     }
   }
 
   /// Fixes album artworks cache
-  Future<void> afixCoversMap() async {
-    if (acoversComplete == -1) {
-      setState(() => acoversComplete = 0);
-      await acreateCoversMap();
+  Future<void> _fixCoversMap() async {
+    if (_coversComplete == -1) {
+      setState(() => _coversComplete = 0);
+      await _createCoversMap();
     }
   }
 
   /// Queries album artworks to phone cache
-  Future<void> acreateCoversMap() async {
-    acoversYaml = ['---'];
-    acoversMap.clear();
-    for (final SongModel asong in asongs) {
-      final String asongPath = asong.data;
-      final String acoversPath =
-          (asources.firstWhereOrNull(asongPath.startsWith)?.coversPath ??
-              asources[0].coversPath)!;
-      final String acoverPath = '$acoversPath/${asongPath.hashCode}.jpg';
-      int astatus = 0;
-      if (!File(acoverPath).existsSync()) {
-        final int aheight =
+  Future<void> _createCoversMap() async {
+    _coversYaml = ['---'];
+    _coversMap.clear();
+    for (final SongModel _song in _songs) {
+      final String _songPath = _song.data;
+      final String _coversPath =
+          (_sources.firstWhereOrNull(_songPath.startsWith)?.coversPath ??
+              _sources[0].coversPath)!;
+      final String _coverPath = '$_coversPath/${_songPath.hashCode}.jpg';
+      int _status = 0;
+      if (!File(_coverPath).existsSync()) {
+        final int _height =
             (MediaQuery.of(context).size.shortestSide * 7 / 10).ceil();
         FFmpegKit.execute(
-                '-i "$asongPath" -vf scale="-2:\'min($aheight,ih)\'":flags=lanczos -an "$acoverPath"')
+                '-i "$_songPath" -vf scale="-2:\'min($_height,ih)\'":flags=lanczos -an "$_coverPath"')
             .then((session) async {
           final returnCode = await session.getReturnCode();
-          astatus = returnCode!.getValue();
+          _status = returnCode!.getValue();
           final String? failStackTrace = await session.getFailStackTrace();
           if (failStackTrace != null && failStackTrace.isNotEmpty)
             print(failStackTrace);
         }, onError: (error) {
           print(error.stackTrace);
-          setState(() => acoversComplete = -2);
+          setState(() => _coversComplete = -2);
           return 1;
         });
       }
-      acoversMap[asongPath] = astatus;
-      acoversYaml.add('"$asongPath": $astatus');
-      setState(() => ++acoversComplete);
+      _coversMap[_songPath] = _status;
+      _coversYaml.add('"$_songPath": $_status');
+      setState(() => ++_coversComplete);
     }
-    await acacheCoversMap();
+    await _cacheCoversMap();
   }
 
   /// Writes app cache into a file
-  Future<void> acacheCoversMap() async {
-    await acoversFile!.writeAsString(acoversYaml.join('\n'));
-    setState(() => acoversComplete = -1);
+  Future<void> _cacheCoversMap() async {
+    await _coversFile!.writeAsString(_coversYaml.join('\n'));
+    setState(() => _coversComplete = -1);
   }
 
   /// Gets album artwork from cache
-  Image? agetCover(SongModel asong) {
-    final String asongPath = asong.data;
-    if (acoversMap.containsKey(asongPath)) {
-      if (acoversMap[asongPath] == 0) {
-        final String acoversPath =
-            (asources.firstWhereOrNull(asongPath.startsWith)?.coversPath ??
-                asources[0].coversPath)!;
-        final File acoverFile = File('$acoversPath/${asongPath.hashCode}.jpg');
-        if (acoverFile.existsSync()) {
-          return Image.file(acoverFile, fit: BoxFit.cover);
-          /*} else {
+  Image? _getCover(SongModel _song) {
+    if (_coversComplete == -1) {
+      final String _songPath = _song.data;
+      if (_coversMap.containsKey(_songPath)) {
+        if (_coversMap[_songPath] == 0) {
+          final String _coversPath =
+              (_sources.firstWhereOrNull(_songPath.startsWith)?.coversPath ??
+                  _sources[0].coversPath)!;
+          final File _coverFile =
+              File('$_coversPath/${_songPath.hashCode}.jpg');
+          if (_coverFile.existsSync()) {
+            return Image.file(_coverFile, fit: BoxFit.cover);
+            /*} else {
             WidgetsBinding.instance.addPostFrameCallback((_) => afixCover(asong));*/
+          }
         }
+      } else {
+        _fixCoversMap();
       }
-    } else {
-      afixCoversMap();
     }
     return null;
   }
 
   /// Fixes album artwork in cache
-  Future<void> afixCover(SongModel asong) async {
-    if (acoversComplete == -1) {
-      setState(() => acoversComplete = 0);
-      final String asongPath = asong.data;
-      final String acoversPath =
-          (asources.firstWhereOrNull(asongPath.startsWith)?.coversPath ??
-              asources[0].coversPath)!;
-      final String acoverPath = '$acoversPath/${asongPath.hashCode}.jpg';
-      int astatus = 0;
-      final int aheight =
+  Future<void> _fixCover(SongModel _song) async {
+    if (_coversComplete == -1) {
+      setState(() => _coversComplete = 0);
+      final String _songPath = _song.data;
+      final String _coversPath =
+          (_sources.firstWhereOrNull(_songPath.startsWith)?.coversPath ??
+              _sources[0].coversPath)!;
+      final String _coverPath = '$_coversPath/${_songPath.hashCode}.jpg';
+      int _status = 0;
+      final int _height =
           (MediaQuery.of(context).size.shortestSide * 7 / 10).ceil();
       FFmpegKit.execute(
-              '-i "$asongPath" -vf scale="-2:\'min($aheight,ih)\'":flags=lanczos -an "$acoverPath"')
+              '-i "$_songPath" -vf scale="-2:\'min($_height,ih)\'":flags=lanczos -an "$_coverPath"')
           .then((session) async {
         final returnCode = await session.getReturnCode();
-        astatus = returnCode!.getValue();
+        _status = returnCode!.getValue();
         final String? failStackTrace = await session.getFailStackTrace();
         if (failStackTrace != null && failStackTrace.isNotEmpty)
           print(failStackTrace);
       }, onError: (error) {
         print(error.stackTrace);
-        setState(() => acoversComplete = -2);
+        setState(() => _coversComplete = -2);
         return 1;
       });
-      acoversMap[asongPath] = astatus;
-      setState(() => ++acoversComplete);
-      acoversYaml = ['---'];
-      acoversMap.forEach((String acoverSong, int acoverStatus) =>
-          acoversYaml.add('"$acoverSong": $acoverStatus'));
-      await acacheCoversMap();
+      _coversMap[_songPath] = _status;
+      setState(() => ++_coversComplete);
+      _coversYaml = ['---'];
+      _coversMap.forEach((String _coverSong, int _coverStatus) =>
+          _coversYaml.add('"$_coverSong": $_coverStatus'));
+      await _cacheCoversMap();
     }
   }
 
   /// Gets relative urls for [fillBrowse]
   Iterable<int> getRelatives(String root, String path) {
-    final int arootLength = root.length;
-    String relative = path.substring(arootLength);
+    final int _rootLength = root.length;
+    String relative = path.substring(_rootLength);
     if (relative.startsWith('/')) relative = '${relative.substring(1)}/';
-    return '/'.allMatches(relative).map((Match m) => arootLength + m.end);
+    return '/'.allMatches(relative).map((Match m) => _rootLength + m.end);
   }
 
-  /// Fills [browse] stack with given [apath]
+  /// Fills [browse] stack with given [_path]
   void fillBrowse(
-      String apath,
-      String aroot,
+      String _path,
+      String _root,
       SplayTreeMap<Entry, SplayTreeMap> browse,
       int value,
       ValueChanged<int> valueChanged,
       String type) {
-    final Iterable<int> relatives = getRelatives(aroot, apath);
+    final Iterable<int> relatives = getRelatives(_root, _path);
     int j = 0;
     String relativeString;
     num length = type == 'song' ? relatives.length - 1 : relatives.length;
     if (length == 0) length = .5;
     while (j < length) {
       relativeString =
-          length == .5 ? aroot : apath.substring(0, relatives.elementAt(j));
+          length == .5 ? _root : _path.substring(0, relatives.elementAt(j));
       Entry entry = Entry(relativeString, type);
       if (browse.containsKey(entry)) {
         entry = browse.keys.firstWhere((Entry key) => key == entry);
@@ -991,35 +993,35 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
 
   @override
   void initState() {
-    agetSavedValues();
+    _getSavedValues();
 
     audioPlayer.onDurationChanged.listen((Duration d) {
-      setState(() => duration = d * (100.0 / arate));
+      setState(() => duration = d * (100.0 / _rate));
     });
     audioPlayer.onAudioPositionChanged.listen((Duration p) {
-      setState(() => aposition = p * (100.0 / arate));
-      if (afadePosition > aemptyDuration &&
-          aposition > afadePosition &&
-          apreFadeVolume == 0 &&
-          astate == PlayerState.PLAYING) {
-        setState(() => apreFadeVolume = volume);
-        afadeTimer = Timer.periodic(const Duration(milliseconds: 100), (a) {
+      setState(() => _position = p * (100.0 / _rate));
+      if (_fadePosition > _emptyDuration &&
+          _position > _fadePosition &&
+          _preFadeVolume == 0 &&
+          _state == PlayerState.PLAYING) {
+        setState(() => _preFadeVolume = volume);
+        _fadeTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
           if (volume > 0) {
             onVolume(volume - 1);
           } else {
-            afadeTimer!.cancel();
+            _fadeTimer!.cancel();
             onChange(index + 1);
-            onVolume(apreFadeVolume);
-            setState(() => apreFadeVolume = 0);
+            onVolume(_preFadeVolume);
+            setState(() => _preFadeVolume = 0);
           }
         });
       }
     });
-    audioPlayer.onPlayerCompletion.listen((a) {
-      setState(() => aposition = duration);
-      if (amode == 'once' && (aset == '1' || index == queue.length - 1)) {
+    audioPlayer.onPlayerCompletion.listen((_) {
+      setState(() => _position = duration);
+      if (_mode == 'once' && (_set == '1' || index == queue.length - 1)) {
         onStop();
-      } else if (aset == '1') {
+      } else if (_set == '1') {
         onPlay();
       } else {
         onChange(index + 1);
@@ -1032,15 +1034,15 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
 
     VolumeRegulator.volumeStream.listen((int v) {
       setState(() => volume = v);
-      asetValue('volume', v);
+      _setValue('volume', v);
     });
 
-    acontroller.addListener(() {
-      final double amodulo = acontroller.page! % 1;
-      if (.9 < amodulo || amodulo < .1) {
-        final int apage = acontroller.page!.round();
-        if (!pageHistory.contains(apage)) {
-          pageHistory.add(apage);
+    _controller.addListener(() {
+      final double _modulo = _controller.page! % 1;
+      if (.9 < _modulo || _modulo < .1) {
+        final int _page = _controller.page!.round();
+        if (!pageHistory.contains(_page)) {
+          pageHistory.add(_page);
           while (pageHistory.length > 2) pageHistory.removeAt(0);
         }
       }
@@ -1048,135 +1050,135 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
 
     super.initState();
 
-    Permission.storage.request().then((PermissionStatus astatus) {
-      if (astatus == PermissionStatus.permanentlyDenied) {
+    Permission.storage.request().then((PermissionStatus _status) {
+      if (_status == PermissionStatus.permanentlyDenied) {
         openAppSettings();
-      } else if (astatus == PermissionStatus.denied) {
+      } else if (_status == PermissionStatus.denied) {
         SystemChannels.platform.invokeMethod('SystemNavigator.pop');
       }
       // Got permission (read user files and folders)
-      checkoutSdCards().listen(asources.add,
+      checkoutSdCards().listen(_sources.add,
           onDone: () {
-            // Got asources
+            // Got _sources
             Stream<List<SongModel>>.fromFuture(OnAudioQuery().querySongs())
-                .expand((List<SongModel> asongs) => asongs)
-                .listen((SongModel asong) {
-              final String asongPath = asong.data;
+                .expand((List<SongModel> _songs) => _songs)
+                .listen((SongModel _song) {
+              final String _songPath = _song.data;
               // queue
-              if (File(asongPath).parent.path == folder) {
-                if (aset != 'random' || [0, 1].contains(aqueueComplete)) {
-                  queue.add(asong);
+              if (File(_songPath).parent.path == folder) {
+                if (_set != 'random' || [0, 1].contains(_queueComplete)) {
+                  queue.add(_song);
                 } else {
-                  queue.insert(1 + random.nextInt(aqueueComplete), asong);
+                  queue.insert(1 + random.nextInt(_queueComplete), _song);
                 }
-                setState(() => ++aqueueComplete);
-                if (aqueueComplete == 1) {
-                  audioPlayer.setUrl(asongPath, isLocal: true);
+                setState(() => ++_queueComplete);
+                if (_queueComplete == 1) {
+                  audioPlayer.setUrl(_songPath, isLocal: true);
                   setState(() => song = queue[0]);
                 }
               }
 
-              if (asources.any(asongPath.startsWith)) {
-                // asongs
-                asongs.add(asong);
-                setState(() => ++asongsComplete);
+              if (_sources.any(_songPath.startsWith)) {
+                // _songs
+                _songs.add(_song);
+                setState(() => ++_songsComplete);
 
                 // browse
-                final Source asource =
-                    asources.firstWhere(asongPath.startsWith);
+                final Source _source =
+                    _sources.firstWhere(_songPath.startsWith);
                 fillBrowse(
-                    asongPath,
-                    asource.root,
-                    asource.browse,
-                    abrowseSongsComplete,
-                    (value) => abrowseSongsComplete = value,
+                    _songPath,
+                    _source.root,
+                    _source.browse,
+                    _browseSongsComplete,
+                    (value) => _browseSongsComplete = value,
                     'song');
               }
             }, onDone: () {
-              // Got queue, asongs, browse
+              // Got queue, _songs, browse
               setState(() {
-                aqueueComplete = aqueueComplete > 0 ? -1 : 0;
-                asongsComplete = asongsComplete > 0 ? -1 : 0;
-                if (asources.every(
-                    (Source asource) => asource.browseFoldersComplete == -1))
-                  abrowseComplete = -1;
-                abrowseSongsComplete = abrowseSongsComplete > 0 ? -1 : 0;
+                _queueComplete = _queueComplete > 0 ? -1 : 0;
+                _songsComplete = _songsComplete > 0 ? -1 : 0;
+                if (_sources.every(
+                    (Source _source) => _source.browseFoldersComplete == -1))
+                  _browseComplete = -1;
+                _browseSongsComplete = _browseSongsComplete > 0 ? -1 : 0;
               });
-              if (asongsComplete == -1 &&
-                  acoversFile != null &&
-                  !asources.any((Source asource) => asource.coversPath == null))
-                aloadCoversMap();
+              if (_songsComplete == -1 &&
+                  _coversFile != null &&
+                  !_sources.any((Source _source) => _source.coversPath == null))
+                _loadCoversMap();
             }, onError: (error) {
               setState(() {
-                aqueueComplete = -2;
-                asongsComplete = -2;
-                abrowseComplete = -2;
-                abrowseSongsComplete = -2;
+                _queueComplete = -2;
+                _songsComplete = -2;
+                _browseComplete = -2;
+                _browseSongsComplete = -2;
               });
               print(error.stackTrace);
             });
 
-            for (final Source asource in asources) {
-              getFolders(asource.root).listen((String afolderPath) {
+            for (final Source _source in _sources) {
+              getFolders(_source.root).listen((String _folderPath) {
                 fillBrowse(
-                    afolderPath,
-                    asource.root,
-                    asource.browse,
-                    asource.browseFoldersComplete,
-                    (value) => asource.browseFoldersComplete = value,
+                    _folderPath,
+                    _source.root,
+                    _source.browse,
+                    _source.browseFoldersComplete,
+                    (value) => _source.browseFoldersComplete = value,
                     'folder');
               }, onDone: () {
                 fillBrowse(
-                    asource.root,
-                    asource.root,
-                    asource.browse,
-                    asource.browseFoldersComplete,
-                    (value) => asource.browseFoldersComplete = value,
+                    _source.root,
+                    _source.root,
+                    _source.browse,
+                    _source.browseFoldersComplete,
+                    (value) => _source.browseFoldersComplete = value,
                     'folder');
                 // Got folders
                 setState(() {
-                  asource.browseFoldersComplete = -1;
-                  if ((abrowseSongsComplete == -1) &&
-                      asources.every((Source asource) =>
-                          asource.browseFoldersComplete == -1))
-                    abrowseComplete = -1;
+                  _source.browseFoldersComplete = -1;
+                  if ((_browseSongsComplete == -1) &&
+                      _sources.every((Source _source) =>
+                          _source.browseFoldersComplete == -1))
+                    _browseComplete = -1;
                 });
                 loadSpecificSong();
                 WidgetsBinding.instance.addObserver(this);
               }, onError: (error) {
                 setState(() {
-                  abrowseComplete = -2;
-                  asource.browseFoldersComplete = -2;
+                  _browseComplete = -2;
+                  _source.browseFoldersComplete = -2;
                 });
                 print(error.stackTrace);
               });
             }
 
-            getTemporaryDirectory().then((Directory aappCache) {
-              final String aappCachePath = aappCache.path;
-              for (final Source asource in asources)
-                asource.coversPath = aappCachePath;
+            getTemporaryDirectory().then((Directory _appCache) {
+              final String _appCachePath = _appCache.path;
+              for (final Source _source in _sources)
+                _source.coversPath = _appCachePath;
 
               if (Platform.isAndroid) {
                 Stream<List<Directory>?>.fromFuture(
                         getExternalCacheDirectories())
-                    .expand((List<Directory>? aextCaches) => aextCaches!)
-                    .listen((Directory aextCache) {
-                  final String aextCachePath = aextCache.path;
-                  if (!aextCachePath.startsWith(asources[0])) {
-                    asources.firstWhere(aextCachePath.startsWith).coversPath =
-                        aextCachePath;
-                  } else if (adebug) {
-                    asources[0].coversPath = aextCachePath;
+                    .expand((List<Directory>? _extCaches) => _extCaches!)
+                    .listen((Directory _extCache) {
+                  final String _extCachePath = _extCache.path;
+                  if (!_extCachePath.startsWith(_sources[0])) {
+                    _sources.firstWhere(_extCachePath.startsWith).coversPath =
+                        _extCachePath;
+                  } else if (_debug) {
+                    _sources[0].coversPath = _extCachePath;
                   }
                 }, onDone: () {
                   // Got coversPath
-                  if (asongsComplete == -1 && acoversFile != null)
-                    aloadCoversMap();
+                  if (_songsComplete == -1 && _coversFile != null)
+                    _loadCoversMap();
                 }, onError: (error) => print(error.stackTrace));
               } else {
-                if (asongsComplete == -1 && acoversFile != null)
-                  aloadCoversMap();
+                if (_songsComplete == -1 && _coversFile != null)
+                  _loadCoversMap();
               }
             }, onError: (error) => print(error.stackTrace));
           },
@@ -1185,36 +1187,36 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
 
     /*Stream<List<InternetAddress>>.fromFuture(
             InternetAddress.lookup('youtube.com'))
-        .expand((List<InternetAddress> aaddresses) => aaddresses)
+        .expand((List<InternetAddress> _addresses) => _addresses)
         .firstWhere(
-            (InternetAddress aaddress) => aaddress.rawAddress.isNotEmpty)
-        .then((a) => asources.add(Source('', -1)),
+            (InternetAddress _address) => _address.rawAddress.isNotEmpty)
+        .then((_) => _sources.add(Source('', -1)),
             onError: (error) => print(error.stackTrace));*/
     // Got YouTube
 
-    getApplicationSupportDirectory().then((Directory aappData) {
-      acoversFile = File('${aappData.path}/covers.yaml');
+    getApplicationSupportDirectory().then((Directory _appData) {
+      _coversFile = File('${_appData.path}/covers.yaml');
 
-      if (Platform.isAndroid && adebug) {
-        late StreamSubscription<Directory> aextDataStream;
-        aextDataStream =
+      if (Platform.isAndroid && _debug) {
+        late StreamSubscription<Directory> _extDataStream;
+        _extDataStream =
             Stream<List<Directory>?>.fromFuture(getExternalStorageDirectories())
-                .expand((List<Directory>? aextDatas) => aextDatas!)
-                .listen((Directory aextData) {
-          final String aextDataPath = aextData.path;
-          if (aextDataPath.startsWith(asources[0])) {
-            acoversFile = File('$aextDataPath/covers.yaml');
-            // Got acoversFile
-            if (asongsComplete == -1 &&
-                !asources.any((Source asource) => asource.coversPath == null))
-              aloadCoversMap();
-            aextDataStream.cancel();
+                .expand((List<Directory>? _extDatas) => _extDatas!)
+                .listen((Directory _extData) {
+          final String _extDataPath = _extData.path;
+          if (_extDataPath.startsWith(_sources[0])) {
+            _coversFile = File('$_extDataPath/covers.yaml');
+            // Got _coversFile
+            if (_songsComplete == -1 &&
+                !_sources.any((Source _source) => _source.coversPath == null))
+              _loadCoversMap();
+            _extDataStream.cancel();
           }
         }, onError: (error) => print(error.stackTrace));
       } else {
-        if (asongsComplete == -1 &&
-            !asources.any((Source asource) => asource.coversPath == null))
-          aloadCoversMap();
+        if (_songsComplete == -1 &&
+            !_sources.any((Source _source) => _source.coversPath == null))
+          _loadCoversMap();
       }
     }, onError: (error) => print(error.stackTrace));
   }
@@ -1228,36 +1230,36 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) loadSpecificSong();
+  void didChangeAppLifecycleState(AppLifecycleState _state) {
+    if (_state == AppLifecycleState.resumed) loadSpecificSong();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (apreCoverVolume != volume) {
-      ashowVolumePicker = true;
-      apreCoverVolume = volume;
-      avolumeCoverTimer?.cancel();
-      avolumeCoverTimer = Timer(adefaultDuration, () {
-        setState(() => ashowVolumePicker = false);
+    if (_preCoverVolume != volume) {
+      _showVolumePicker = true;
+      _preCoverVolume = volume;
+      _volumeCoverTimer?.cancel();
+      _volumeCoverTimer = Timer(_defaultDuration, () {
+        setState(() => _showVolumePicker = false);
       });
     }
-    if (apreviousSong != song) {
-      ashowVolumePicker = false;
-      apreviousSong = song;
-      avolumeCoverTimer?.cancel();
+    if (_previousSong != song) {
+      _showVolumePicker = false;
+      _previousSong = song;
+      _volumeCoverTimer?.cancel();
     }
-    if (apreCoverVolumePicker != ashowVolumePicker) {
-      avolumeCoverTimer?.cancel();
-      avolumeCoverTimer = Timer(adefaultDuration, () {
-        setState(() => ashowVolumePicker = false);
+    if (_preCoverVolumePicker != _showVolumePicker) {
+      _volumeCoverTimer?.cancel();
+      _volumeCoverTimer = Timer(_defaultDuration, () {
+        setState(() => _showVolumePicker = false);
       });
     }
-    apreCoverVolumePicker = ashowVolumePicker;
-    aorientation = MediaQuery.of(context).orientation;
+    _preCoverVolumePicker = _showVolumePicker;
+    _orientation = MediaQuery.of(context).orientation;
     return Material(
         child: PageView(
-            controller: acontroller,
+            controller: _controller,
             physics: const BouncingScrollPhysics(),
             children: <WillPopScope>[
           // folders
@@ -1267,8 +1269,8 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                   appBar: AppBar(
                       leading: IconButton(
                           tooltip: 'Change source',
-                          onPressed: apickSource,
-                          icon: asourceButton(
+                          onPressed: _pickSource,
+                          icon: _sourceButton(
                               source.id,
                               Theme.of(context)
                                   .textTheme
@@ -1278,9 +1280,9 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                       title: Tooltip(
                           message: 'Change source',
                           child: InkWell(
-                              onTap: apickSource, child: Text(source.name))),
-                      actions: ashowContents(this)),
-                  body: afolderPicker(this))),
+                              onTap: _pickSource, child: Text(source.name))),
+                      actions: _showContents(this)),
+                  body: _folderPicker(this))),
           // songs
           WillPopScope(
               onWillPop: () => Future<bool>.sync(onBack),
@@ -1288,11 +1290,11 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                   appBar: AppBar(
                       leading: chosenFolder != folder
                           ? IconButton(
-                              onPressed: apickFolder,
+                              onPressed: _pickFolder,
                               tooltip: 'Pick different folder',
                               icon: const Icon(Icons.navigate_before))
                           : IconButton(
-                              onPressed: apickFolder,
+                              onPressed: _pickFolder,
                               tooltip: 'Pick different folder',
                               icon: queue.isNotEmpty
                                   ? const Icon(Typicons.folder_open)
@@ -1302,8 +1304,8 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                                           .bodyText2!
                                           .color!
                                           .withOpacity(.55))),
-                      title: anavigation(this)),
-                  body: asongPicker(this),
+                      title: _navigation(this)),
+                  body: _songPicker(this),
                   floatingActionButton: Align(
                       alignment: const Alignment(.8, .8),
                       child: Transform.scale(
@@ -1315,17 +1317,17 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                                     if (queue.isNotEmpty) {
                                       setState(() => index = 0);
                                       onPlay();
-                                      areturnToPlayer();
+                                      _returnToPlayer();
                                     }
                                   },
-                                  tooltip: atempQueueComplete == -1
+                                  tooltip: _tempQueueComplete == -1
                                       ? 'Play chosen folder'
                                       : 'Loading...',
-                                  shape: aorientation == Orientation.portrait
-                                      ? const ACubistShapeB()
-                                      : const ACubistShapeD(),
+                                  shape: _orientation == Orientation.portrait
+                                      ? const _CubistShapeB()
+                                      : const _CubistShapeD(),
                                   elevation: 6.0,
-                                  child: atempQueueComplete == -1
+                                  child: _tempQueueComplete == -1
                                       ? const Icon(Icons.play_arrow, size: 32.0)
                                       : SizedBox(
                                           width: 22.0,
@@ -1336,10 +1338,10 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                                                       Theme.of(context)
                                                           .colorScheme
                                                           .onSecondary))))
-                              : aplay(this, 6.0, 32.0, () {
-                                  achangeState();
-                                  if (astate == PlayerState.PLAYING)
-                                    areturnToPlayer();
+                              : _play(this, 6.0, 32.0, () {
+                                  _changeState();
+                                  if (_state == PlayerState.PLAYING)
+                                    _returnToPlayer();
                                 }))))),
           // player
           WillPopScope(
@@ -1347,7 +1349,7 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
               child: Scaffold(
                   appBar: AppBar(
                       leading: IconButton(
-                          onPressed: apickFolder,
+                          onPressed: _pickFolder,
                           tooltip: 'Pick different folder',
                           icon: queue.isNotEmpty
                               ? const Icon(Typicons.folder_open)
@@ -1359,7 +1361,7 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                                       .withOpacity(.55))),
                       actions: <IconButton>[
                         IconButton(
-                            onPressed: auseFeatures,
+                            onPressed: _useFeatures,
                             tooltip: 'Try special features',
                             icon: Icon(Icons.auto_fix_normal,
                                 color: Theme.of(context)
@@ -1368,7 +1370,7 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                                     .color!
                                     .withOpacity(.55)))
                       ]),
-                  body: aorientation == Orientation.portrait
+                  body: _orientation == Orientation.portrait
                       ? Column(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: <Flexible>[
@@ -1376,19 +1378,19 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                                   flex: 17,
                                   child: FractionallySizedBox(
                                       widthFactor: .45,
-                                      child: aplayerSquared(this))),
+                                      child: _playerSquared(this))),
                               Flexible(
                                   flex: 11,
                                   child: Row(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.end,
                                       children: [
-                                        aintroLength == 0
+                                        _introLength == 0
                                             ? const SizedBox.shrink()
                                             : GestureDetector(
                                                 onDoubleTap: onPrelude,
                                                 child: FractionallySizedBox(
-                                                    heightFactor: aheightFactor(
+                                                    heightFactor: _heightFactor(
                                                         1,
                                                         volume,
                                                         wave(song?.title ?? 'zapaz')
@@ -1401,12 +1403,12 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                                                             horizontal: 12.0),
                                                         color: redColor,
                                                         child: Text(
-                                                            '$aintroLength s',
+                                                            '$_introLength s',
                                                             style: TextStyle(
                                                                 color: Theme.of(
                                                                         context)
                                                                     .scaffoldBackgroundColor))))),
-                                        Expanded(child: aplayerOblong(this))
+                                        Expanded(child: _playerOblong(this))
                                       ])),
                               Flexible(
                                   flex: 20,
@@ -1427,7 +1429,7 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                                                               .primaryColor,
                                                       brightness:
                                                           Brightness.dark)),
-                                          child: aplayerControl(this))))
+                                          child: _playerControl(this))))
                             ])
                       : Column(children: <Flexible>[
                           Flexible(
@@ -1451,8 +1453,8 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                                                 iconTheme: IconThemeData(
                                                     color: Theme.of(context)
                                                         .primaryColor)),
-                                            child: aplayerControl(this))),
-                                    aplayerSquared(this)
+                                            child: _playerControl(this))),
+                                    _playerSquared(this)
                                   ])),
                           Flexible(
                               flex: 2,
@@ -1460,32 +1462,32 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: <Widget>[
                                     FractionallySizedBox(
-                                        heightFactor: aheightFactor(1, volume,
+                                        heightFactor: _heightFactor(1, volume,
                                             wave(song?.title ?? 'zapaz').first),
                                         child: Container(
                                             alignment: Alignment.center,
                                             padding: const EdgeInsets.symmetric(
                                                 horizontal: 12.0),
-                                            color: aposition == aemptyDuration
+                                            color: _position == _emptyDuration
                                                 ? Theme.of(context)
                                                     .primaryColor
                                                     .withOpacity(.7)
                                                 : Theme.of(context)
                                                     .primaryColor,
                                             child: Text(
-                                                atimeInfo(
-                                                    aqueueComplete, aposition),
+                                                _timeInfo(
+                                                    _queueComplete, _position),
                                                 style: TextStyle(
                                                     color: Theme.of(context)
                                                         .scaffoldBackgroundColor,
                                                     fontWeight:
                                                         FontWeight.bold)))),
-                                    aintroLength == 0
+                                    _introLength == 0
                                         ? const SizedBox.shrink()
                                         : GestureDetector(
                                             onDoubleTap: onPrelude,
                                             child: FractionallySizedBox(
-                                                heightFactor: aheightFactor(
+                                                heightFactor: _heightFactor(
                                                     1,
                                                     volume,
                                                     wave(song?.title ?? 'zapaz')
@@ -1497,34 +1499,34 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                                                         horizontal: 12.0),
                                                     color: redColor,
                                                     child: Text(
-                                                        '$aintroLength s',
+                                                        '$_introLength s',
                                                         style: TextStyle(
                                                             color: Theme.of(
                                                                     context)
                                                                 .scaffoldBackgroundColor))))),
-                                    Expanded(child: aplayerOblong(this)),
+                                    Expanded(child: _playerOblong(this)),
                                     FractionallySizedBox(
-                                        heightFactor: aheightFactor(1, volume,
+                                        heightFactor: _heightFactor(1, volume,
                                             wave(song?.title ?? 'zapaz').last),
                                         child: Container(
                                             alignment: Alignment.center,
                                             padding: const EdgeInsets.symmetric(
                                                 horizontal: 12.0),
-                                            color: aposition == duration &&
-                                                    duration != aemptyDuration
+                                            color: _position == duration &&
+                                                    duration != _emptyDuration
                                                 ? Theme.of(context).primaryColor
                                                 : Theme.of(context)
                                                     .primaryColor
                                                     .withOpacity(.7),
-                                            child: Text(atimeInfo(aqueueComplete, afadePosition == aemptyDuration ? duration : afadePosition),
+                                            child: Text(_timeInfo(_queueComplete, _fadePosition == _emptyDuration ? duration : _fadePosition),
                                                 style: TextStyle(
-                                                    color: (afadePosition == aemptyDuration) && (arate == 100.0)
+                                                    color: (_fadePosition == _emptyDuration) && (_rate == 100.0)
                                                         ? Theme.of(context)
                                                             .scaffoldBackgroundColor
                                                         : redColor,
                                                     fontWeight:
-                                                        (afadePosition == aemptyDuration) &&
-                                                                (arate == 100.0)
+                                                        (_fadePosition == _emptyDuration) &&
+                                                                (_rate == 100.0)
                                                             ? FontWeight.normal
                                                             : FontWeight.bold))))
                                   ]))
@@ -1536,7 +1538,7 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                   backgroundColor: Theme.of(context).primaryColor,
                   appBar: AppBar(
                       leading: IconButton(
-                          onPressed: areturnToPlayer,
+                          onPressed: _returnToPlayer,
                           tooltip: 'Back to player',
                           icon: Icon(Icons.navigate_before,
                               color:
@@ -1568,12 +1570,12 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                                                     color: unfocusedColor,
                                                     fontSize: 13.0))
                                           ]
-                                              .map((Text awidget) => Padding(
+                                              .map((Text _widget) => Padding(
                                                   padding: const EdgeInsets
                                                       .symmetric(vertical: 5.0),
-                                                  child: awidget))
+                                                  child: _widget))
                                               .toList()),
-                                      content: aappInfoLinks(this),
+                                      content: _appInfoLinks(this),
                                       actions: <TextButton>[
                                         TextButton(
                                             onPressed: () =>
@@ -1590,7 +1592,7 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                       ]),
                   body: Column(children: <Widget>[
                     Padding(
-                        padding: aorientation == Orientation.portrait
+                        padding: _orientation == Orientation.portrait
                             ? const EdgeInsets.fromLTRB(40.0, 20.0, 20.0, 40.0)
                             : const EdgeInsets.fromLTRB(40.0, 0, 20.0, 20.0),
                         child: Row(children: <Widget>[
@@ -1612,7 +1614,7 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                             decoration: ShapeDecoration(
                                 color:
                                     Theme.of(context).colorScheme.onSecondary,
-                                shape: const ACubistShapeE()),
+                                shape: const _CubistShapeE()),
                             child: Theme(
                                 data: Theme.of(context).copyWith(
                                     iconTheme: IconThemeData(
@@ -1631,15 +1633,15 @@ class APlayerState extends State<Player> with WidgetsBindingObserver {
                                                 .withOpacity(.55))),
                                 child: Padding(
                                     padding: EdgeInsets.all(
-                                        aorientation == Orientation.portrait ? 40.0 : 20.0),
-                                    child: aspecialFeaturesList(this)))))
+                                        _orientation == Orientation.portrait ? 40.0 : 20.0),
+                                    child: _specialFeaturesList(this)))))
                   ])))
         ]));
   }
 }
 
 /// Picks appropriate icon according to [sourceId] given
-Icon asourceButton(int sourceId, Color darkColor) {
+Icon _sourceButton(int sourceId, Color darkColor) {
   switch (sourceId) {
     case -1:
       return const Icon(Typicons.social_youtube, color: redColor);
@@ -1651,7 +1653,7 @@ Icon asourceButton(int sourceId, Color darkColor) {
 }
 
 /// Shows standardized icon list item
-Row atextButtonLink({required Icon icon, required Text label}) {
+Row _textButtonLink({required Icon icon, required Text label}) {
   return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -1659,11 +1661,11 @@ Row atextButtonLink({required Icon icon, required Text label}) {
 }
 
 /// Shows icon according to current [chosenFolder]
-List<IconButton> ashowContents(APlayerState parent) {
-  List<IconButton> aactionsList = [];
-  if (parent.atempQueueComplete == -1 && parent.atempQueue.isNotEmpty) {
-    aactionsList.add(IconButton(
-        onPressed: parent.apickSong,
+List<IconButton> _showContents(_PlayerState parent) {
+  List<IconButton> _actionsList = [];
+  if (parent._tempQueueComplete == -1 && parent._tempQueue.isNotEmpty) {
+    _actionsList.add(IconButton(
+        onPressed: parent._pickSong,
         tooltip: 'Pick song',
         icon: Icon(Icons.playlist_play_rounded,
             size: 30.0,
@@ -1673,21 +1675,21 @@ List<IconButton> ashowContents(APlayerState parent) {
                 .color!
                 .withOpacity(.55))));
   }
-  return aactionsList;
+  return _actionsList;
 }
 
 /// Renders folder list
-Widget afolderPicker(APlayerState parent) {
+Widget _folderPicker(_PlayerState parent) {
   if (parent.source.id == -1)
     return const Center(child: Text('Not yet supported!'));
 
-  final int abrowseComplete = parent.abrowseComplete;
+  final int _browseComplete = parent._browseComplete;
   final SplayTreeMap<Entry, SplayTreeMap> browse = parent.source.browse;
-  if (abrowseComplete == 0) {
+  if (_browseComplete == 0) {
     return Center(
         child:
             Text('No folders found', style: TextStyle(color: unfocusedColor)));
-  } else if (abrowseComplete == -2) {
+  } else if (_browseComplete == -2) {
     return const Center(child: Text('Unable to retrieve folders!'));
   }
   return ListView.builder(
@@ -1695,73 +1697,73 @@ Widget afolderPicker(APlayerState parent) {
       padding: const EdgeInsets.all(16.0),
       itemCount: browse.length,
       itemBuilder: (BuildContext context, int i) =>
-          afolderTile(parent, browse.entries.elementAt(i)));
+          _folderTile(parent, browse.entries.elementAt(i)));
 }
 
 /// Renders folder list tile
-Widget afolderTile(parent, MapEntry<Entry, SplayTreeMap> entry) {
-  final SplayTreeMap<Entry, SplayTreeMap> achildren =
+Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> entry) {
+  final SplayTreeMap<Entry, SplayTreeMap> _children =
       entry.value as SplayTreeMap<Entry, SplayTreeMap>;
-  final Entry aentry = entry.key;
-  final String aentryPath = aentry.path;
-  if (achildren.isNotEmpty) {
+  final Entry _entry = entry.key;
+  final String _entryPath = _entry.path;
+  if (_children.isNotEmpty) {
     return ExpansionTile(
         /*key: PageStorageKey<MapEntry>(entry),*/
         key: UniqueKey(),
-        initiallyExpanded: parent.chosenFolder.contains(aentryPath),
-        onExpansionChanged: (a) => parent.agetTempQueue(aentryPath),
+        initiallyExpanded: parent.chosenFolder.contains(_entryPath),
+        onExpansionChanged: (_) => parent._getTempQueue(_entryPath),
         childrenPadding: const EdgeInsets.only(left: 16.0),
-        title: Text(aentry.name,
+        title: Text(_entry.name,
             style: TextStyle(
-                color: parent.folder == aentryPath
+                color: parent.folder == _entryPath
                     ? Theme.of(parent.context).primaryColor
                     : Theme.of(parent.context).textTheme.bodyText2!.color)),
-        subtitle: Text(aentry.songs == 1 ? '1 song' : '${aentry.songs} songs',
+        subtitle: Text(_entry.songs == 1 ? '1 song' : '${_entry.songs} songs',
             style: TextStyle(
                 fontSize: 10.0,
-                color: parent.folder == aentryPath
+                color: parent.folder == _entryPath
                     ? Theme.of(parent.context).primaryColor
                     : Theme.of(parent.context)
                         .textTheme
                         .bodyText2!
                         .color!
                         .withOpacity(.55))),
-        children: achildren.entries
+        children: _children.entries
             .map((MapEntry<Entry, SplayTreeMap> entry) =>
-                afolderTile(parent, entry))
+                _folderTile(parent, entry))
             .toList());
   }
   return ListTile(
-      selected: parent.folder == aentryPath,
+      selected: parent.folder == _entryPath,
       onTap: () {
         parent
-          ..agetTempQueue(aentryPath)
-          ..apickSong();
+          .._getTempQueue(_entryPath)
+          .._pickSong();
       },
-      title: aentry.name.isEmpty
+      title: _entry.name.isEmpty
           ? Align(
               alignment: Alignment.centerLeft,
               child: Icon(Icons.home,
-                  color: parent.folder == aentryPath
+                  color: parent.folder == _entryPath
                       ? Theme.of(parent.context).primaryColor
                       : unfocusedColor))
-          : Text(aentry.name),
-      subtitle: Text(aentry.songs == 1 ? '1 song' : '${aentry.songs} songs',
+          : Text(_entry.name),
+      subtitle: Text(_entry.songs == 1 ? '1 song' : '${_entry.songs} songs',
           style: const TextStyle(fontSize: 10.0)));
 }
 
 /// Renders play/pause button
-Widget aplay(APlayerState parent, double elevation, double iconSize,
+Widget _play(_PlayerState parent, double elevation, double iconSize,
     VoidCallback onPressed) {
   return Builder(builder: (BuildContext context) {
-    final ShapeBorder ashape = parent.aorientation == Orientation.portrait
-        ? const ACubistShapeB()
-        : const ACubistShapeD();
-    if (parent.aqueueComplete == 0) {
+    final ShapeBorder _shape = parent._orientation == Orientation.portrait
+        ? const _CubistShapeB()
+        : const _CubistShapeD();
+    if (parent._queueComplete == 0) {
       return FloatingActionButton(
           onPressed: () {},
           tooltip: 'Loading...',
-          shape: ashape,
+          shape: _shape,
           elevation: elevation,
           child: SizedBox(
               width: iconSize - 10.0,
@@ -1769,21 +1771,21 @@ Widget aplay(APlayerState parent, double elevation, double iconSize,
               child: CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(
                       Theme.of(context).colorScheme.onSecondary))));
-    } else if (parent.aqueueComplete == -2) {
+    } else if (parent._queueComplete == -2) {
       return FloatingActionButton(
           onPressed: () {},
           tooltip: 'Unable to retrieve songs!',
-          shape: ashape,
+          shape: _shape,
           elevation: elevation,
           child: Icon(Icons.close, size: iconSize));
     }
     return FloatingActionButton(
         onPressed: onPressed,
-        tooltip: parent.astate == PlayerState.PLAYING ? 'Pause' : 'Play',
-        shape: ashape,
+        tooltip: parent._state == PlayerState.PLAYING ? 'Pause' : 'Play',
+        shape: _shape,
         elevation: elevation,
         child: Icon(
-            parent.astate == PlayerState.PLAYING
+            parent._state == PlayerState.PLAYING
                 ? Icons.pause
                 : Icons.play_arrow,
             size: iconSize));
@@ -1791,7 +1793,7 @@ Widget aplay(APlayerState parent, double elevation, double iconSize,
 }
 
 /// Handles squared player section
-AspectRatio aplayerSquared(APlayerState parent) {
+AspectRatio _playerSquared(_PlayerState parent) {
   return AspectRatio(
       aspectRatio: 8 / 7,
       child: Theme(
@@ -1803,72 +1805,72 @@ AspectRatio aplayerSquared(APlayerState parent) {
           child: Material(
               clipBehavior: Clip.antiAlias,
               elevation: 2.0,
-              shape: parent.aorientation == Orientation.portrait
-                  ? const ACubistShapeA()
-                  : const ACubistShapeC(),
-              child: avolumeCover(parent))));
+              shape: parent._orientation == Orientation.portrait
+                  ? const _CubistShapeA()
+                  : const _CubistShapeC(),
+              child: _volumeCover(parent))));
 }
 
 /// Renders rate selector
-Widget aratePicker(parent) {
+Widget _ratePicker(parent) {
   return Builder(builder: (BuildContext context) {
-    String amessage = 'Set player speed';
-    GestureTapCallback aonTap = () {};
-    final TextStyle atextStyle = TextStyle(
+    String _message = 'Set player speed';
+    GestureTapCallback _onTap = () {};
+    final TextStyle _textStyle = TextStyle(
         fontSize: 30, color: Theme.of(context).textTheme.bodyText2!.color);
-    if (parent.arate != 100.0) {
-      amessage = 'Reset player speed';
-      aonTap = () => parent.onRate(100.0);
+    if (parent._rate != 100.0) {
+      _message = 'Reset player speed';
+      _onTap = () => parent.onRate(100.0);
     }
     return Center(
         child:
             Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
       Tooltip(
-          message: amessage,
+          message: _message,
           child: InkWell(
-              onTap: aonTap,
-              child: Text('${parent.arate.truncate()}', style: atextStyle))),
+              onTap: _onTap,
+              child: Text('${parent._rate.truncate()}', style: _textStyle))),
       Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <IconButton>[
             IconButton(
-                onPressed: () => parent.onRate(parent.arate + 5.0),
+                onPressed: () => parent.onRate(parent._rate + 5.0),
                 tooltip: 'Speed up',
                 icon: const Icon(Icons.keyboard_arrow_up, size: 30)),
             IconButton(
-                onPressed: () => parent.onRate(parent.arate - 5.0),
+                onPressed: () => parent.onRate(parent._rate - 5.0),
                 tooltip: 'Slow down',
                 icon: const Icon(Icons.keyboard_arrow_down, size: 30))
           ]),
-      Text('%', style: atextStyle)
+      Text('%', style: _textStyle)
     ]));
   });
 }
 
 /// Renders album artwork or volume selector
-Widget avolumeCover(parent) {
-  if (parent.ashowVolumePicker == true) {
-    String amessage = 'Hide volume selector';
-    GestureTapCallback aonTap = () {
-      parent.setState(() => parent.ashowVolumePicker = false);
+Widget _volumeCover(parent) {
+  if (parent._showVolumePicker == true) {
+    String _message = 'Hide volume selector';
+    GestureTapCallback _onTap = () {
+      parent.setState(() => parent._showVolumePicker = false);
     };
-    const TextStyle atextStyle = TextStyle(fontSize: 30);
+    const TextStyle _textStyle = TextStyle(fontSize: 30);
     if (parent.volume != 0) {
-      amessage = 'Mute';
-      parent.setState(() => parent.apreMuteVolume = parent.volume);
-      aonTap = () => parent.onVolume(0);
+      _message = 'Mute';
+      parent.setState(() => parent._preMuteVolume = parent.volume);
+      _onTap = () => parent.onVolume(0);
     } else {
-      amessage = 'Unmute';
-      aonTap = () => parent.onVolume(parent.apreMuteVolume);
+      _message = 'Unmute';
+      _onTap = () => parent.onVolume(parent._preMuteVolume);
     }
     return Center(
         child:
             Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
       Tooltip(
-          message: amessage,
+          message: _message,
           child: InkWell(
-              onTap: aonTap,
-              child: Text('${parent.volume}', style: atextStyle))),
+              onTap: _onTap,
+              child: Text('${parent.volume}', style: _textStyle))),
       Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <IconButton>[
@@ -1881,96 +1883,96 @@ Widget avolumeCover(parent) {
                 tooltip: 'Quieter',
                 icon: const Icon(Icons.keyboard_arrow_down, size: 30))
           ]),
-      const Text('%', style: atextStyle)
+      const Text('%', style: _textStyle)
     ]));
   }
-  Widget? acover;
-  if (parent.song != null) acover = parent.agetCover(parent.song);
-  acover ??= const Icon(Icons.music_note, size: 48.0);
+  Widget? _cover;
+  if (parent.song != null) _cover = parent._getCover(parent.song);
+  _cover ??= const Icon(Icons.music_note, size: 48.0);
   return Tooltip(
       message: 'Show volume selector',
       child: InkWell(
           onTap: () {
-            parent.setState(() => parent.ashowVolumePicker = true);
+            parent.setState(() => parent._showVolumePicker = true);
           },
-          child: acover));
+          child: _cover));
 }
 
 /// Renders prelude length selector
-Widget apreludePicker(parent) {
+Widget _preludePicker(parent) {
   return Builder(builder: (BuildContext context) {
-    String amessage = 'Reset intro length';
-    if (parent.aintroLength == 0) amessage = 'Set intro length';
-    final TextStyle atextStyle = TextStyle(
+    String _message = 'Reset intro length';
+    if (parent._introLength == 0) _message = 'Set intro length';
+    final TextStyle _textStyle = TextStyle(
         fontSize: 30, color: Theme.of(context).textTheme.bodyText2!.color);
     return Center(
         child:
             Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
       Tooltip(
-          message: amessage,
+          message: _message,
           child: InkWell(
               onTap: () {
                 parent.setState(() =>
-                    parent.aintroLength = parent.aintroLength == 0 ? 10 : 0);
+                    parent._introLength = parent._introLength == 0 ? 10 : 0);
               },
-              child: Text('${parent.aintroLength}', style: atextStyle))),
+              child: Text('${parent._introLength}', style: _textStyle))),
       Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <IconButton>[
             IconButton(
                 onPressed: () {
-                  parent.setState(() => parent.aintroLength += 5);
+                  parent.setState(() => parent._introLength += 5);
                 },
                 tooltip: 'Add more',
                 icon: const Icon(Icons.keyboard_arrow_up, size: 30)),
             IconButton(
                 onPressed: () {
-                  if (parent.aintroLength >= 5) {
-                    parent.setState(() => parent.aintroLength -= 5);
+                  if (parent._introLength >= 5) {
+                    parent.setState(() => parent._introLength -= 5);
                   }
                 },
                 tooltip: 'Shorten',
                 icon: const Icon(Icons.keyboard_arrow_down, size: 30))
           ]),
-      Text('s', style: atextStyle)
+      Text('s', style: _textStyle)
     ]));
   });
 }
 
 /// Renders fade position selector
-Widget afadePositionPicker(parent) {
+Widget _fadePositionPicker(parent) {
   return Builder(builder: (BuildContext context) {
-    String amessage = 'Reset fade position';
-    if (parent.afadePosition == aemptyDuration) amessage = 'Set fade position';
-    final TextStyle atextStyle = TextStyle(
+    String _message = 'Reset fade position';
+    if (parent._fadePosition == _emptyDuration) _message = 'Set fade position';
+    final TextStyle _textStyle = TextStyle(
         fontSize: 30, color: Theme.of(context).textTheme.bodyText2!.color);
     return Center(
         child:
             Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
       Tooltip(
-          message: amessage,
+          message: _message,
           child: InkWell(
               onTap: () {
-                parent.setState(() => parent.afadePosition =
-                    parent.afadePosition == aemptyDuration
+                parent.setState(() => parent._fadePosition =
+                    parent._fadePosition == _emptyDuration
                         ? const Duration(seconds: 90)
-                        : aemptyDuration);
+                        : _emptyDuration);
               },
               child: Text(
-                  '${parent.afadePosition.inMinutes}:${zero(parent.afadePosition.inSeconds % 60)}',
-                  style: atextStyle))),
+                  '${parent._fadePosition.inMinutes}:${zero(parent._fadePosition.inSeconds % 60)}',
+                  style: _textStyle))),
       Column(mainAxisAlignment: MainAxisAlignment.center, children: <
           IconButton>[
         IconButton(
             onPressed: () {
-              parent.setState(() => parent.afadePosition += adefaultDuration);
+              parent.setState(() => parent._fadePosition += _defaultDuration);
             },
             tooltip: 'Lengthen',
             icon: const Icon(Icons.keyboard_arrow_up, size: 30)),
         IconButton(
             onPressed: () {
-              if (parent.afadePosition >= adefaultDuration) {
-                parent.setState(() => parent.afadePosition -= adefaultDuration);
+              if (parent._fadePosition >= _defaultDuration) {
+                parent.setState(() => parent._fadePosition -= _defaultDuration);
               }
             },
             tooltip: 'Shorten',
@@ -1981,46 +1983,46 @@ Widget afadePositionPicker(parent) {
 }
 
 /// Handles oblong player section
-Widget aplayerOblong(parent) {
+Widget _playerOblong(parent) {
   return Builder(builder: (BuildContext context) {
     /*return Tooltip(
         message: '''
 Drag position horizontally to change it
 Drag curve vertically to change speed
 Double tap to add intro''',
-        showDuration: adefaultDuration,
+        showDuration: _defaultDuration,
         child: GestureDetector(*/
     return GestureDetector(
         onHorizontalDragStart: (DragStartDetails details) {
           parent.onPositionDragStart(
               context,
               details,
-              abad.contains(parent.aqueueComplete)
-                  ? adefaultDuration
+              _bad.contains(parent._queueComplete)
+                  ? _defaultDuration
                   : parent.duration);
         },
         onHorizontalDragUpdate: (DragUpdateDetails details) {
           parent.onPositionDragUpdate(
               context,
               details,
-              abad.contains(parent.aqueueComplete)
-                  ? adefaultDuration
+              _bad.contains(parent._queueComplete)
+                  ? _defaultDuration
                   : parent.duration);
         },
         onHorizontalDragEnd: (DragEndDetails details) {
           parent.onPositionDragEnd(
               context,
               details,
-              abad.contains(parent.aqueueComplete)
-                  ? adefaultDuration
+              _bad.contains(parent._queueComplete)
+                  ? _defaultDuration
                   : parent.duration);
         },
         onTapUp: (TapUpDetails details) {
           parent.onPositionTapUp(
               context,
               details,
-              abad.contains(parent.aqueueComplete)
-                  ? adefaultDuration
+              _bad.contains(parent._queueComplete)
+                  ? _defaultDuration
                   : parent.duration);
         },
         onVerticalDragStart: (DragStartDetails details) =>
@@ -2031,82 +2033,82 @@ Double tap to add intro''',
         child: CustomPaint(
             size: Size.infinite,
             painter: CubistWave(
-                abad.contains(parent.aqueueComplete)
+                _bad.contains(parent._queueComplete)
                     ? 'zapaz'
                     : parent.song!.title,
-                abad.contains(parent.aqueueComplete)
-                    ? adefaultDuration
+                _bad.contains(parent._queueComplete)
+                    ? _defaultDuration
                     : parent.duration,
-                parent.aposition,
+                parent._position,
                 parent.volume,
                 Theme.of(context).primaryColor,
-                parent.afadePosition)));
+                parent._fadePosition)));
   });
 }
 
 /// Handles control player section
-Widget aplayerControl(APlayerState parent) {
+Widget _playerControl(_PlayerState parent) {
   return Builder(builder: (BuildContext context) {
-    if (parent.aorientation == Orientation.portrait) {
+    if (parent._orientation == Orientation.portrait) {
       return Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
             Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Text>[
-                  Text(atimeInfo(parent.aqueueComplete, parent.aposition),
+                  Text(_timeInfo(parent._queueComplete, parent._position),
                       style: TextStyle(
                           color: Theme.of(context).textTheme.bodyText2!.color,
                           fontWeight: FontWeight.bold)),
                   Text(
-                      atimeInfo(
-                          parent.aqueueComplete,
-                          parent.afadePosition == aemptyDuration
+                      _timeInfo(
+                          parent._queueComplete,
+                          parent._fadePosition == _emptyDuration
                               ? parent.duration
-                              : parent.afadePosition),
+                              : parent._fadePosition),
                       style: TextStyle(
-                          color: (parent.afadePosition == aemptyDuration) &&
-                                  (parent.arate == 100.0)
+                          color: (parent._fadePosition == _emptyDuration) &&
+                                  (parent._rate == 100.0)
                               ? Theme.of(context).textTheme.bodyText2!.color
                               : redColor,
                           fontWeight:
-                              (parent.afadePosition == aemptyDuration) &&
-                                      (parent.arate == 100.0)
+                              (parent._fadePosition == _emptyDuration) &&
+                                      (parent._rate == 100.0)
                                   ? FontWeight.normal
                                   : FontWeight.bold))
                 ]),
-            atitle(parent),
-            aartist(parent),
-            amainControl(parent),
-            aminorControl(parent)
+            _title(parent),
+            _artist(parent),
+            _mainControl(parent),
+            _minorControl(parent)
           ]);
     }
     return Column(children: <Widget>[
-      amainControl(parent),
-      aminorControl(parent),
+      _mainControl(parent),
+      _minorControl(parent),
       Expanded(
           child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: <Widget>[aartist(parent), atitle(parent)]))
+              children: <Widget>[_artist(parent), _title(parent)]))
     ]);
   });
 }
 
 /// Renders current song title
-Widget atitle(APlayerState parent) {
+Widget _title(_PlayerState parent) {
   return Builder(builder: (BuildContext context) {
-    if (parent.aqueueComplete == 0) {
+    if (parent._queueComplete == 0) {
       return Text('Empty queue',
           style: TextStyle(
               color: Theme.of(context).textTheme.bodyText2!.color,
               fontSize: 15.0));
-    } else if (parent.aqueueComplete == -2) {
+    } else if (parent._queueComplete == -2) {
       return Text('Unable to retrieve songs!',
           style: TextStyle(
               color: Theme.of(context).textTheme.bodyText2!.color,
               fontSize: 15.0));
     }
-    return Text(parent.song!.title.replaceAll('a', ' ').toUpperCase(),
+    return Text(parent.song!.title.replaceAll('_', ' ').toUpperCase(),
         overflow: TextOverflow.ellipsis,
         maxLines: 2,
         textAlign: TextAlign.center,
@@ -2114,16 +2116,16 @@ Widget atitle(APlayerState parent) {
             color: Theme.of(context).textTheme.bodyText2!.color,
             fontSize: parent.song!.artist == '<unknown>' ? 12.0 : 13.0,
             letterSpacing: 6.0,
-            fontWeight: parent.aorientation == Orientation.portrait
+            fontWeight: parent._orientation == Orientation.portrait
                 ? FontWeight.bold
                 : FontWeight.w800));
   });
 }
 
 /// Renders current song artist
-Widget aartist(APlayerState parent) {
+Widget _artist(_PlayerState parent) {
   return Builder(builder: (BuildContext context) {
-    if (abad.contains(parent.aqueueComplete) ||
+    if (_bad.contains(parent._queueComplete) ||
         parent.song!.artist == '<unknown>') return const SizedBox.shrink();
 
     return Text(parent.song!.artist!.toUpperCase(),
@@ -2134,14 +2136,14 @@ Widget aartist(APlayerState parent) {
             fontSize: 9.0,
             height: 2.0,
             letterSpacing: 6.0,
-            fontWeight: parent.aorientation == Orientation.portrait
+            fontWeight: parent._orientation == Orientation.portrait
                 ? FontWeight.normal
                 : FontWeight.w500));
   });
 }
 
 /// Renders main player control buttons
-Row amainControl(APlayerState parent) {
+Row _mainControl(_PlayerState parent) {
   return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: <Widget>[
@@ -2149,7 +2151,7 @@ Row amainControl(APlayerState parent) {
             onPressed: () => parent.onChange(parent.index - 1),
             tooltip: 'Previous',
             icon: const Icon(Icons.skip_previous, size: 30.0)),
-        aplay(parent, 3.0, 30.0, parent.achangeState),
+        _play(parent, 3.0, 30.0, parent._changeState),
         IconButton(
             onPressed: () => parent.onChange(parent.index + 1),
             tooltip: 'Next',
@@ -2158,7 +2160,7 @@ Row amainControl(APlayerState parent) {
 }
 
 /// Renders minor player control buttons
-Widget aminorControl(APlayerState parent) {
+Widget _minorControl(_PlayerState parent) {
   return Builder(builder: (BuildContext context) {
     return Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -2195,23 +2197,23 @@ Widget aminorControl(APlayerState parent) {
                 child: IconButton(
                     onPressed: () => parent.onSet(context as StatelessElement),
                     tooltip: 'Set (one, all, or random songs)',
-                    icon: Icon(astatus(parent.aset), size: 20.0)))
+                    icon: Icon(_status(parent._set), size: 20.0)))
           ]),
           Row(children: <IconButton>[
             IconButton(
                 onPressed: () => parent.onMode(context as StatelessElement),
                 tooltip: 'Mode (once or in a loop)',
                 icon: Icon(
-                    parent.amode == 'loop' ? Icons.repeat : Icons.trending_flat,
+                    parent._mode == 'loop' ? Icons.repeat : Icons.trending_flat,
                     size: 20.0))
           ])
         ]);
   });
 }
 
-/// Picks appropriate [aset] icon
-IconData astatus(String aset) {
-  switch (aset) {
+/// Picks appropriate [_set] icon
+IconData _status(String _set) {
+  switch (_set) {
     case 'all':
       return Icons.album;
     case '1':
@@ -2221,88 +2223,88 @@ IconData astatus(String aset) {
   }
 }
 
-String atimeInfo(int aqueueComplete, Duration atime) {
-  return abad.contains(aqueueComplete)
+String _timeInfo(int _queueComplete, Duration _time) {
+  return _bad.contains(_queueComplete)
       ? '0:00'
-      : '${atime.inMinutes}:${zero(atime.inSeconds % 60)}';
+      : '${_time.inMinutes}:${zero(_time.inSeconds % 60)}';
 }
 
 /// Renders current folder's ancestors
-Tooltip anavigation(APlayerState parent) {
-  final List<Widget> arow = [];
+Tooltip _navigation(_PlayerState parent) {
+  final List<Widget> _row = [];
 
-  final String aroot = parent.source.root;
-  String apath = parent.chosenFolder;
-  if (apath == aroot) apath += '/${parent.source.name} home';
-  final Iterable<int> relatives = parent.getRelatives(aroot, apath);
+  final String _root = parent.source.root;
+  String _path = parent.chosenFolder;
+  if (_path == _root) _path += '/${parent.source.name} home';
+  final Iterable<int> relatives = parent.getRelatives(_root, _path);
   int j = 0;
   final int length = relatives.length;
-  String atitle;
+  String _title;
   int start = 0;
   while (j < length) {
-    start = j - 1 < 0 ? aroot.length : relatives.elementAt(j - 1);
-    atitle = apath.substring(start + 1, relatives.elementAt(j));
+    start = j - 1 < 0 ? _root.length : relatives.elementAt(j - 1);
+    _title = _path.substring(start + 1, relatives.elementAt(j));
     if (j + 1 == length) {
-      arow.add(InkWell(
-          onTap: parent.apickFolder,
-          child: Text(atitle,
+      _row.add(InkWell(
+          onTap: parent._pickFolder,
+          child: Text(_title,
               style: TextStyle(color: Theme.of(parent.context).primaryColor))));
     } else {
-      final int aend = relatives.elementAt(j);
-      arow
+      final int _end = relatives.elementAt(j);
+      _row
         ..add(InkWell(
-            onTap: () => parent.onFolder(apath.substring(0, aend)),
-            child: Text(atitle)))
+            onTap: () => parent.onFolder(_path.substring(0, _end)),
+            child: Text(_title)))
         ..add(Text('>', style: TextStyle(color: unfocusedColor)));
     }
     j++;
   }
   return Tooltip(
       message: 'Change folder',
-      child: Wrap(spacing: 8.0, runSpacing: 6.0, children: arow));
+      child: Wrap(spacing: 8.0, runSpacing: 6.0, children: _row));
 }
 
 /// Renders queue list
-Widget asongPicker(parent) {
+Widget _songPicker(parent) {
   if (parent.source.id == -1)
     return const Center(child: Text('Not yet supported!'));
 
-  late List<SongModel> asongList;
+  late List<SongModel> _songList;
   if (parent.chosenFolder != parent.folder) {
-    if (parent.atempQueueComplete == 0)
+    if (parent._tempQueueComplete == 0)
       return Center(
           child: Text('Loading...', style: TextStyle(color: unfocusedColor)));
-    if (parent.atempQueueComplete == -1 && parent.atempQueue.isEmpty)
+    if (parent._tempQueueComplete == -1 && parent._tempQueue.isEmpty)
       return Center(
           child: Text('No songs in folder',
               style: TextStyle(color: unfocusedColor)));
-    asongList = parent.atempQueue;
+    _songList = parent._tempQueue;
   } else {
-    if (parent.aqueueComplete == 0)
+    if (parent._queueComplete == 0)
       return Center(
           child: Text('No songs in folder',
               style: TextStyle(color: unfocusedColor)));
-    if (parent.aqueueComplete == -2)
+    if (parent._queueComplete == -2)
       return const Center(child: Text('Unable to retrieve songs!'));
-    asongList = parent.queue;
+    _songList = parent.queue;
   }
   return ListView.builder(
-      key: PageStorageKey<int>(asongList.hashCode),
-      itemCount: asongList.length,
+      key: PageStorageKey<int>(_songList.hashCode),
+      itemCount: _songList.length,
       itemBuilder: (BuildContext context, int i) {
-        final SongModel asong = asongList[i];
+        final SongModel _song = _songList[i];
         return ListTile(
-            selected: parent.song == asong,
+            selected: parent.song == _song,
             onTap: () {
               if (parent.chosenFolder != parent.folder) {
                 parent
                   ..onFolder(parent.chosenFolder)
-                  ..setState(() => parent.index = parent.queue.indexOf(asong))
+                  ..setState(() => parent.index = parent.queue.indexOf(_song))
                   ..onPlay()
-                  ..areturnToPlayer();
+                  .._returnToPlayer();
               } else {
                 if (parent.index == i) {
-                  parent.achangeState();
+                  parent._changeState();
                 } else {
                   parent
                     ..onStop()
@@ -2314,26 +2316,26 @@ Widget asongPicker(parent) {
             leading: SizedBox(
                 height: 35.0,
                 child: AspectRatio(
-                    aspectRatio: 8 / 7, child: alistCover(parent, asong))),
-            title: Text(asong.title.replaceAll('a', ' '),
+                    aspectRatio: 8 / 7, child: _listCover(parent, _song))),
+            title: Text(_song.title.replaceAll('_', ' '),
                 overflow: TextOverflow.ellipsis, maxLines: 1),
             subtitle: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
                   Expanded(
                       child: Text(
-                          asong.artist == '<unknown>' ? '' : asong.artist!,
+                          _song.artist == '<unknown>' ? '' : _song.artist!,
                           style: const TextStyle(fontSize: 11.0),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1)),
-                  Text(atimeInfo(
+                  Text(_timeInfo(
                       parent.chosenFolder != parent.folder
-                          ? parent.atempQueueComplete
-                          : parent.aqueueComplete,
-                      Duration(milliseconds: asong.duration!)))
+                          ? parent._tempQueueComplete
+                          : parent._queueComplete,
+                      Duration(milliseconds: _song.duration!)))
                 ]),
             trailing: Icon(
-                (parent.song == asong && parent.astate == PlayerState.PLAYING)
+                (parent.song == _song && parent._state == PlayerState.PLAYING)
                     ? Icons.pause
                     : Icons.play_arrow,
                 size: 30.0));
@@ -2341,22 +2343,22 @@ Widget asongPicker(parent) {
 }
 
 /// Renders album artworks for queue list
-Widget alistCover(APlayerState parent, SongModel asong) {
-  final Image? acover = parent.agetCover(asong);
-  if (acover != null) {
+Widget _listCover(_PlayerState parent, SongModel _song) {
+  final Image? _cover = parent._getCover(_song);
+  if (_cover != null) {
     return Material(
         clipBehavior: Clip.antiAlias,
-        shape: parent.aorientation == Orientation.portrait
-            ? const ACubistShapeA()
-            : const ACubistShapeC(),
-        child: acover);
+        shape: parent._orientation == Orientation.portrait
+            ? const _CubistShapeA()
+            : const _CubistShapeC(),
+        child: _cover);
   }
   return const Icon(Icons.music_note);
 }
 
 /// List links in app info dialog
-Wrap aappInfoLinks(APlayerState parent) {
-  TextButton awrapTile(
+Wrap _appInfoLinks(_PlayerState parent) {
+  TextButton _wrapTile(
       {required VoidCallback onPressed,
       required IconData icon,
       required String label}) {
@@ -2373,7 +2375,7 @@ Wrap aappInfoLinks(APlayerState parent) {
 
   return Wrap(direction: Axis.vertical, runSpacing: 10.0, children: <
       TextButton>[
-    awrapTile(
+    _wrapTile(
         onPressed: () => showMarkdownPage(
             context: parent.context,
             applicationName: 'Changelog',
@@ -2381,41 +2383,41 @@ Wrap aappInfoLinks(APlayerState parent) {
             filename: 'CHANGELOG.md'),
         icon: Icons.rule,
         label: 'Changelog'),
-    awrapTile(
+    _wrapTile(
         onPressed: () => launchUrl(
             Uri.parse('https://github.com/dvorapa/stepslow/issues/new/choose')),
         icon: Icons.report_outlined,
         label: 'Report issue'),
-    awrapTile(
+    _wrapTile(
         onPressed: () => showDialog(
             context: parent.context,
             builder: (BuildContext context) {
               return SingleChoiceDialog<String>(
                   isDividerEnabled: true,
                   items: const <String>['Paypal', 'Revolut'],
-                  onSelected: (String amethod) => launchUrl(
-                      Uri.parse('https://${amethod.toLowerCase()}.me/dvorapa')),
-                  itemBuilder: (String amethod) {
-                    return atextButtonLink(
-                        icon: Icon(amethod == 'Paypal'
+                  onSelected: (String _method) => launchUrl(
+                      Uri.parse('https://${_method.toLowerCase()}.me/dvorapa')),
+                  itemBuilder: (String _method) {
+                    return _textButtonLink(
+                        icon: Icon(_method == 'Paypal'
                             ? CupertinoIcons.money_pound_circle
                             : CupertinoIcons.bitcoin_circle),
-                        label: Text(amethod));
+                        label: Text(_method));
                   });
             }),
         icon: Icons.favorite_outline,
         label: 'Sponsor'),
-    awrapTile(
+    _wrapTile(
         onPressed: () => launchUrl(Uri.parse('https://www.dvorapa.cz#kontakt')),
         icon: Icons.alternate_email,
         label: 'Contact'),
-    awrapTile(
+    _wrapTile(
         onPressed: () => showLicensePage(
             context: parent.context,
             applicationName: 'GNU General Public License v3.0'),
         icon: Icons.description_outlined,
         label: 'Licenses'),
-    awrapTile(
+    _wrapTile(
         onPressed: () =>
             launchUrl(Uri.parse('https://github.com/dvorapa/stepslow')),
         icon: Icons.code,
@@ -2424,25 +2426,25 @@ Wrap aappInfoLinks(APlayerState parent) {
 }
 
 /// List special features
-Wrap aspecialFeaturesList(parent) {
-  FractionallySizedBox acardRow({required List<Widget> children}) {
+Wrap _specialFeaturesList(parent) {
+  FractionallySizedBox _cardRow({required List<Widget> children}) {
     return FractionallySizedBox(
-        widthFactor: parent.aorientation == Orientation.portrait ? 1.0 : .5,
+        widthFactor: parent._orientation == Orientation.portrait ? 1.0 : .5,
         child: Padding(
             padding: const EdgeInsets.all(1.0),
             child: Card(
                 elevation: 2.0,
-                shape: const ACubistShapeF(),
+                shape: const _CubistShapeF(),
                 child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: children))));
   }
 
   return Wrap(children: <FractionallySizedBox>[
-    acardRow(children: <Widget>[const Text('Speed'), aratePicker(parent)]),
-    acardRow(children: <Widget>[const Text('Intro'), apreludePicker(parent)]),
-    acardRow(
-        children: <Widget>[const Text('Fade at'), afadePositionPicker(parent)])
+    _cardRow(children: <Widget>[const Text('Speed'), _ratePicker(parent)]),
+    _cardRow(children: <Widget>[const Text('Intro'), _preludePicker(parent)]),
+    _cardRow(
+        children: <Widget>[const Text('Fade at'), _fadePositionPicker(parent)])
   ]);
 }
 
@@ -2472,76 +2474,76 @@ class CubistWave extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Map<int, double> awaveList = wave(title).asMap();
-    final int alen = awaveList.length - 1;
-    if (duration == aemptyDuration) {
-      duration = adefaultDuration;
+    final Map<int, double> _waveList = wave(title).asMap();
+    final int _len = _waveList.length - 1;
+    if (duration == _emptyDuration) {
+      duration = _defaultDuration;
     } else if (duration.inSeconds == 0) {
       duration = const Duration(seconds: 1);
     }
 
-    final Path asongPath = Path()..moveTo(0, size.height);
-    awaveList.forEach((int index, double value) {
-      asongPath.lineTo((size.width * index) / alen,
-          size.height - aheightFactor(size.height, volume, value));
+    final Path _songPath = Path()..moveTo(0, size.height);
+    _waveList.forEach((int index, double value) {
+      _songPath.lineTo((size.width * index) / _len,
+          size.height - _heightFactor(size.height, volume, value));
     });
-    asongPath
+    _songPath
       ..lineTo(size.width, size.height)
       ..close();
-    canvas.drawPath(asongPath, Paint()..color = color.withOpacity(.7));
+    canvas.drawPath(_songPath, Paint()..color = color.withOpacity(.7));
 
-    final Path aindicatorPath = Path();
+    final Path _indicatorPath = Path();
     final double percentage = position.inSeconds / duration.inSeconds;
-    final double pos = alen * percentage;
+    final double pos = _len * percentage;
     final int ceil = pos.ceil();
-    aindicatorPath.moveTo(0, size.height);
-    awaveList.forEach((int index, double value) {
+    _indicatorPath.moveTo(0, size.height);
+    _waveList.forEach((int index, double value) {
       if (index < ceil) {
-        aindicatorPath.lineTo((size.width * index) / alen,
-            size.height - aheightFactor(size.height, volume, value));
+        _indicatorPath.lineTo((size.width * index) / _len,
+            size.height - _heightFactor(size.height, volume, value));
       } else if (index == ceil) {
         final double previous =
-            index == 0 ? size.height : awaveList[index - 1]!;
+            index == 0 ? size.height : _waveList[index - 1]!;
         final double diff = value - previous;
         final double advance = 1 - (ceil - pos);
-        aindicatorPath.lineTo(
+        _indicatorPath.lineTo(
             size.width * percentage,
             size.height -
-                aheightFactor(
+                _heightFactor(
                     size.height, volume, previous + (diff * advance)));
       }
     });
-    aindicatorPath
+    _indicatorPath
       ..lineTo(size.width * percentage, size.height)
       ..close();
-    canvas.drawPath(aindicatorPath, Paint()..color = color);
+    canvas.drawPath(_indicatorPath, Paint()..color = color);
 
-    if (fadePosition != aemptyDuration && fadePosition < duration) {
-      final Path afadePath = Path();
+    if (fadePosition != _emptyDuration && fadePosition < duration) {
+      final Path _fadePath = Path();
       final double fadePercentage = fadePosition.inSeconds / duration.inSeconds;
-      final double fade = alen * fadePercentage;
+      final double fade = _len * fadePercentage;
       final int floor = fade.floor();
-      afadePath.moveTo(size.width * fadePercentage, size.height);
-      awaveList.forEach((int index, double value) {
+      _fadePath.moveTo(size.width * fadePercentage, size.height);
+      _waveList.forEach((int index, double value) {
         if (index == floor) {
-          final double next = index == (awaveList.length - 1)
+          final double next = index == (_waveList.length - 1)
               ? size.height
-              : awaveList[index + 1]!;
+              : _waveList[index + 1]!;
           final double diff = next - value;
           final double advance = 1 - (fade - floor);
-          afadePath.lineTo(
+          _fadePath.lineTo(
               size.width * fadePercentage,
               size.height -
-                  aheightFactor(size.height, volume, next - (diff * advance)));
+                  _heightFactor(size.height, volume, next - (diff * advance)));
         } else if (index > floor) {
-          afadePath.lineTo((size.width * index) / alen,
-              size.height - aheightFactor(size.height, volume, value));
+          _fadePath.lineTo((size.width * index) / _len,
+              size.height - _heightFactor(size.height, volume, value));
         }
       });
-      afadePath
+      _fadePath
         ..lineTo(size.width, size.height)
         ..close();
-      canvas.drawPath(afadePath, Paint()..color = redColor.withOpacity(.7));
+      canvas.drawPath(_fadePath, Paint()..color = redColor.withOpacity(.7));
     }
   }
 
@@ -2551,25 +2553,25 @@ class CubistWave extends CustomPainter {
 
 /// Generates wave data for slider
 List<double> wave(String s) {
-  List<double> acodes = [];
-  s.toLowerCase().codeUnits.forEach((final int acode) {
-    if (acode >= 48) acodes.add(acode.toDouble());
+  List<double> _codes = [];
+  s.toLowerCase().codeUnits.forEach((final int _code) {
+    if (_code >= 48) _codes.add(_code.toDouble());
   });
 
-  final double minCode = acodes.reduce(min);
-  final double maxCode = acodes.reduce(max);
+  final double minCode = _codes.reduce(min);
+  final double maxCode = _codes.reduce(max);
 
-  acodes.asMap().forEach((int index, double value) {
+  _codes.asMap().forEach((int index, double value) {
     value = value - minCode;
     final double fraction = (100.0 / (maxCode - minCode)) * value;
-    acodes[index] = fraction.roundToDouble();
+    _codes[index] = fraction.roundToDouble();
   });
 
-  final int acodesCount = acodes.length;
-  if (acodesCount > 10)
-    acodes = acodes.sublist(0, 5) + acodes.sublist(acodesCount - 5);
+  final int _codesCount = _codes.length;
+  if (_codesCount > 10)
+    _codes = _codes.sublist(0, 5) + _codes.sublist(_codesCount - 5);
 
-  return acodes;
+  return _codes;
 }
 
 /// Cubist shape for portrait album artworks.
@@ -2577,8 +2579,8 @@ List<double> wave(String s) {
 /// \    /
 /// /    \
 /// ------
-class ACubistShapeA extends ShapeBorder {
-  const ACubistShapeA();
+class _CubistShapeA extends ShapeBorder {
+  const _CubistShapeA();
 
   @override
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
@@ -2610,8 +2612,8 @@ class ACubistShapeA extends ShapeBorder {
 ///   ----
 ///  /  /
 /// ----
-class ACubistShapeB extends ShapeBorder {
-  const ACubistShapeB();
+class _CubistShapeB extends ShapeBorder {
+  const _CubistShapeB();
 
   @override
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
@@ -2642,8 +2644,8 @@ class ACubistShapeB extends ShapeBorder {
 /// /      \
 /// \       \
 ///  \______/
-class ACubistShapeC extends ShapeBorder {
-  const ACubistShapeC();
+class _CubistShapeC extends ShapeBorder {
+  const _CubistShapeC();
 
   @override
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
@@ -2679,8 +2681,8 @@ class ACubistShapeC extends ShapeBorder {
 /// ____
 /// \  /
 ///  \/
-class ACubistShapeD extends ShapeBorder {
-  const ACubistShapeD();
+class _CubistShapeD extends ShapeBorder {
+  const _CubistShapeD();
 
   @override
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
@@ -2709,8 +2711,8 @@ class ACubistShapeD extends ShapeBorder {
 ///  -----
 /// /    |
 /// |____|
-class ACubistShapeE extends ShapeBorder {
-  const ACubistShapeE();
+class _CubistShapeE extends ShapeBorder {
+  const _CubistShapeE();
 
   @override
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
@@ -2742,8 +2744,8 @@ class ACubistShapeE extends ShapeBorder {
 /// \   /
 /// /   \
 /// --^--
-class ACubistShapeF extends ShapeBorder {
-  const ACubistShapeF();
+class _CubistShapeF extends ShapeBorder {
+  const _CubistShapeF();
 
   @override
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;

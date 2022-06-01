@@ -3,7 +3,7 @@
 // ignore_for_file: public_member_api_docs, constant_identifier_names, avoid_classes_with_only_static_members
 
 class Pubspec {
-  static final buildDate = DateTime.utc(2022, 5, 31, 22, 3, 13);
+  static final buildDate = DateTime.utc(2022, 6, 1, 5, 52, 9);
 
   static const name = 'stepslow';
 
@@ -11,9 +11,9 @@ class Pubspec {
 
   static const publish_to = 'none';
 
-  static const versionFull = '0.2.2+4';
+  static const versionFull = '0.2.3+5';
 
-  static const version = '0.2.2';
+  static const version = '0.2.3';
 
   static const versionSmall = '0.2';
 
@@ -21,9 +21,9 @@ class Pubspec {
 
   static const versionMinor = 2;
 
-  static const versionPatch = 2;
+  static const versionPatch = 3;
 
-  static const versionBuild = 4;
+  static const versionBuild = 5;
 
   static const versionPreRelease = '';
 
