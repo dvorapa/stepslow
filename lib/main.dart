@@ -50,6 +50,9 @@ Duration _animationDuration = const Duration(milliseconds: 300);
 /// Default duration for animations
 const Curve _animationCurve = Curves.ease;
 
+/// Default app title
+const String appTitle = 'Stepslow music player';
+
 /// Available sources
 final List<Source> _sources = [Source('/storage/emulated/0', 0)];
 
@@ -77,9 +80,9 @@ String zero(int n) {
 }
 
 /// Calculates height factor for wave
-double _heightFactor(double _height, int _volume, double _value) =>
-    _height *
-    (.81 - .56 * (1.0 - _volume / 100.0) - .25 * (1.0 - _value / 100.0));
+double _heightFactor(double height, int avolume, double value) =>
+    height *
+    (.81 - .56 * (1.0 - avolume / 100.0) - .25 * (1.0 - value / 100.0));
 
 /// Filesystem entity representing a song or a folder.
 class Entry implements Comparable<Entry> {
@@ -110,7 +113,7 @@ class Entry implements Comparable<Entry> {
 
   /// Entry name
   String get name {
-    if (_sources.any((Source _source) => _source.root == path)) return '';
+    if (_sources.any((Source asource) => asource.root == path)) return '';
 
     return path.split('/').lastWhere((String e) => e != '');
   }
@@ -218,7 +221,7 @@ class Stepslow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: 'Stepslow music player',
+        title: appTitle,
         theme: ThemeData(
             primaryColor: interactiveColor,
             appBarTheme: AppBarTheme(
@@ -245,20 +248,20 @@ class Player extends StatefulWidget {
   final String title;
 
   @override
-  _PlayerState createState() => _PlayerState();
+  State<Player> createState() => _PlayerState();
 }
 
 /// State handler.
 class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Audio player entity
-  final AudioPlayer audioPlayer = AudioPlayer();
+  final AudioPlayer audioPlayer = AudioPlayer(playerId: appTitle);
 
   /// Android intent channel entity
   final MethodChannel bridge =
       const MethodChannel('cz.dvorapa.stepslow/sharedPath');
 
   /// Current playback state
-  PlayerState _state = PlayerState.STOPPED;
+  PlayerState _state = PlayerState.stopped;
 
   /// Current playback rate
   double _rate = 100.0;
@@ -270,7 +273,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   int _preCoverVolume = 50;
 
   /// Device volume before mute
-  int _preMuteVolume = 50;
+  int preMuteVolume = 50;
 
   /// Device volume before fade
   int _preFadeVolume = 0;
@@ -279,7 +282,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   Duration _position = _emptyDuration;
 
   /// Position to switch songs
-  Duration _fadePosition = _emptyDuration;
+  Duration fadePosition = _emptyDuration;
 
   /// Playback song from last run
   String? lastSongPath;
@@ -311,7 +314,8 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   List<int> pageHistory = [2];
 
   /// [PageView] controller
-  final PageController _controller = PageController(initialPage: 2);
+  final PageController _controller =
+      PageController(initialPage: 2, keepPage: false);
 
   /// Current playback source
   Source source = _sources[0];
@@ -378,61 +382,61 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   /// Initializes [song] playback
   void onPlay({bool quiet = false}) {
-    if (_state == PlayerState.PAUSED || quiet) {
+    if (_state == PlayerState.paused || quiet) {
       audioPlayer.resume();
     } else {
       setState(() => song = queue[index]);
-      final String _songPath = song!.data;
+      final String songPath = song!.data;
       if (_introLength != 0) {
         onStop(quiet: true);
-        audioPlayer.setUrl(_songPath, isLocal: true);
+        audioPlayer.setSourceDeviceFile(songPath);
       }
-      final List<int> _range = [for (int i = _introLength + 1; i > 0; i--) i];
+      final List<int> range = [for (int i = _introLength + 1; i > 0; i--) i];
       _ttsTimer?.cancel();
-      if (_range.isEmpty) {
-        audioPlayer.play(_songPath, isLocal: true);
+      if (range.isEmpty) {
+        audioPlayer.play(DeviceFileSource(songPath));
       } else {
         _ttsTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-          if (_range.length > 1) {
+          if (range.length > 1) {
             FlutterBeep.playSysSound(Platform.isAndroid ? 24 : 1052);
-            _range.removeAt(0);
-          } else if (_range.length == 1) {
-            _range.removeAt(0);
+            range.removeAt(0);
+          } else if (range.length == 1) {
+            range.removeAt(0);
           } else {
-            audioPlayer.play(_songPath, isLocal: true);
+            audioPlayer.play(DeviceFileSource(songPath));
             _ttsTimer!.cancel();
           }
         });
       }
-      setState(() => lastSongPath = _songPath);
-      _setValue('lastSongPath', _songPath);
+      setState(() => lastSongPath = songPath);
+      _setValue('lastSongPath', songPath);
     }
     onRate(_rate);
-    if (!quiet) setState(() => _state = PlayerState.PLAYING);
+    if (!quiet) setState(() => _state = PlayerState.playing);
     Wakelock.enable();
   }
 
-  /// Changes [song] according to given [_index]
-  void onChange(int _index) {
+  /// Changes [song] according to given [newIndex]
+  void onChange(int newIndex) {
     final int available = queue.length;
     setState(() {
-      if (_index < 0) {
-        index = _index + available;
+      if (newIndex < 0) {
+        index = newIndex + available;
         if (_set == 'random' && queue.length > 2) {
           queue.shuffle();
           while (song == queue[index]) queue.shuffle();
         }
-      } else if (_index >= available) {
-        index = _index - available;
+      } else if (newIndex >= available) {
+        index = newIndex - available;
         if (_set == 'random' && queue.length > 2) {
           queue.shuffle();
           while (song == queue[index]) queue.shuffle();
         }
       } else {
-        index = _index;
+        index = newIndex;
       }
     });
-    if (_state == PlayerState.PLAYING) {
+    if (_state == PlayerState.playing) {
       onPlay();
     } else {
       onStop();
@@ -442,9 +446,9 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
         if (song != null) duration = Duration(milliseconds: song!.duration!);
       });
       if (song != null) {
-        final String _songPath = song!.data;
-        setState(() => lastSongPath = _songPath);
-        _setValue('lastSongPath', _songPath);
+        final String songPath = song!.data;
+        setState(() => lastSongPath = songPath);
+        _setValue('lastSongPath', songPath);
       }
     }
   }
@@ -453,7 +457,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   void onPause({bool quiet = false}) {
     _ttsTimer?.cancel();
     audioPlayer.pause();
-    if (!quiet) setState(() => _state = PlayerState.PAUSED);
+    if (!quiet) setState(() => _state = PlayerState.paused);
     if (_preFadeVolume != 0) {
       _fadeTimer!.cancel();
       onChange(index + 1);
@@ -470,26 +474,26 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
         duration = _emptyDuration;
         _position = _emptyDuration;
       }
-      _state = PlayerState.STOPPED;
+      _state = PlayerState.stopped;
     });
     Wakelock.disable();
   }
 
   /// Changes [folder] according to given
-  void onFolder(String _folder) {
-    if (folder != _folder) {
+  void onFolder(String newFolder) {
+    if (folder != newFolder) {
       queue.clear();
       setState(() {
         index = 0;
         _queueComplete = 0;
       });
       if (!_bad.contains(_songsComplete)) {
-        for (final SongModel _song in _songs) {
-          if (File(_song.data).parent.path == _folder) {
+        for (final SongModel asong in _songs) {
+          if (File(asong.data).parent.path == newFolder) {
             if (_set != 'random' || [0, 1].contains(_queueComplete)) {
-              queue.add(_song);
+              queue.add(asong);
             } else {
-              queue.insert(1 + random.nextInt(_queueComplete), _song);
+              queue.insert(1 + random.nextInt(_queueComplete), asong);
             }
             setState(() => ++_queueComplete);
 
@@ -508,25 +512,25 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
         }
       }
       setState(() {
-        folder = _folder;
-        chosenFolder = _folder;
+        folder = newFolder;
+        chosenFolder = newFolder;
         _introLength = 0;
       });
     }
   }
 
   /// Creates temporary queue list
-  void _getTempQueue(String _tempFolder) {
-    if (chosenFolder != _tempFolder) {
+  void getTempQueue(String tempFolder) {
+    if (chosenFolder != tempFolder) {
       setState(() {
-        chosenFolder = _tempFolder;
+        chosenFolder = tempFolder;
         _tempQueueComplete = 0;
       });
       _tempQueue.clear();
       if (!_bad.contains(_songsComplete)) {
-        for (final SongModel _song in _songs) {
-          if (File(_song.data).parent.path == _tempFolder) {
-            _tempQueue.add(_song);
+        for (final SongModel asong in _songs) {
+          if (File(asong.data).parent.path == tempFolder) {
+            _tempQueue.add(asong);
             setState(() => ++_tempQueueComplete);
           }
         }
@@ -537,18 +541,18 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   /// Initializes shared or saved [song] playback
   Future<void> loadSpecificSong() async {
-    final String? _sharedPath = await bridge.invokeMethod('openSharedPath');
-    final String? _path = _sharedPath ?? lastSongPath;
-    if (_path != null && _path != song?.data) {
-      final String _newFolder = File(_path).parent.path;
-      final Source _newSource =
-          _sources.firstWhereOrNull(_newFolder.startsWith) ?? source;
-      if (source != _newSource) setState(() => source = _newSource);
-      onFolder(_newFolder);
-      final int _index =
-          queue.indexWhere((SongModel _song) => _song.data == _path);
-      onChange(_index);
-      if (_sharedPath != null) onPlay();
+    final String? sharedPath = await bridge.invokeMethod('openSharedPath');
+    final String? path = sharedPath ?? lastSongPath;
+    if (path != null && path != song?.data) {
+      final String newFolder = File(path).parent.path;
+      final Source newSource =
+          _sources.firstWhereOrNull(newFolder.startsWith) ?? source;
+      if (source != newSource) setState(() => source = newSource);
+      onFolder(newFolder);
+      final int newIndex =
+          queue.indexWhere((SongModel asong) => asong.data == path);
+      onChange(newIndex);
+      if (sharedPath != null) onPlay();
     }
   }
 
@@ -615,7 +619,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       BuildContext context, DragStartDetails details, Duration duration) {
     final RenderBox slider = context.findRenderObject() as RenderBox;
     final Offset position = slider.globalToLocal(details.globalPosition);
-    if (_state == PlayerState.PLAYING) onPause(quiet: true);
+    if (_state == PlayerState.playing) onPause(quiet: true);
     onSeek(position, duration, slider.constraints.biggest.width);
   }
 
@@ -630,7 +634,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Ends to listen seek drag actions
   void onPositionDragEnd(
       BuildContext context, DragEndDetails details, Duration duration) {
-    if (_state == PlayerState.PLAYING) onPlay(quiet: true);
+    if (_state == PlayerState.playing) onPlay(quiet: true);
   }
 
   /// Listens seek tap actions
@@ -661,27 +665,27 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Starts to listen [volume] drag actions
   void onVolumeDragStart(BuildContext context, DragStartDetails details) {
     final RenderBox slider = context.findRenderObject() as RenderBox;
-    final Offset _volume = slider.globalToLocal(details.globalPosition);
-    updateVolume(_volume, slider.constraints.biggest.height);
+    final Offset finger = slider.globalToLocal(details.globalPosition);
+    updateVolume(finger, slider.constraints.biggest.height);
   }
 
   /// Listens [volume] drag actions
   void onVolumeDragUpdate(BuildContext context, DragUpdateDetails details) {
     final RenderBox slider = context.findRenderObject() as RenderBox;
-    final Offset _volume = slider.globalToLocal(details.globalPosition);
-    updateVolume(_volume, slider.constraints.biggest.height);
+    final Offset finger = slider.globalToLocal(details.globalPosition);
+    updateVolume(finger, slider.constraints.biggest.height);
   }
 
   /// Changes playback [volume] according to given offset
-  void updateVolume(Offset _volume, double height) {
+  void updateVolume(Offset finger, double height) {
     double newVolume = 50.0;
 
-    if (_volume.dy <= .19 * height) {
+    if (finger.dy <= .19 * height) {
       newVolume = 0;
-    } else if (_volume.dy >= height) {
+    } else if (finger.dy >= height) {
       newVolume = .81 * height;
     } else {
-      newVolume = _volume.dy - .19 * height;
+      newVolume = finger.dy - .19 * height;
     }
 
     newVolume = 100.0 * (1 - (newVolume / (.81 * height)));
@@ -689,15 +693,15 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   }
 
   /// Changes playback [volume] by given
-  void onVolume(int _volume) async {
-    if (_volume > 100) {
-      _volume = 100;
-    } else if (_volume < 0) {
-      _volume = 0;
+  void onVolume(int newVolume) async {
+    if (newVolume > 100) {
+      newVolume = 100;
+    } else if (newVolume < 0) {
+      newVolume = 0;
     }
-    VolumeRegulator.setVolume(_volume);
-    setState(() => volume = _volume);
-    _setValue('volume', _volume);
+    VolumeRegulator.setVolume(newVolume);
+    setState(() => volume = newVolume);
+    _setValue('volume', newVolume);
   }
 
   /// Changes playback [_rate] by given
@@ -722,7 +726,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   }
 
   /// Switches playback [_state]
-  void _changeState() => _state == PlayerState.PLAYING ? onPause() : onPlay();
+  void _changeState() => _state == PlayerState.playing ? onPause() : onPlay();
 
   /// Shows dialog to pick [source]
   void _pickSource() {
@@ -732,45 +736,45 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
           return SingleChoiceDialog<Source>(
               isDividerEnabled: true,
               items: _sources,
-              onSelected: (Source _source) {
-                setState(() => source = _source);
-                onFolder(_source.root);
+              onSelected: (Source asource) {
+                setState(() => source = asource);
+                onFolder(asource.root);
               },
-              itemBuilder: (Source _source) {
-                final Text _sourceText = source == _source
-                    ? Text(_source.name,
+              itemBuilder: (Source asource) {
+                final Text sourceText = source == asource
+                    ? Text(asource.name,
                         style: TextStyle(color: Theme.of(context).primaryColor))
-                    : Text(_source.name);
-                switch (_source.id) {
+                    : Text(asource.name);
+                switch (asource.id) {
                   case -1:
                     return _textButtonLink(
                         icon: Icon(Typicons.social_youtube,
-                            color: source == _source
+                            color: source == asource
                                 ? Theme.of(context).primaryColor
                                 : redColor),
-                        label: _sourceText);
+                        label: sourceText);
                   case 0:
                     return _textButtonLink(
                         icon: Icon(Icons.phone_iphone,
-                            color: source == _source
+                            color: source == asource
                                 ? Theme.of(context).primaryColor
                                 : Theme.of(context)
                                     .textTheme
                                     .bodyText2!
                                     .color!
                                     .withOpacity(.55)),
-                        label: _sourceText);
+                        label: sourceText);
                   default:
                     return _textButtonLink(
                         icon: Icon(Icons.sd_card,
-                            color: source == _source
+                            color: source == asource
                                 ? Theme.of(context).primaryColor
                                 : Theme.of(context)
                                     .textTheme
                                     .bodyText2!
                                     .color!
                                     .withOpacity(.55)),
-                        label: _sourceText);
+                        label: sourceText);
                 }
               });
         });
@@ -794,25 +798,30 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   /// Goes back to the previous page
   bool onBack() {
-    if (1.9 < _controller.page! && _controller.page! < 2.1) {
-      setState(() => pageHistory = [2]);
+    final int pageHistoryLength = pageHistory.length;
+    if (pageHistoryLength == 1) {
       return true;
     }
-    _controller.animateToPage(pageHistory[0],
+    final int goToPage = pageHistoryLength - 2;
+    _controller.animateToPage(pageHistory[goToPage],
         duration: _animationDuration, curve: _animationCurve);
-    setState(() => pageHistory = [2]);
+    if (goToPage == 2) {
+      pageHistory.removeRange(1, pageHistoryLength - 1);
+    } else {
+      pageHistory.removeLast();
+    }
     return false;
   }
 
   /// Get cached or preferred value
   void _getSavedValues() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    int _volume = await VolumeRegulator.getVolume();
+    int deviceVolume = await VolumeRegulator.getVolume();
     setState(() {
       lastSongPath = prefs.getString('lastSongPath');
       _mode = prefs.getString('_mode') ?? 'loop';
       _set = prefs.getString('_set') ?? 'random';
-      volume = prefs.getInt('volume') ?? _volume;
+      volume = prefs.getInt('volume') ?? deviceVolume;
     });
     await prefs.setString('_mode', _mode);
     await prefs.setString('_set', _set);
@@ -859,21 +868,21 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   Future<void> _createCoversMap() async {
     _coversYaml = ['---'];
     _coversMap.clear();
-    for (final SongModel _song in _songs) {
-      final String _songPath = _song.data;
-      final String _coversPath =
-          (_sources.firstWhereOrNull(_songPath.startsWith)?.coversPath ??
+    for (final SongModel asong in _songs) {
+      final String songPath = asong.data;
+      final String coversPath =
+          (_sources.firstWhereOrNull(songPath.startsWith)?.coversPath ??
               _sources[0].coversPath)!;
-      final String _coverPath = '$_coversPath/${_songPath.hashCode}.jpg';
-      int _status = 0;
-      if (!File(_coverPath).existsSync()) {
-        final int _height =
+      final String coverPath = '$coversPath/${songPath.hashCode}.jpg';
+      int resultStatus = 0;
+      if (!File(coverPath).existsSync()) {
+        final int height =
             (MediaQuery.of(context).size.shortestSide * 7 / 10).ceil();
         FFmpegKit.execute(
-                '-i "$_songPath" -vf scale="-2:\'min($_height,ih)\'":flags=lanczos -an "$_coverPath"')
+                '-i "$songPath" -vf scale="-2:\'min($height,ih)\'":flags=lanczos -an "$coverPath"')
             .then((session) async {
           final returnCode = await session.getReturnCode();
-          _status = returnCode!.getValue();
+          resultStatus = returnCode!.getValue();
           final String? failStackTrace = await session.getFailStackTrace();
           if (failStackTrace != null && failStackTrace.isNotEmpty)
             print(failStackTrace);
@@ -883,8 +892,8 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
           return 1;
         });
       }
-      _coversMap[_songPath] = _status;
-      _coversYaml.add('"$_songPath": $_status');
+      _coversMap[songPath] = resultStatus;
+      _coversYaml.add('"$songPath": $resultStatus');
       setState(() => ++_coversComplete);
     }
     await _cacheCoversMap();
@@ -897,20 +906,20 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   }
 
   /// Gets album artwork from cache
-  Image? _getCover(SongModel _song) {
+  Image? _getCover(SongModel asong) {
     if (_coversComplete == -1) {
-      final String _songPath = _song.data;
-      if (_coversMap.containsKey(_songPath)) {
-        if (_coversMap[_songPath] == 0) {
-          final String _coversPath =
-              (_sources.firstWhereOrNull(_songPath.startsWith)?.coversPath ??
+      final String songPath = asong.data;
+      if (_coversMap.containsKey(songPath)) {
+        if (_coversMap[songPath] == 0) {
+          final String coversPath =
+              (_sources.firstWhereOrNull(songPath.startsWith)?.coversPath ??
                   _sources[0].coversPath)!;
-          final File _coverFile =
-              File('$_coversPath/${_songPath.hashCode}.jpg');
-          if (_coverFile.existsSync()) {
-            return Image.file(_coverFile, fit: BoxFit.cover);
+          final File coverFile = File('$coversPath/${songPath.hashCode}.jpg');
+          if (coverFile.existsSync()) {
+            return Image.file(coverFile, fit: BoxFit.cover);
             /*} else {
-            WidgetsBinding.instance.addPostFrameCallback((_) => afixCover(asong));*/
+            WidgetsBinding.instance
+                .addPostFrameCallback((_) => _fixCover(asong));*/
           }
         }
       } else {
@@ -921,22 +930,22 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   }
 
   /// Fixes album artwork in cache
-  Future<void> _fixCover(SongModel _song) async {
+  Future<void> _fixCover(SongModel asong) async {
     if (_coversComplete == -1) {
       setState(() => _coversComplete = 0);
-      final String _songPath = _song.data;
-      final String _coversPath =
-          (_sources.firstWhereOrNull(_songPath.startsWith)?.coversPath ??
+      final String songPath = asong.data;
+      final String coversPath =
+          (_sources.firstWhereOrNull(songPath.startsWith)?.coversPath ??
               _sources[0].coversPath)!;
-      final String _coverPath = '$_coversPath/${_songPath.hashCode}.jpg';
-      int _status = 0;
-      final int _height =
+      final String coverPath = '$coversPath/${songPath.hashCode}.jpg';
+      int resultStatus = 0;
+      final int height =
           (MediaQuery.of(context).size.shortestSide * 7 / 10).ceil();
       FFmpegKit.execute(
-              '-i "$_songPath" -vf scale="-2:\'min($_height,ih)\'":flags=lanczos -an "$_coverPath"')
+              '-i "$songPath" -vf scale="-2:\'min($height,ih)\'":flags=lanczos -an "$coverPath"')
           .then((session) async {
         final returnCode = await session.getReturnCode();
-        _status = returnCode!.getValue();
+        resultStatus = returnCode!.getValue();
         final String? failStackTrace = await session.getFailStackTrace();
         if (failStackTrace != null && failStackTrace.isNotEmpty)
           print(failStackTrace);
@@ -945,39 +954,39 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
         setState(() => _coversComplete = -2);
         return 1;
       });
-      _coversMap[_songPath] = _status;
+      _coversMap[songPath] = resultStatus;
       setState(() => ++_coversComplete);
       _coversYaml = ['---'];
-      _coversMap.forEach((String _coverSong, int _coverStatus) =>
-          _coversYaml.add('"$_coverSong": $_coverStatus'));
+      _coversMap.forEach((String coverSong, int coverStatus) =>
+          _coversYaml.add('"$coverSong": $coverStatus'));
       await _cacheCoversMap();
     }
   }
 
   /// Gets relative urls for [fillBrowse]
   Iterable<int> getRelatives(String root, String path) {
-    final int _rootLength = root.length;
-    String relative = path.substring(_rootLength);
+    final int rootLength = root.length;
+    String relative = path.substring(rootLength);
     if (relative.startsWith('/')) relative = '${relative.substring(1)}/';
-    return '/'.allMatches(relative).map((Match m) => _rootLength + m.end);
+    return '/'.allMatches(relative).map((Match m) => rootLength + m.end);
   }
 
-  /// Fills [browse] stack with given [_path]
+  /// Fills [browse] stack with given [path]
   void fillBrowse(
-      String _path,
-      String _root,
+      String path,
+      String sourceRoot,
       SplayTreeMap<Entry, SplayTreeMap> browse,
       int value,
       ValueChanged<int> valueChanged,
       String type) {
-    final Iterable<int> relatives = getRelatives(_root, _path);
+    final Iterable<int> relatives = getRelatives(sourceRoot, path);
     int j = 0;
     String relativeString;
     num length = type == 'song' ? relatives.length - 1 : relatives.length;
     if (length == 0) length = .5;
     while (j < length) {
       relativeString =
-          length == .5 ? _root : _path.substring(0, relatives.elementAt(j));
+          length == .5 ? sourceRoot : path.substring(0, relatives.elementAt(j));
       Entry entry = Entry(relativeString, type);
       if (browse.containsKey(entry)) {
         entry = browse.keys.firstWhere((Entry key) => key == entry);
@@ -998,12 +1007,12 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
     audioPlayer.onDurationChanged.listen((Duration d) {
       setState(() => duration = d * (100.0 / _rate));
     });
-    audioPlayer.onAudioPositionChanged.listen((Duration p) {
+    audioPlayer.onPositionChanged.listen((Duration p) {
       setState(() => _position = p * (100.0 / _rate));
-      if (_fadePosition > _emptyDuration &&
-          _position > _fadePosition &&
+      if (fadePosition > _emptyDuration &&
+          _position > fadePosition &&
           _preFadeVolume == 0 &&
-          _state == PlayerState.PLAYING) {
+          _state == PlayerState.playing) {
         setState(() => _preFadeVolume = volume);
         _fadeTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
           if (volume > 0) {
@@ -1017,7 +1026,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
         });
       }
     });
-    audioPlayer.onPlayerCompletion.listen((_) {
+    audioPlayer.onPlayerComplete.listen((_) {
       setState(() => _position = duration);
       if (_mode == 'once' && (_set == '1' || index == queue.length - 1)) {
         onStop();
@@ -1027,10 +1036,10 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
         onChange(index + 1);
       }
     });
-    audioPlayer.onPlayerError.listen((String error) {
+    /*audioPlayer.onPlayerError.listen((String error) {
       onStop();
       print(error);
-    });
+    });*/
 
     VolumeRegulator.volumeStream.listen((int v) {
       setState(() => volume = v);
@@ -1038,22 +1047,23 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
     });
 
     _controller.addListener(() {
-      final double _modulo = _controller.page! % 1;
-      if (.9 < _modulo || _modulo < .1) {
-        final int _page = _controller.page!.round();
-        if (!pageHistory.contains(_page)) {
-          pageHistory.add(_page);
-          while (pageHistory.length > 2) pageHistory.removeAt(0);
+      final double modulo = _controller.page! % 1;
+      if (.9 < modulo || modulo < .1) {
+        final int page = _controller.page!.round();
+        final int last = pageHistory.last;
+        if ((page == 2 && last != 2) || !pageHistory.contains(page)) {
+          if (last == 2) pageHistory.removeRange(1, pageHistory.length - 1);
+          pageHistory.add(page);
         }
       }
     });
 
     super.initState();
 
-    Permission.storage.request().then((PermissionStatus _status) {
-      if (_status == PermissionStatus.permanentlyDenied) {
+    Permission.storage.request().then((PermissionStatus permissionStatus) {
+      if (permissionStatus == PermissionStatus.permanentlyDenied) {
         openAppSettings();
-      } else if (_status == PermissionStatus.denied) {
+      } else if (permissionStatus == PermissionStatus.denied) {
         SystemChannels.platform.invokeMethod('SystemNavigator.pop');
       }
       // Got permission (read user files and folders)
@@ -1061,35 +1071,34 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
           onDone: () {
             // Got _sources
             Stream<List<SongModel>>.fromFuture(OnAudioQuery().querySongs())
-                .expand((List<SongModel> _songs) => _songs)
-                .listen((SongModel _song) {
-              final String _songPath = _song.data;
+                .expand((List<SongModel> asongs) => asongs)
+                .listen((SongModel asong) {
+              final String songPath = asong.data;
               // queue
-              if (File(_songPath).parent.path == folder) {
+              if (File(songPath).parent.path == folder) {
                 if (_set != 'random' || [0, 1].contains(_queueComplete)) {
-                  queue.add(_song);
+                  queue.add(asong);
                 } else {
-                  queue.insert(1 + random.nextInt(_queueComplete), _song);
+                  queue.insert(1 + random.nextInt(_queueComplete), asong);
                 }
                 setState(() => ++_queueComplete);
                 if (_queueComplete == 1) {
-                  audioPlayer.setUrl(_songPath, isLocal: true);
+                  audioPlayer.setSourceDeviceFile(songPath);
                   setState(() => song = queue[0]);
                 }
               }
 
-              if (_sources.any(_songPath.startsWith)) {
+              if (_sources.any(songPath.startsWith)) {
                 // _songs
-                _songs.add(_song);
+                _songs.add(asong);
                 setState(() => ++_songsComplete);
 
                 // browse
-                final Source _source =
-                    _sources.firstWhere(_songPath.startsWith);
+                final Source asource = _sources.firstWhere(songPath.startsWith);
                 fillBrowse(
-                    _songPath,
-                    _source.root,
-                    _source.browse,
+                    songPath,
+                    asource.root,
+                    asource.browse,
                     _browseSongsComplete,
                     (value) => _browseSongsComplete = value,
                     'song');
@@ -1100,13 +1109,13 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                 _queueComplete = _queueComplete > 0 ? -1 : 0;
                 _songsComplete = _songsComplete > 0 ? -1 : 0;
                 if (_sources.every(
-                    (Source _source) => _source.browseFoldersComplete == -1))
+                    (Source asource) => asource.browseFoldersComplete == -1))
                   _browseComplete = -1;
                 _browseSongsComplete = _browseSongsComplete > 0 ? -1 : 0;
               });
               if (_songsComplete == -1 &&
                   _coversFile != null &&
-                  !_sources.any((Source _source) => _source.coversPath == null))
+                  !_sources.any((Source asource) => asource.coversPath == null))
                 _loadCoversMap();
             }, onError: (error) {
               setState(() {
@@ -1118,29 +1127,29 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
               print(error.stackTrace);
             });
 
-            for (final Source _source in _sources) {
-              getFolders(_source.root).listen((String _folderPath) {
+            for (final Source asource in _sources) {
+              getFolders(asource.root).listen((String folderPath) {
                 fillBrowse(
-                    _folderPath,
-                    _source.root,
-                    _source.browse,
-                    _source.browseFoldersComplete,
-                    (value) => _source.browseFoldersComplete = value,
+                    folderPath,
+                    asource.root,
+                    asource.browse,
+                    asource.browseFoldersComplete,
+                    (value) => asource.browseFoldersComplete = value,
                     'folder');
               }, onDone: () {
                 fillBrowse(
-                    _source.root,
-                    _source.root,
-                    _source.browse,
-                    _source.browseFoldersComplete,
-                    (value) => _source.browseFoldersComplete = value,
+                    asource.root,
+                    asource.root,
+                    asource.browse,
+                    asource.browseFoldersComplete,
+                    (value) => asource.browseFoldersComplete = value,
                     'folder');
                 // Got folders
                 setState(() {
-                  _source.browseFoldersComplete = -1;
+                  asource.browseFoldersComplete = -1;
                   if ((_browseSongsComplete == -1) &&
-                      _sources.every((Source _source) =>
-                          _source.browseFoldersComplete == -1))
+                      _sources.every((Source asource) =>
+                          asource.browseFoldersComplete == -1))
                     _browseComplete = -1;
                 });
                 loadSpecificSong();
@@ -1148,28 +1157,27 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
               }, onError: (error) {
                 setState(() {
                   _browseComplete = -2;
-                  _source.browseFoldersComplete = -2;
+                  asource.browseFoldersComplete = -2;
                 });
                 print(error.stackTrace);
               });
             }
 
-            getTemporaryDirectory().then((Directory _appCache) {
-              final String _appCachePath = _appCache.path;
-              for (final Source _source in _sources)
-                _source.coversPath = _appCachePath;
+            getTemporaryDirectory().then((Directory appCache) {
+              for (final Source asource in _sources)
+                asource.coversPath = appCache.path;
 
               if (Platform.isAndroid) {
                 Stream<List<Directory>?>.fromFuture(
                         getExternalCacheDirectories())
-                    .expand((List<Directory>? _extCaches) => _extCaches!)
-                    .listen((Directory _extCache) {
-                  final String _extCachePath = _extCache.path;
-                  if (!_extCachePath.startsWith(_sources[0])) {
-                    _sources.firstWhere(_extCachePath.startsWith).coversPath =
-                        _extCachePath;
+                    .expand((List<Directory>? extCaches) => extCaches!)
+                    .listen((Directory extCache) {
+                  final String extCachePath = extCache.path;
+                  if (!extCachePath.startsWith(_sources[0])) {
+                    _sources.firstWhere(extCachePath.startsWith).coversPath =
+                        extCachePath;
                   } else if (_debug) {
-                    _sources[0].coversPath = _extCachePath;
+                    _sources[0].coversPath = extCachePath;
                   }
                 }, onDone: () {
                   // Got coversPath
@@ -1187,35 +1195,34 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
     /*Stream<List<InternetAddress>>.fromFuture(
             InternetAddress.lookup('youtube.com'))
-        .expand((List<InternetAddress> _addresses) => _addresses)
-        .firstWhere(
-            (InternetAddress _address) => _address.rawAddress.isNotEmpty)
+        .expand((List<InternetAddress> addresses) => addresses)
+        .firstWhere((InternetAddress address) => address.rawAddress.isNotEmpty)
         .then((_) => _sources.add(Source('', -1)),
             onError: (error) => print(error.stackTrace));*/
     // Got YouTube
 
-    getApplicationSupportDirectory().then((Directory _appData) {
-      _coversFile = File('${_appData.path}/covers.yaml');
+    getApplicationSupportDirectory().then((Directory appData) {
+      _coversFile = File('${appData.path}/covers.yaml');
 
       if (Platform.isAndroid && _debug) {
-        late StreamSubscription<Directory> _extDataStream;
-        _extDataStream =
+        late StreamSubscription<Directory> extDataStream;
+        extDataStream =
             Stream<List<Directory>?>.fromFuture(getExternalStorageDirectories())
-                .expand((List<Directory>? _extDatas) => _extDatas!)
-                .listen((Directory _extData) {
-          final String _extDataPath = _extData.path;
-          if (_extDataPath.startsWith(_sources[0])) {
-            _coversFile = File('$_extDataPath/covers.yaml');
+                .expand((List<Directory>? extDatas) => extDatas!)
+                .listen((Directory extData) {
+          final String extDataPath = extData.path;
+          if (extDataPath.startsWith(_sources[0])) {
+            _coversFile = File('$extDataPath/covers.yaml');
             // Got _coversFile
             if (_songsComplete == -1 &&
-                !_sources.any((Source _source) => _source.coversPath == null))
+                !_sources.any((Source asource) => asource.coversPath == null))
               _loadCoversMap();
-            _extDataStream.cancel();
+            extDataStream.cancel();
           }
         }, onError: (error) => print(error.stackTrace));
       } else {
         if (_songsComplete == -1 &&
-            !_sources.any((Source _source) => _source.coversPath == null))
+            !_sources.any((Source asource) => asource.coversPath == null))
           _loadCoversMap();
       }
     }, onError: (error) => print(error.stackTrace));
@@ -1230,8 +1237,8 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState _state) {
-    if (_state == AppLifecycleState.resumed) loadSpecificSong();
+  void didChangeAppLifecycleState(AppLifecycleState appState) {
+    if (appState == AppLifecycleState.resumed) loadSpecificSong();
   }
 
   @override
@@ -1340,7 +1347,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                           .onSecondary))))
                               : _play(this, 6.0, 32.0, () {
                                   _changeState();
-                                  if (_state == PlayerState.PLAYING)
+                                  if (_state == PlayerState.playing)
                                     _returnToPlayer();
                                 }))))),
           // player
@@ -1518,14 +1525,14 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                 : Theme.of(context)
                                                     .primaryColor
                                                     .withOpacity(.7),
-                                            child: Text(_timeInfo(_queueComplete, _fadePosition == _emptyDuration ? duration : _fadePosition),
+                                            child: Text(_timeInfo(_queueComplete, fadePosition == _emptyDuration ? duration : fadePosition),
                                                 style: TextStyle(
-                                                    color: (_fadePosition == _emptyDuration) && (_rate == 100.0)
+                                                    color: (fadePosition == _emptyDuration) && (_rate == 100.0)
                                                         ? Theme.of(context)
                                                             .scaffoldBackgroundColor
                                                         : redColor,
                                                     fontWeight:
-                                                        (_fadePosition == _emptyDuration) &&
+                                                        (fadePosition == _emptyDuration) &&
                                                                 (_rate == 100.0)
                                                             ? FontWeight.normal
                                                             : FontWeight.bold))))
@@ -1570,10 +1577,10 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
                                                     color: unfocusedColor,
                                                     fontSize: 13.0))
                                           ]
-                                              .map((Text _widget) => Padding(
+                                              .map((Text textWidget) => Padding(
                                                   padding: const EdgeInsets
                                                       .symmetric(vertical: 5.0),
-                                                  child: _widget))
+                                                  child: textWidget))
                                               .toList()),
                                       content: _appInfoLinks(this),
                                       actions: <TextButton>[
@@ -1662,9 +1669,9 @@ Row _textButtonLink({required Icon icon, required Text label}) {
 
 /// Shows icon according to current [chosenFolder]
 List<IconButton> _showContents(_PlayerState parent) {
-  List<IconButton> _actionsList = [];
+  List<IconButton> actionsList = [];
   if (parent._tempQueueComplete == -1 && parent._tempQueue.isNotEmpty) {
-    _actionsList.add(IconButton(
+    actionsList.add(IconButton(
         onPressed: parent._pickSong,
         tooltip: 'Pick song',
         icon: Icon(Icons.playlist_play_rounded,
@@ -1675,7 +1682,7 @@ List<IconButton> _showContents(_PlayerState parent) {
                 .color!
                 .withOpacity(.55))));
   }
-  return _actionsList;
+  return actionsList;
 }
 
 /// Renders folder list
@@ -1683,13 +1690,13 @@ Widget _folderPicker(_PlayerState parent) {
   if (parent.source.id == -1)
     return const Center(child: Text('Not yet supported!'));
 
-  final int _browseComplete = parent._browseComplete;
+  final int abrowseComplete = parent._browseComplete;
   final SplayTreeMap<Entry, SplayTreeMap> browse = parent.source.browse;
-  if (_browseComplete == 0) {
+  if (abrowseComplete == 0) {
     return Center(
         child:
             Text('No folders found', style: TextStyle(color: unfocusedColor)));
-  } else if (_browseComplete == -2) {
+  } else if (abrowseComplete == -2) {
     return const Center(child: Text('Unable to retrieve folders!'));
   }
   return ListView.builder(
@@ -1701,54 +1708,54 @@ Widget _folderPicker(_PlayerState parent) {
 }
 
 /// Renders folder list tile
-Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> entry) {
-  final SplayTreeMap<Entry, SplayTreeMap> _children =
-      entry.value as SplayTreeMap<Entry, SplayTreeMap>;
-  final Entry _entry = entry.key;
-  final String _entryPath = _entry.path;
-  if (_children.isNotEmpty) {
+Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> tree) {
+  final SplayTreeMap<Entry, SplayTreeMap> children =
+      tree.value as SplayTreeMap<Entry, SplayTreeMap>;
+  final Entry entry = tree.key;
+  final String entryPath = entry.path;
+  if (children.isNotEmpty) {
     return ExpansionTile(
-        /*key: PageStorageKey<MapEntry>(entry),*/
+        /*key: PageStorageKey<MapEntry>(tree),*/
         key: UniqueKey(),
-        initiallyExpanded: parent.chosenFolder.contains(_entryPath),
-        onExpansionChanged: (_) => parent._getTempQueue(_entryPath),
+        initiallyExpanded: parent.chosenFolder.contains(entryPath),
+        onExpansionChanged: (_) => parent.getTempQueue(entryPath),
         childrenPadding: const EdgeInsets.only(left: 16.0),
-        title: Text(_entry.name,
+        title: Text(entry.name,
             style: TextStyle(
-                color: parent.folder == _entryPath
+                color: parent.folder == entryPath
                     ? Theme.of(parent.context).primaryColor
                     : Theme.of(parent.context).textTheme.bodyText2!.color)),
-        subtitle: Text(_entry.songs == 1 ? '1 song' : '${_entry.songs} songs',
+        subtitle: Text(entry.songs == 1 ? '1 song' : '${entry.songs} songs',
             style: TextStyle(
                 fontSize: 10.0,
-                color: parent.folder == _entryPath
+                color: parent.folder == entryPath
                     ? Theme.of(parent.context).primaryColor
                     : Theme.of(parent.context)
                         .textTheme
                         .bodyText2!
                         .color!
                         .withOpacity(.55))),
-        children: _children.entries
-            .map((MapEntry<Entry, SplayTreeMap> entry) =>
-                _folderTile(parent, entry))
+        children: children.entries
+            .map((MapEntry<Entry, SplayTreeMap> tree) =>
+                _folderTile(parent, tree))
             .toList());
   }
   return ListTile(
-      selected: parent.folder == _entryPath,
+      selected: parent.folder == entryPath,
       onTap: () {
         parent
-          .._getTempQueue(_entryPath)
+          ..getTempQueue(entryPath)
           .._pickSong();
       },
-      title: _entry.name.isEmpty
+      title: entry.name.isEmpty
           ? Align(
               alignment: Alignment.centerLeft,
               child: Icon(Icons.home,
-                  color: parent.folder == _entryPath
+                  color: parent.folder == entryPath
                       ? Theme.of(parent.context).primaryColor
                       : unfocusedColor))
-          : Text(_entry.name),
-      subtitle: Text(_entry.songs == 1 ? '1 song' : '${_entry.songs} songs',
+          : Text(entry.name),
+      subtitle: Text(entry.songs == 1 ? '1 song' : '${entry.songs} songs',
           style: const TextStyle(fontSize: 10.0)));
 }
 
@@ -1756,14 +1763,14 @@ Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> entry) {
 Widget _play(_PlayerState parent, double elevation, double iconSize,
     VoidCallback onPressed) {
   return Builder(builder: (BuildContext context) {
-    final ShapeBorder _shape = parent._orientation == Orientation.portrait
+    final ShapeBorder shape = parent._orientation == Orientation.portrait
         ? const _CubistShapeB()
         : const _CubistShapeD();
     if (parent._queueComplete == 0) {
       return FloatingActionButton(
           onPressed: () {},
           tooltip: 'Loading...',
-          shape: _shape,
+          shape: shape,
           elevation: elevation,
           child: SizedBox(
               width: iconSize - 10.0,
@@ -1775,17 +1782,17 @@ Widget _play(_PlayerState parent, double elevation, double iconSize,
       return FloatingActionButton(
           onPressed: () {},
           tooltip: 'Unable to retrieve songs!',
-          shape: _shape,
+          shape: shape,
           elevation: elevation,
           child: Icon(Icons.close, size: iconSize));
     }
     return FloatingActionButton(
         onPressed: onPressed,
-        tooltip: parent._state == PlayerState.PLAYING ? 'Pause' : 'Play',
-        shape: _shape,
+        tooltip: parent._state == PlayerState.playing ? 'Pause' : 'Play',
+        shape: shape,
         elevation: elevation,
         child: Icon(
-            parent._state == PlayerState.PLAYING
+            parent._state == PlayerState.playing
                 ? Icons.pause
                 : Icons.play_arrow,
             size: iconSize));
@@ -1814,22 +1821,22 @@ AspectRatio _playerSquared(_PlayerState parent) {
 /// Renders rate selector
 Widget _ratePicker(parent) {
   return Builder(builder: (BuildContext context) {
-    String _message = 'Set player speed';
-    GestureTapCallback _onTap = () {};
-    final TextStyle _textStyle = TextStyle(
+    String message = 'Set player speed';
+    GestureTapCallback onTap = () {};
+    final TextStyle textStyle = TextStyle(
         fontSize: 30, color: Theme.of(context).textTheme.bodyText2!.color);
     if (parent._rate != 100.0) {
-      _message = 'Reset player speed';
-      _onTap = () => parent.onRate(100.0);
+      message = 'Reset player speed';
+      onTap = () => parent.onRate(100.0);
     }
     return Center(
         child:
             Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
       Tooltip(
-          message: _message,
+          message: message,
           child: InkWell(
-              onTap: _onTap,
-              child: Text('${parent._rate.truncate()}', style: _textStyle))),
+              onTap: onTap,
+              child: Text('${parent._rate.truncate()}', style: textStyle))),
       Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <IconButton>[
@@ -1842,7 +1849,7 @@ Widget _ratePicker(parent) {
                 tooltip: 'Slow down',
                 icon: const Icon(Icons.keyboard_arrow_down, size: 30))
           ]),
-      Text('%', style: _textStyle)
+      Text('%', style: textStyle)
     ]));
   });
 }
@@ -1850,27 +1857,26 @@ Widget _ratePicker(parent) {
 /// Renders album artwork or volume selector
 Widget _volumeCover(parent) {
   if (parent._showVolumePicker == true) {
-    String _message = 'Hide volume selector';
-    GestureTapCallback _onTap = () {
+    String message = 'Hide volume selector';
+    GestureTapCallback onTap = () {
       parent.setState(() => parent._showVolumePicker = false);
     };
-    const TextStyle _textStyle = TextStyle(fontSize: 30);
+    const TextStyle textStyle = TextStyle(fontSize: 30);
     if (parent.volume != 0) {
-      _message = 'Mute';
-      parent.setState(() => parent._preMuteVolume = parent.volume);
-      _onTap = () => parent.onVolume(0);
+      message = 'Mute';
+      parent.setState(() => parent.preMuteVolume = parent.volume);
+      onTap = () => parent.onVolume(0);
     } else {
-      _message = 'Unmute';
-      _onTap = () => parent.onVolume(parent._preMuteVolume);
+      message = 'Unmute';
+      onTap = () => parent.onVolume(parent.preMuteVolume);
     }
     return Center(
         child:
             Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
       Tooltip(
-          message: _message,
+          message: message,
           child: InkWell(
-              onTap: _onTap,
-              child: Text('${parent.volume}', style: _textStyle))),
+              onTap: onTap, child: Text('${parent.volume}', style: textStyle))),
       Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <IconButton>[
@@ -1883,39 +1889,39 @@ Widget _volumeCover(parent) {
                 tooltip: 'Quieter',
                 icon: const Icon(Icons.keyboard_arrow_down, size: 30))
           ]),
-      const Text('%', style: _textStyle)
+      const Text('%', style: textStyle)
     ]));
   }
-  Widget? _cover;
-  if (parent.song != null) _cover = parent._getCover(parent.song);
-  _cover ??= const Icon(Icons.music_note, size: 48.0);
+  Widget? cover;
+  if (parent.song != null) cover = parent._getCover(parent.song);
+  cover ??= const Icon(Icons.music_note, size: 48.0);
   return Tooltip(
       message: 'Show volume selector',
       child: InkWell(
           onTap: () {
             parent.setState(() => parent._showVolumePicker = true);
           },
-          child: _cover));
+          child: cover));
 }
 
 /// Renders prelude length selector
 Widget _preludePicker(parent) {
   return Builder(builder: (BuildContext context) {
-    String _message = 'Reset intro length';
-    if (parent._introLength == 0) _message = 'Set intro length';
-    final TextStyle _textStyle = TextStyle(
+    String message = 'Reset intro length';
+    if (parent._introLength == 0) message = 'Set intro length';
+    final TextStyle textStyle = TextStyle(
         fontSize: 30, color: Theme.of(context).textTheme.bodyText2!.color);
     return Center(
         child:
             Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
       Tooltip(
-          message: _message,
+          message: message,
           child: InkWell(
               onTap: () {
                 parent.setState(() =>
                     parent._introLength = parent._introLength == 0 ? 10 : 0);
               },
-              child: Text('${parent._introLength}', style: _textStyle))),
+              child: Text('${parent._introLength}', style: textStyle))),
       Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <IconButton>[
@@ -1934,7 +1940,7 @@ Widget _preludePicker(parent) {
                 tooltip: 'Shorten',
                 icon: const Icon(Icons.keyboard_arrow_down, size: 30))
           ]),
-      Text('s', style: _textStyle)
+      Text('s', style: textStyle)
     ]));
   });
 }
@@ -1942,37 +1948,37 @@ Widget _preludePicker(parent) {
 /// Renders fade position selector
 Widget _fadePositionPicker(parent) {
   return Builder(builder: (BuildContext context) {
-    String _message = 'Reset fade position';
-    if (parent._fadePosition == _emptyDuration) _message = 'Set fade position';
-    final TextStyle _textStyle = TextStyle(
+    String message = 'Reset fade position';
+    if (parent.fadePosition == _emptyDuration) message = 'Set fade position';
+    final TextStyle textStyle = TextStyle(
         fontSize: 30, color: Theme.of(context).textTheme.bodyText2!.color);
     return Center(
         child:
             Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
       Tooltip(
-          message: _message,
+          message: message,
           child: InkWell(
               onTap: () {
-                parent.setState(() => parent._fadePosition =
-                    parent._fadePosition == _emptyDuration
+                parent.setState(() => parent.fadePosition =
+                    parent.fadePosition == _emptyDuration
                         ? const Duration(seconds: 90)
                         : _emptyDuration);
               },
               child: Text(
-                  '${parent._fadePosition.inMinutes}:${zero(parent._fadePosition.inSeconds % 60)}',
-                  style: _textStyle))),
+                  '${parent.fadePosition.inMinutes}:${zero(parent.fadePosition.inSeconds % 60)}',
+                  style: textStyle))),
       Column(mainAxisAlignment: MainAxisAlignment.center, children: <
           IconButton>[
         IconButton(
             onPressed: () {
-              parent.setState(() => parent._fadePosition += _defaultDuration);
+              parent.setState(() => parent.fadePosition += _defaultDuration);
             },
             tooltip: 'Lengthen',
             icon: const Icon(Icons.keyboard_arrow_up, size: 30)),
         IconButton(
             onPressed: () {
-              if (parent._fadePosition >= _defaultDuration) {
-                parent.setState(() => parent._fadePosition -= _defaultDuration);
+              if (parent.fadePosition >= _defaultDuration) {
+                parent.setState(() => parent.fadePosition -= _defaultDuration);
               }
             },
             tooltip: 'Shorten',
@@ -2042,7 +2048,7 @@ Double tap to add intro''',
                 parent._position,
                 parent.volume,
                 Theme.of(context).primaryColor,
-                parent._fadePosition)));
+                parent.fadePosition)));
   });
 }
 
@@ -2063,19 +2069,18 @@ Widget _playerControl(_PlayerState parent) {
                   Text(
                       _timeInfo(
                           parent._queueComplete,
-                          parent._fadePosition == _emptyDuration
+                          parent.fadePosition == _emptyDuration
                               ? parent.duration
-                              : parent._fadePosition),
+                              : parent.fadePosition),
                       style: TextStyle(
-                          color: (parent._fadePosition == _emptyDuration) &&
+                          color: (parent.fadePosition == _emptyDuration) &&
                                   (parent._rate == 100.0)
                               ? Theme.of(context).textTheme.bodyText2!.color
                               : redColor,
-                          fontWeight:
-                              (parent._fadePosition == _emptyDuration) &&
-                                      (parent._rate == 100.0)
-                                  ? FontWeight.normal
-                                  : FontWeight.bold))
+                          fontWeight: (parent.fadePosition == _emptyDuration) &&
+                                  (parent._rate == 100.0)
+                              ? FontWeight.normal
+                              : FontWeight.bold))
                 ]),
             _title(parent),
             _artist(parent),
@@ -2212,8 +2217,8 @@ Widget _minorControl(_PlayerState parent) {
 }
 
 /// Picks appropriate [_set] icon
-IconData _status(String _set) {
-  switch (_set) {
+IconData _status(String aset) {
+  switch (aset) {
     case 'all':
       return Icons.album;
     case '1':
@@ -2223,45 +2228,45 @@ IconData _status(String _set) {
   }
 }
 
-String _timeInfo(int _queueComplete, Duration _time) {
-  return _bad.contains(_queueComplete)
+String _timeInfo(int aqueueComplete, Duration time) {
+  return _bad.contains(aqueueComplete)
       ? '0:00'
-      : '${_time.inMinutes}:${zero(_time.inSeconds % 60)}';
+      : '${time.inMinutes}:${zero(time.inSeconds % 60)}';
 }
 
 /// Renders current folder's ancestors
 Tooltip _navigation(_PlayerState parent) {
-  final List<Widget> _row = [];
+  final List<Widget> row = [];
 
-  final String _root = parent.source.root;
-  String _path = parent.chosenFolder;
-  if (_path == _root) _path += '/${parent.source.name} home';
-  final Iterable<int> relatives = parent.getRelatives(_root, _path);
+  final String sourceRoot = parent.source.root;
+  String linkPath = parent.chosenFolder;
+  if (linkPath == sourceRoot) linkPath += '/${parent.source.name} home';
+  final Iterable<int> relatives = parent.getRelatives(sourceRoot, linkPath);
   int j = 0;
   final int length = relatives.length;
-  String _title;
+  String linkTitle;
   int start = 0;
   while (j < length) {
-    start = j - 1 < 0 ? _root.length : relatives.elementAt(j - 1);
-    _title = _path.substring(start + 1, relatives.elementAt(j));
+    start = j - 1 < 0 ? sourceRoot.length : relatives.elementAt(j - 1);
+    linkTitle = linkPath.substring(start + 1, relatives.elementAt(j));
     if (j + 1 == length) {
-      _row.add(InkWell(
+      row.add(InkWell(
           onTap: parent._pickFolder,
-          child: Text(_title,
+          child: Text(linkTitle,
               style: TextStyle(color: Theme.of(parent.context).primaryColor))));
     } else {
-      final int _end = relatives.elementAt(j);
-      _row
+      row
         ..add(InkWell(
-            onTap: () => parent.onFolder(_path.substring(0, _end)),
-            child: Text(_title)))
+            onTap: () =>
+                parent.onFolder(linkPath.substring(0, relatives.elementAt(j))),
+            child: Text(linkTitle)))
         ..add(Text('>', style: TextStyle(color: unfocusedColor)));
     }
     j++;
   }
   return Tooltip(
       message: 'Change folder',
-      child: Wrap(spacing: 8.0, runSpacing: 6.0, children: _row));
+      child: Wrap(spacing: 8.0, runSpacing: 6.0, children: row));
 }
 
 /// Renders queue list
@@ -2269,7 +2274,7 @@ Widget _songPicker(parent) {
   if (parent.source.id == -1)
     return const Center(child: Text('Not yet supported!'));
 
-  late List<SongModel> _songList;
+  late List<SongModel> songList;
   if (parent.chosenFolder != parent.folder) {
     if (parent._tempQueueComplete == 0)
       return Center(
@@ -2278,7 +2283,7 @@ Widget _songPicker(parent) {
       return Center(
           child: Text('No songs in folder',
               style: TextStyle(color: unfocusedColor)));
-    _songList = parent._tempQueue;
+    songList = parent._tempQueue;
   } else {
     if (parent._queueComplete == 0)
       return Center(
@@ -2286,20 +2291,20 @@ Widget _songPicker(parent) {
               style: TextStyle(color: unfocusedColor)));
     if (parent._queueComplete == -2)
       return const Center(child: Text('Unable to retrieve songs!'));
-    _songList = parent.queue;
+    songList = parent.queue;
   }
   return ListView.builder(
-      key: PageStorageKey<int>(_songList.hashCode),
-      itemCount: _songList.length,
+      key: PageStorageKey<int>(songList.hashCode),
+      itemCount: songList.length,
       itemBuilder: (BuildContext context, int i) {
-        final SongModel _song = _songList[i];
+        final SongModel asong = songList[i];
         return ListTile(
-            selected: parent.song == _song,
+            selected: parent.song == asong,
             onTap: () {
               if (parent.chosenFolder != parent.folder) {
                 parent
                   ..onFolder(parent.chosenFolder)
-                  ..setState(() => parent.index = parent.queue.indexOf(_song))
+                  ..setState(() => parent.index = parent.queue.indexOf(asong))
                   ..onPlay()
                   .._returnToPlayer();
               } else {
@@ -2316,15 +2321,15 @@ Widget _songPicker(parent) {
             leading: SizedBox(
                 height: 35.0,
                 child: AspectRatio(
-                    aspectRatio: 8 / 7, child: _listCover(parent, _song))),
-            title: Text(_song.title.replaceAll('_', ' '),
+                    aspectRatio: 8 / 7, child: _listCover(parent, asong))),
+            title: Text(asong.title.replaceAll('_', ' '),
                 overflow: TextOverflow.ellipsis, maxLines: 1),
             subtitle: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
                   Expanded(
                       child: Text(
-                          _song.artist == '<unknown>' ? '' : _song.artist!,
+                          asong.artist == '<unknown>' ? '' : asong.artist!,
                           style: const TextStyle(fontSize: 11.0),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1)),
@@ -2332,10 +2337,10 @@ Widget _songPicker(parent) {
                       parent.chosenFolder != parent.folder
                           ? parent._tempQueueComplete
                           : parent._queueComplete,
-                      Duration(milliseconds: _song.duration!)))
+                      Duration(milliseconds: asong.duration!)))
                 ]),
             trailing: Icon(
-                (parent.song == _song && parent._state == PlayerState.PLAYING)
+                (parent.song == asong && parent._state == PlayerState.playing)
                     ? Icons.pause
                     : Icons.play_arrow,
                 size: 30.0));
@@ -2343,15 +2348,15 @@ Widget _songPicker(parent) {
 }
 
 /// Renders album artworks for queue list
-Widget _listCover(_PlayerState parent, SongModel _song) {
-  final Image? _cover = parent._getCover(_song);
-  if (_cover != null) {
+Widget _listCover(_PlayerState parent, SongModel asong) {
+  final Image? cover = parent._getCover(asong);
+  if (cover != null) {
     return Material(
         clipBehavior: Clip.antiAlias,
         shape: parent._orientation == Orientation.portrait
             ? const _CubistShapeA()
             : const _CubistShapeC(),
-        child: _cover);
+        child: cover);
   }
   return const Icon(Icons.music_note);
 }
@@ -2395,14 +2400,14 @@ Wrap _appInfoLinks(_PlayerState parent) {
               return SingleChoiceDialog<String>(
                   isDividerEnabled: true,
                   items: const <String>['Paypal', 'Revolut'],
-                  onSelected: (String _method) => launchUrl(
-                      Uri.parse('https://${_method.toLowerCase()}.me/dvorapa')),
-                  itemBuilder: (String _method) {
+                  onSelected: (String method) => launchUrl(
+                      Uri.parse('https://${method.toLowerCase()}.me/dvorapa')),
+                  itemBuilder: (String method) {
                     return _textButtonLink(
-                        icon: Icon(_method == 'Paypal'
+                        icon: Icon(method == 'Paypal'
                             ? CupertinoIcons.money_pound_circle
                             : CupertinoIcons.bitcoin_circle),
-                        label: Text(_method));
+                        label: Text(method));
                   });
             }),
         icon: Icons.favorite_outline,
@@ -2452,7 +2457,7 @@ Wrap _specialFeaturesList(parent) {
 class CubistWave extends CustomPainter {
   /// Player slider constructor
   CubistWave(this.title, this.duration, this.position, this.volume, this.color,
-      this.fadePosition);
+      this.afadePosition);
 
   /// Song title to parse
   String title;
@@ -2470,80 +2475,80 @@ class CubistWave extends CustomPainter {
   Color color;
 
   /// Position to switch songs
-  Duration fadePosition;
+  Duration afadePosition;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Map<int, double> _waveList = wave(title).asMap();
-    final int _len = _waveList.length - 1;
+    final Map<int, double> waveList = wave(title).asMap();
+    final int len = waveList.length - 1;
     if (duration == _emptyDuration) {
       duration = _defaultDuration;
     } else if (duration.inSeconds == 0) {
       duration = const Duration(seconds: 1);
     }
 
-    final Path _songPath = Path()..moveTo(0, size.height);
-    _waveList.forEach((int index, double value) {
-      _songPath.lineTo((size.width * index) / _len,
+    final Path songPath = Path()..moveTo(0, size.height);
+    waveList.forEach((int index, double value) {
+      songPath.lineTo((size.width * index) / len,
           size.height - _heightFactor(size.height, volume, value));
     });
-    _songPath
+    songPath
       ..lineTo(size.width, size.height)
       ..close();
-    canvas.drawPath(_songPath, Paint()..color = color.withOpacity(.7));
+    canvas.drawPath(songPath, Paint()..color = color.withOpacity(.7));
 
-    final Path _indicatorPath = Path();
+    final Path indicatorPath = Path();
     final double percentage = position.inSeconds / duration.inSeconds;
-    final double pos = _len * percentage;
+    final double pos = len * percentage;
     final int ceil = pos.ceil();
-    _indicatorPath.moveTo(0, size.height);
-    _waveList.forEach((int index, double value) {
+    indicatorPath.moveTo(0, size.height);
+    waveList.forEach((int index, double value) {
       if (index < ceil) {
-        _indicatorPath.lineTo((size.width * index) / _len,
+        indicatorPath.lineTo((size.width * index) / len,
             size.height - _heightFactor(size.height, volume, value));
       } else if (index == ceil) {
-        final double previous =
-            index == 0 ? size.height : _waveList[index - 1]!;
+        final double previous = index == 0 ? size.height : waveList[index - 1]!;
         final double diff = value - previous;
         final double advance = 1 - (ceil - pos);
-        _indicatorPath.lineTo(
+        indicatorPath.lineTo(
             size.width * percentage,
             size.height -
                 _heightFactor(
                     size.height, volume, previous + (diff * advance)));
       }
     });
-    _indicatorPath
+    indicatorPath
       ..lineTo(size.width * percentage, size.height)
       ..close();
-    canvas.drawPath(_indicatorPath, Paint()..color = color);
+    canvas.drawPath(indicatorPath, Paint()..color = color);
 
-    if (fadePosition != _emptyDuration && fadePosition < duration) {
-      final Path _fadePath = Path();
-      final double fadePercentage = fadePosition.inSeconds / duration.inSeconds;
-      final double fade = _len * fadePercentage;
+    if (afadePosition != _emptyDuration && afadePosition < duration) {
+      final Path fadePath = Path();
+      final double fadePercentage =
+          afadePosition.inSeconds / duration.inSeconds;
+      final double fade = len * fadePercentage;
       final int floor = fade.floor();
-      _fadePath.moveTo(size.width * fadePercentage, size.height);
-      _waveList.forEach((int index, double value) {
+      fadePath.moveTo(size.width * fadePercentage, size.height);
+      waveList.forEach((int index, double value) {
         if (index == floor) {
-          final double next = index == (_waveList.length - 1)
+          final double next = index == (waveList.length - 1)
               ? size.height
-              : _waveList[index + 1]!;
+              : waveList[index + 1]!;
           final double diff = next - value;
           final double advance = 1 - (fade - floor);
-          _fadePath.lineTo(
+          fadePath.lineTo(
               size.width * fadePercentage,
               size.height -
                   _heightFactor(size.height, volume, next - (diff * advance)));
         } else if (index > floor) {
-          _fadePath.lineTo((size.width * index) / _len,
+          fadePath.lineTo((size.width * index) / len,
               size.height - _heightFactor(size.height, volume, value));
         }
       });
-      _fadePath
+      fadePath
         ..lineTo(size.width, size.height)
         ..close();
-      canvas.drawPath(_fadePath, Paint()..color = redColor.withOpacity(.7));
+      canvas.drawPath(fadePath, Paint()..color = redColor.withOpacity(.7));
     }
   }
 
@@ -2553,25 +2558,25 @@ class CubistWave extends CustomPainter {
 
 /// Generates wave data for slider
 List<double> wave(String s) {
-  List<double> _codes = [];
-  s.toLowerCase().codeUnits.forEach((final int _code) {
-    if (_code >= 48) _codes.add(_code.toDouble());
+  List<double> codes = [];
+  s.toLowerCase().codeUnits.forEach((final int code) {
+    if (code >= 48) codes.add(code.toDouble());
   });
 
-  final double minCode = _codes.reduce(min);
-  final double maxCode = _codes.reduce(max);
+  final double minCode = codes.reduce(min);
+  final double maxCode = codes.reduce(max);
 
-  _codes.asMap().forEach((int index, double value) {
+  codes.asMap().forEach((int index, double value) {
     value = value - minCode;
     final double fraction = (100.0 / (maxCode - minCode)) * value;
-    _codes[index] = fraction.roundToDouble();
+    codes[index] = fraction.roundToDouble();
   });
 
-  final int _codesCount = _codes.length;
-  if (_codesCount > 10)
-    _codes = _codes.sublist(0, 5) + _codes.sublist(_codesCount - 5);
+  final int codesCount = codes.length;
+  if (codesCount > 10)
+    codes = codes.sublist(0, 5) + codes.sublist(codesCount - 5);
 
-  return _codes;
+  return codes;
 }
 
 /// Cubist shape for portrait album artworks.
