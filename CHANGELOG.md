@@ -1,6 +1,10 @@
+## 0.2.5
+- Improved seek picker 📈 shape
+- Fixed 🪲 navigation to previous page
+- Fixed 🪲 sometimes broken loading of covers
+
 ## 0.2.4
 - Fixed 🪲 rare occasion of several players playing at once
-- Fixed 🪲 page history logic
 
 ## 0.2.3
 - Added delay after countdown ⏲️ finishes
