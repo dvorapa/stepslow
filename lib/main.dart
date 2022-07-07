@@ -50,9 +50,6 @@ Duration _animationDuration = const Duration(milliseconds: 300);
 /// Default duration for animations
 const Curve _animationCurve = Curves.ease;
 
-/// Default app title
-const String appTitle = 'Stepslow music player';
-
 /// Available sources
 final List<Source> _sources = [Source('/storage/emulated/0', 0)];
 
@@ -221,7 +218,7 @@ class Stepslow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: appTitle,
+        title: 'Stepslow music player',
         theme: ThemeData(
             primaryColor: interactiveColor,
             appBarTheme: AppBarTheme(
@@ -254,7 +251,7 @@ class Player extends StatefulWidget {
 /// State handler.
 class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Audio player entity
-  final AudioPlayer audioPlayer = AudioPlayer(playerId: appTitle);
+  final AudioPlayer audioPlayer = AudioPlayer(playerId: 'Stepslow player 1');
 
   /// Android intent channel entity
   final MethodChannel bridge =
@@ -418,6 +415,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   /// Changes [song] according to given [newIndex]
   void onChange(int newIndex) {
+    onPause(quiet: true);
     final int available = queue.length;
     setState(() {
       if (newIndex < 0) {
@@ -799,37 +797,38 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Goes back to the previous page
   bool onBack() {
     final int pageHistoryLength = pageHistory.length;
-    if (pageHistoryLength == 1) {
-      return true;
-    }
-    final int goToPage = pageHistoryLength - 2;
-    _controller.animateToPage(pageHistory[goToPage],
-        duration: _animationDuration, curve: _animationCurve);
-    if (goToPage == 2) {
-      pageHistory.removeRange(1, pageHistoryLength - 1);
-    } else {
-      pageHistory.removeLast();
-    }
+    if (pageHistoryLength == 1) return true;
+    final List<int> oldPageHistory =
+        pageHistory.sublist(0, pageHistoryLength - 1);
+    _controller
+        .animateToPage(pageHistory[pageHistoryLength - 2],
+            duration: _animationDuration, curve: _animationCurve)
+        .then((_) {
+      pageHistory = oldPageHistory;
+    }, onError: (error) => print(error.stackTrace));
     return false;
   }
 
   /// Get cached or preferred value
   void _getSavedValues() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    int deviceVolume = await VolumeRegulator.getVolume();
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final int deviceVolume = await VolumeRegulator.getVolume();
+
     setState(() {
       lastSongPath = prefs.getString('lastSongPath');
       _mode = prefs.getString('_mode') ?? 'loop';
       _set = prefs.getString('_set') ?? 'random';
       volume = prefs.getInt('volume') ?? deviceVolume;
     });
+
     await prefs.setString('_mode', _mode);
     await prefs.setString('_set', _set);
+    onVolume(volume);
   }
 
   /// Save cached or preferred value
   Future<void> _setValue(String variable, dynamic value) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
     if (value is String) await prefs.setString(variable, value);
     if (value is double) await prefs.setDouble(variable, value);
     if (value is int) await prefs.setInt(variable, value);
@@ -878,7 +877,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       if (!File(coverPath).existsSync()) {
         final int height =
             (MediaQuery.of(context).size.shortestSide * 7 / 10).ceil();
-        FFmpegKit.execute(
+        await FFmpegKit.execute(
                 '-i "$songPath" -vf scale="-2:\'min($height,ih)\'":flags=lanczos -an "$coverPath"')
             .then((session) async {
           final returnCode = await session.getReturnCode();
@@ -887,7 +886,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
           if (failStackTrace != null && failStackTrace.isNotEmpty)
             print(failStackTrace);
         }, onError: (error) {
-          print(error.stackTrace);
+          print(error);
           setState(() => _coversComplete = -2);
           return 1;
         });
@@ -907,7 +906,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
 
   /// Gets album artwork from cache
   Image? _getCover(SongModel asong) {
-    if (_coversComplete == -1) {
+    if (!_bad.contains(_coversComplete)) {
       final String songPath = asong.data;
       if (_coversMap.containsKey(songPath)) {
         if (_coversMap[songPath] == 0) {
@@ -941,7 +940,7 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
       int resultStatus = 0;
       final int height =
           (MediaQuery.of(context).size.shortestSide * 7 / 10).ceil();
-      FFmpegKit.execute(
+      await FFmpegKit.execute(
               '-i "$songPath" -vf scale="-2:\'min($height,ih)\'":flags=lanczos -an "$coverPath"')
           .then((session) async {
         final returnCode = await session.getReturnCode();
@@ -1049,10 +1048,17 @@ class _PlayerState extends State<Player> with WidgetsBindingObserver {
     _controller.addListener(() {
       final double modulo = _controller.page! % 1;
       if (.9 < modulo || modulo < .1) {
-        final int page = _controller.page!.round();
         final int last = pageHistory.last;
-        if ((page == 2 && last != 2) || !pageHistory.contains(page)) {
-          if (last == 2) pageHistory.removeRange(1, pageHistory.length - 1);
+        final int page = _controller.page!.round();
+        if (last != page) {
+          if (page != 2) {
+            final int pageHistoryLength = pageHistory.length;
+            if (last == 2 && pageHistoryLength != 1) {
+              pageHistory.removeRange(1, pageHistoryLength);
+            } else {
+              pageHistory.remove(page);
+            }
+          }
           pageHistory.add(page);
         }
       }
@@ -2556,12 +2562,27 @@ class CubistWave extends CustomPainter {
   bool shouldRepaint(CubistWave oldDelegate) => true;
 }
 
+/// Removes weird values from list using double standard deviation
+Iterable<double> reduceList(Iterable<int> listToReduce) {
+  double average =
+      listToReduce.reduce((int val, int el) => val + el).toDouble();
+  average = average / listToReduce.length;
+  final Iterable<num> deviations =
+      listToReduce.map((int el) => pow(el - average, 2));
+  num deviationSum = deviations.reduce((num val, num el) => val + el);
+  double stdev = sqrt(deviationSum / listToReduce.length);
+  double lowerLimit = average - 2 * stdev;
+  double upperLimit = average + 2 * stdev;
+  return listToReduce
+      .where((int el) => el >= lowerLimit && el <= upperLimit)
+      .map((int el) => el.toDouble());
+}
+
 /// Generates wave data for slider
-List<double> wave(String s) {
-  List<double> codes = [];
-  s.toLowerCase().codeUnits.forEach((final int code) {
-    if (code >= 48) codes.add(code.toDouble());
-  });
+List<double> wave(String songTitle) {
+  List<double> codes = reduceList(songTitle.toLowerCase().codeUnits)
+      .where((double el) => el >= 48.0)
+      .toList();
 
   final double minCode = codes.reduce(min);
   final double maxCode = codes.reduce(max);
@@ -2576,7 +2597,7 @@ List<double> wave(String s) {
   if (codesCount > 10)
     codes = codes.sublist(0, 5) + codes.sublist(codesCount - 5);
 
-  return codes;
+  return codes.toList();
 }
 
 /// Cubist shape for portrait album artworks.
