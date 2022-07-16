@@ -218,7 +218,7 @@ class Stepslow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: 'Stepslow music player',
+        title: 'Stepslow Music Player',
         theme: ThemeData(
             primaryColor: interactiveColor,
             appBarTheme: AppBarTheme(
@@ -251,7 +251,7 @@ class Player extends StatefulWidget {
 /// State handler.
 class _PlayerState extends State<Player> with WidgetsBindingObserver {
   /// Audio player entity
-  final AudioPlayer audioPlayer = AudioPlayer(playerId: 'Stepslow player 1');
+  final AudioPlayer audioPlayer = AudioPlayer(playerId: 'Stepslow Player 1');
 
   /// Android intent channel entity
   final MethodChannel bridge =
@@ -1718,7 +1718,21 @@ Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> tree) {
   final SplayTreeMap<Entry, SplayTreeMap> children =
       tree.value as SplayTreeMap<Entry, SplayTreeMap>;
   final Entry entry = tree.key;
+  final int entrySongs = entry.songs;
+  String songCount = '';
+  switch (entrySongs) {
+    case 0:
+      songCount = '';
+      break;
+    case 1:
+      songCount = '1 song';
+      break;
+    default:
+      songCount = '$entrySongs songs';
+      break;
+  }
   final String entryPath = entry.path;
+  final String entryName = entry.name;
   if (children.isNotEmpty) {
     return ExpansionTile(
         /*key: PageStorageKey<MapEntry>(tree),*/
@@ -1726,12 +1740,12 @@ Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> tree) {
         initiallyExpanded: parent.chosenFolder.contains(entryPath),
         onExpansionChanged: (_) => parent.getTempQueue(entryPath),
         childrenPadding: const EdgeInsets.only(left: 16.0),
-        title: Text(entry.name,
+        title: Text(entryName,
             style: TextStyle(
                 color: parent.folder == entryPath
                     ? Theme.of(parent.context).primaryColor
                     : Theme.of(parent.context).textTheme.bodyText2!.color)),
-        subtitle: Text(entry.songs == 1 ? '1 song' : '${entry.songs} songs',
+        subtitle: Text(songCount,
             style: TextStyle(
                 fontSize: 10.0,
                 color: parent.folder == entryPath
@@ -1753,16 +1767,15 @@ Widget _folderTile(parent, MapEntry<Entry, SplayTreeMap> tree) {
           ..getTempQueue(entryPath)
           .._pickSong();
       },
-      title: entry.name.isEmpty
+      title: entryName.isEmpty
           ? Align(
               alignment: Alignment.centerLeft,
               child: Icon(Icons.home,
                   color: parent.folder == entryPath
                       ? Theme.of(parent.context).primaryColor
                       : unfocusedColor))
-          : Text(entry.name),
-      subtitle: Text(entry.songs == 1 ? '1 song' : '${entry.songs} songs',
-          style: const TextStyle(fontSize: 10.0)));
+          : Text(entryName),
+      subtitle: Text(songCount, style: const TextStyle(fontSize: 10.0)));
 }
 
 /// Renders play/pause button

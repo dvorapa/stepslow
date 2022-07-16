@@ -3,17 +3,17 @@
 // ignore_for_file: public_member_api_docs, constant_identifier_names, avoid_classes_with_only_static_members
 
 class Pubspec {
-  static final buildDate = DateTime.utc(2022, 7, 3, 0, 9, 54);
+  static final buildDate = DateTime.utc(2022, 7, 16, 8, 48, 31);
 
   static const name = 'stepslow';
 
-  static const description = 'Simple music player for dancers';
+  static const description = 'Simple Music Player for Dancers';
 
   static const publish_to = 'none';
 
-  static const versionFull = '0.2.4+6';
+  static const versionFull = '0.2.5+7';
 
-  static const version = '0.2.4';
+  static const version = '0.2.5';
 
   static const versionSmall = '0.2';
 
@@ -21,9 +21,9 @@ class Pubspec {
 
   static const versionMinor = 2;
 
-  static const versionPatch = 4;
+  static const versionPatch = 5;
 
-  static const versionBuild = 6;
+  static const versionBuild = 7;
 
   static const versionPreRelease = '';
 
@@ -43,7 +43,7 @@ class Pubspec {
     'audioplayers': '^1.0.1',
     'on_audio_query': '^2.6.1',
     'flutter_beep': '^1.0.0',
-    'wakelock': '>=0.6.1 <1.0.0',
+    'wakelock': '>=0.6.2 <1.0.0',
     'collection': '^1.16.0',
     'volume_regulator': '^1.2.0',
     'easy_dialogs': '^2.0.0',
@@ -54,7 +54,7 @@ class Pubspec {
     'permission_handler': '9.2.0',
     'path_provider': '^2.0.10',
     'about': '^2.1.1',
-    'url_launcher': '^6.1.4',
+    'url_launcher': '^6.1.5',
     'cupertino_icons': '^1.0.4',
   };
 
